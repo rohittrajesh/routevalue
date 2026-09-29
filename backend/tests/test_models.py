@@ -3,13 +3,15 @@ from decimal import Decimal
 import pytest
 
 from routevalue.domain.models import (
+    DecisionCandidate,
     DecisionReason,
     DecisionResult,
-    EnergyEstimate,
     EligibilityResult,
+    EnergyEstimate,
     RouteCandidate,
     VehicleProfile,
 )
+
 
 def test_route_candidate_accepts_valid_values() -> None:
     route = RouteCandidate(
@@ -324,3 +326,19 @@ def test_decision_result_rejects_reason_without_recommendation() -> None:
             candidate_count=1,
             eligible_count=0,
         )
+
+def test_decision_candidate_pairs_route_with_energy_estimate() -> None:
+    route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal("2.50"),
+    )
+    energy_estimate = EnergyEstimate(cost=Decimal("3.75"))
+
+    candidate = DecisionCandidate(
+        route=route,
+        energy_estimate=energy_estimate,
+    )
+
+    assert candidate.route is route
+    assert candidate.energy_estimate is energy_estimate

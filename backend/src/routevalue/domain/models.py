@@ -11,6 +11,7 @@ from routevalue.domain.units import (
     Seconds,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class RouteCandidate:
     """A normalized route candidate independent of any routing provider."""
@@ -54,6 +55,13 @@ class EnergyEstimate:
             raise ValueError("energy cost cannot be negative")
 
 @dataclass(frozen=True, slots=True)
+class DecisionCandidate:
+    """A route paired with the energy estimate used for decision-making."""
+
+    route: RouteCandidate
+    energy_estimate: EnergyEstimate
+
+@dataclass(frozen=True, slots=True)
 class EligibilityResult:
     """Result of evaluating whether a route may enter normal optimization."""
 
@@ -76,6 +84,7 @@ class DecisionReason(StrEnum):
     NUMERICAL_TIE_FASTER_WINS = "numerical_tie_faster_wins"
     NUMERICAL_TIE_CHEAPER_WINS = "numerical_tie_cheaper_wins"
     NUMERICAL_TIE_SHORTER_DISTANCE_WINS = "numerical_tie_shorter_distance_wins"
+    NUMERICAL_TIE_STABLE_ORDER_WINS = "numerical_tie_stable_order_wins"
     ONLY_ELIGIBLE_ROUTE = "only_eligible_route"
 
 @dataclass(frozen=True, slots=True)
