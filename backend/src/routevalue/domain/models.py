@@ -1,6 +1,7 @@
 """Core domain models for RouteValue."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from routevalue.domain.units import (
     Meters,
@@ -9,8 +10,6 @@ from routevalue.domain.units import (
     MoneyPerGallon,
     Seconds,
 )
-
-from enum import StrEnum
 
 @dataclass(frozen=True, slots=True)
 class RouteCandidate:

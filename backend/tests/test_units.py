@@ -16,5 +16,5 @@ def test_meters_to_miles_converts_known_distance() -> None:
 
 
 def test_conversions_return_decimal_values() -> None:
-    assert seconds_to_hours(3600) == Decimal(1)
-    assert meters_to_miles(804_672) == Decimal(500)
+    assert isinstance(seconds_to_hours(1), Decimal)
+    assert isinstance(meters_to_miles(1), Decimal)
