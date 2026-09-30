@@ -3,10 +3,13 @@ name = "routevalue"
 version = "0.1.0"
 description = "A route decision engine that compares travel options using personalized generalized cost."
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.142.1",
+]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.9",

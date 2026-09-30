@@ -1,0 +1,117 @@
+"""Mappings between HTTP schemas and RouteValue application models."""
+
+from routevalue.api.schemas import (
+    DecisionResponse,
+    EligibilityResponse,
+    EnergyEstimateResponse,
+    RouteEvaluationResponse,
+    RouteResponse,
+    TripEvaluationRequest,
+    TripEvaluationResponse,
+)
+from routevalue.application.models import (
+    RouteSearchRequest,
+    TripEvaluationResult,
+)
+from routevalue.domain.models import (
+    DecisionResult,
+    EligibilityResult,
+    EnergyEstimate,
+    RouteCandidate,
+)
+from routevalue.domain.units import MoneyPerHour
+
+
+def to_route_search_request(
+    request: TripEvaluationRequest,
+) -> RouteSearchRequest:
+    """Convert an HTTP trip request into an application route-search request."""
+
+    return RouteSearchRequest(
+        origin=request.origin,
+        destination=request.destination,
+    )
+
+
+def get_value_of_time_per_hour(
+    request: TripEvaluationRequest,
+) -> MoneyPerHour:
+    """Extract the application value-of-time input from an HTTP trip request."""
+
+    return request.value_of_time_per_hour
+
+
+def _to_route_response(route: RouteCandidate) -> RouteResponse:
+    """Convert a domain route into its public API representation."""
+
+    return RouteResponse(
+        distance_meters=route.distance_meters,
+        duration_seconds=route.duration_seconds,
+        toll_cost=route.toll_cost,
+    )
+
+
+def _to_energy_estimate_response(
+    estimate: EnergyEstimate,
+) -> EnergyEstimateResponse:
+    """Convert a domain energy estimate into its public API representation."""
+
+    return EnergyEstimateResponse(
+        cost=estimate.cost,
+    )
+
+
+def _to_eligibility_response(
+    eligibility: EligibilityResult,
+) -> EligibilityResponse:
+    """Convert a domain eligibility result into its public API representation."""
+
+    return EligibilityResponse(
+        eligible=eligibility.eligible,
+        reason=eligibility.reason.value if eligibility.reason is not None else None,
+    )
+
+
+def _to_decision_response(
+    decision: DecisionResult,
+) -> DecisionResponse:
+    """Convert a domain decision result into its public API representation."""
+
+    recommended_route = (
+        _to_route_response(decision.recommended_route)
+        if decision.recommended_route is not None
+        else None
+    )
+
+    return DecisionResponse(
+        recommended_route=recommended_route,
+        reason=decision.reason.value if decision.reason is not None else None,
+        numerical_tie=decision.numerical_tie,
+        missing_data_present=decision.missing_data_present,
+        candidate_count=decision.candidate_count,
+        eligible_count=decision.eligible_count,
+    )
+
+
+def to_trip_evaluation_response(
+    result: TripEvaluationResult,
+) -> TripEvaluationResponse:
+    """Convert an application trip result into the public API response."""
+
+    route_evaluations = [
+        RouteEvaluationResponse(
+            route=_to_route_response(evaluation.route),
+            energy_estimate=(
+                _to_energy_estimate_response(evaluation.energy_estimate)
+                if evaluation.energy_estimate is not None
+                else None
+            ),
+            eligibility=_to_eligibility_response(evaluation.eligibility),
+        )
+        for evaluation in result.route_evaluations
+    ]
+
+    return TripEvaluationResponse(
+        route_evaluations=route_evaluations,
+        decision=_to_decision_response(result.decision),
+    )
