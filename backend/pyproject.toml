@@ -5,11 +5,11 @@ description = "A route decision engine that compares travel options using person
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.142.1",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.9",
