@@ -1,17 +1,56 @@
 """Dependency composition for the RouteValue API."""
 
+import os
+from collections.abc import Generator
+from typing import Annotated
+
+import httpx
+from fastapi import Depends
+
 from routevalue.application.ports import EnergyCostEstimator, RouteProvider
 from routevalue.application.trip_evaluation import TripEvaluationOrchestrator
-from routevalue.infrastructure.in_memory import (
-    InMemoryEnergyCostEstimator,
-    InMemoryRouteProvider,
+from routevalue.infrastructure.in_memory import InMemoryEnergyCostEstimator
+from routevalue.infrastructure.routing.google_routes import (
+    GoogleRoutesRouteProvider,
 )
 
+_GOOGLE_ROUTES_API_KEY_ENV_VAR = "GOOGLE_ROUTES_API_KEY"
 
-def get_trip_evaluation_orchestrator() -> TripEvaluationOrchestrator:
-    """Build the temporary orchestrator used by the HTTP API."""
 
-    route_provider: RouteProvider = InMemoryRouteProvider(())
+def get_google_routes_api_key() -> str:
+    """Load the Google Routes API key from the process environment."""
+
+    api_key = os.getenv(_GOOGLE_ROUTES_API_KEY_ENV_VAR)
+
+    if api_key is None or not api_key.strip():
+        raise RuntimeError(f"{_GOOGLE_ROUTES_API_KEY_ENV_VAR} must be configured")
+
+    return api_key
+
+
+def get_google_routes_http_client() -> Generator[httpx.Client]:
+    """Provide a request-scoped HTTP client for Google Routes."""
+
+    with httpx.Client() as client:
+        yield client
+
+
+def get_trip_evaluation_orchestrator(
+    api_key: Annotated[
+        str,
+        Depends(get_google_routes_api_key),
+    ],
+    client: Annotated[
+        httpx.Client,
+        Depends(get_google_routes_http_client),
+    ],
+) -> TripEvaluationOrchestrator:
+    """Build the production orchestrator used by the HTTP API."""
+
+    route_provider: RouteProvider = GoogleRoutesRouteProvider(
+        api_key=api_key,
+        client=client,
+    )
     energy_cost_estimator: EnergyCostEstimator = InMemoryEnergyCostEstimator({})
 
     return TripEvaluationOrchestrator(

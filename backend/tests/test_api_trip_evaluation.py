@@ -13,6 +13,15 @@ from routevalue.infrastructure.in_memory import (
 from routevalue.main import app
 
 
+def _build_empty_trip_evaluation_orchestrator() -> TripEvaluationOrchestrator:
+    """Build an orchestrator with no routes for isolated API tests."""
+
+    return TripEvaluationOrchestrator(
+        route_provider=InMemoryRouteProvider(()),
+        energy_cost_estimator=InMemoryEnergyCostEstimator({}),
+    )
+
+
 def test_trip_evaluation_endpoint_returns_application_result() -> None:
     route = RouteCandidate(
         distance_meters=10_000,
@@ -87,29 +96,36 @@ def test_trip_evaluation_endpoint_returns_application_result() -> None:
 
 
 def test_trip_evaluation_endpoint_handles_zero_routes() -> None:
-    client = TestClient(app)
-
-    response = client.post(
-        "/trip-evaluations",
-        json={
-            "origin": "Origin",
-            "destination": "Destination",
-            "value_of_time_per_hour": "18.00",
-        },
+    app.dependency_overrides[get_trip_evaluation_orchestrator] = (
+        _build_empty_trip_evaluation_orchestrator
     )
 
-    assert response.status_code == 200
-    assert response.json() == {
-        "route_evaluations": [],
-        "decision": {
-            "recommended_route": None,
-            "reason": None,
-            "numerical_tie": False,
-            "missing_data_present": False,
-            "candidate_count": 0,
-            "eligible_count": 0,
-        },
-    }
+    try:
+        client = TestClient(app)
+
+        response = client.post(
+            "/trip-evaluations",
+            json={
+                "origin": "Origin",
+                "destination": "Destination",
+                "value_of_time_per_hour": "18.00",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "route_evaluations": [],
+            "decision": {
+                "recommended_route": None,
+                "reason": None,
+                "numerical_tie": False,
+                "missing_data_present": False,
+                "candidate_count": 0,
+                "eligible_count": 0,
+            },
+        }
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_trip_evaluation_endpoint_preserves_missing_toll_cost() -> None:
@@ -247,12 +263,19 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
 def test_trip_evaluation_endpoint_rejects_invalid_request(
     payload: dict[str, object],
 ) -> None:
-    client = TestClient(app)
-
-    response = client.post(
-        "/trip-evaluations",
-        json=payload,
+    app.dependency_overrides[get_trip_evaluation_orchestrator] = (
+        _build_empty_trip_evaluation_orchestrator
     )
 
-    assert response.status_code == 422
-    assert response.json()["detail"]
+    try:
+        client = TestClient(app)
+
+        response = client.post(
+            "/trip-evaluations",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
