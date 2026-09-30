@@ -321,6 +321,7 @@ def test_google_routes_provider_sends_expected_compute_routes_requests() -> None
         },
     ]
 
+
 def test_google_routes_provider_normalizes_fake_google_response_in_order() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -666,6 +667,7 @@ def test_google_routes_provider_does_not_retry_permanent_http_failure() -> None:
     assert attempts == 1
     assert delays == []
 
+
 def test_build_google_routes_request_payload_can_request_avoid_tolls() -> None:
     request = RouteSearchRequest(
         origin="Origin",
@@ -693,44 +695,23 @@ def test_build_google_routes_request_payload_can_request_avoid_tolls() -> None:
         },
     }
 
+
 def test_google_routes_provider_merges_candidate_sets_in_stable_order() -> None:
-        request_count = 0
+    request_count = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
-            nonlocal request_count
-            request_count += 1
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
 
-            if request_count == 1:
-                return httpx.Response(
-                    status_code=200,
-                    json={
-                        "routes": [
-                            {
-                                "distanceMeters": 10_000,
-                                "duration": "900s",
-                            },
-                            {
-                                "distanceMeters": 12_000,
-                                "duration": "800s",
-                                "travelAdvisory": {
-                                    "tollInfo": {
-                                        "estimatedPrice": [
-                                            {
-                                                "currencyCode": "USD",
-                                                "units": "3",
-                                            }
-                                        ]
-                                    }
-                                },
-                            },
-                        ]
-                    },
-                )
-
+        if request_count == 1:
             return httpx.Response(
                 status_code=200,
                 json={
                     "routes": [
+                        {
+                            "distanceMeters": 10_000,
+                            "duration": "900s",
+                        },
                         {
                             "distanceMeters": 12_000,
                             "duration": "800s",
@@ -745,57 +726,80 @@ def test_google_routes_provider_merges_candidate_sets_in_stable_order() -> None:
                                 }
                             },
                         },
-                        {
-                            "distanceMeters": 14_000,
-                            "duration": "1_000s",
-                            "travelAdvisory": {
-                                "tollInfo": {
-                                    "estimatedPrice": [
-                                        {
-                                            "currencyCode": "USD",
-                                            "units": "1",
-                                            "nanos": 250_000_000,
-                                        }
-                                    ]
-                                }
-                            },
-                        },
                     ]
                 },
             )
 
-        transport = httpx.MockTransport(handler)
-
-        with httpx.Client(transport=transport) as client:
-            provider = GoogleRoutesRouteProvider(
-                api_key="test-api-key",
-                client=client,
-            )
-
-            routes = provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
-
-        assert routes == (
-            RouteCandidate(
-                distance_meters=10_000,
-                duration_seconds=900,
-                toll_cost=Decimal(0),
-            ),
-            RouteCandidate(
-                distance_meters=12_000,
-                duration_seconds=800,
-                toll_cost=Decimal(3),
-            ),
-            RouteCandidate(
-                distance_meters=14_000,
-                duration_seconds=1_000,
-                toll_cost=Decimal("1.25"),
-            ),
+        return httpx.Response(
+            status_code=200,
+            json={
+                "routes": [
+                    {
+                        "distanceMeters": 12_000,
+                        "duration": "800s",
+                        "travelAdvisory": {
+                            "tollInfo": {
+                                "estimatedPrice": [
+                                    {
+                                        "currencyCode": "USD",
+                                        "units": "3",
+                                    }
+                                ]
+                            }
+                        },
+                    },
+                    {
+                        "distanceMeters": 14_000,
+                        "duration": "1_000s",
+                        "travelAdvisory": {
+                            "tollInfo": {
+                                "estimatedPrice": [
+                                    {
+                                        "currencyCode": "USD",
+                                        "units": "1",
+                                        "nanos": 250_000_000,
+                                    }
+                                ]
+                            }
+                        },
+                    },
+                ]
+            },
         )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as client:
+        provider = GoogleRoutesRouteProvider(
+            api_key="test-api-key",
+            client=client,
+        )
+
+        routes = provider.get_routes(
+            RouteSearchRequest(
+                origin="Origin",
+                destination="Destination",
+            )
+        )
+
+    assert routes == (
+        RouteCandidate(
+            distance_meters=10_000,
+            duration_seconds=900,
+            toll_cost=Decimal(0),
+        ),
+        RouteCandidate(
+            distance_meters=12_000,
+            duration_seconds=800,
+            toll_cost=Decimal(3),
+        ),
+        RouteCandidate(
+            distance_meters=14_000,
+            duration_seconds=1_000,
+            toll_cost=Decimal("1.25"),
+        ),
+    )
+
 
 def test_google_routes_provider_propagates_avoid_tolls_acquisition_failure() -> None:
     request_count = 0

@@ -286,6 +286,7 @@ def parse_google_routes_response(
         for route in response.routes
     )
 
+
 def _merge_unique_routes(
     *route_groups: tuple[RouteCandidate, ...],
 ) -> tuple[RouteCandidate, ...]:
@@ -299,6 +300,7 @@ def _merge_unique_routes(
                 unique_routes.append(route)
 
     return tuple(unique_routes)
+
 
 def _is_retryable_http_status(status_code: int) -> bool:
     """Return whether a Google HTTP status represents a transient failure."""
