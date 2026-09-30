@@ -1,6 +1,7 @@
 """Core domain models for RouteValue."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 from routevalue.domain.units import (
@@ -30,19 +31,56 @@ class RouteCandidate:
         if self.toll_cost is not None and self.toll_cost < 0:
             raise ValueError("toll_cost cannot be negative")
 
+
+class GasolineGrade(StrEnum):
+    """Gasoline grade required by a gasoline vehicle."""
+
+    REGULAR = "regular"
+    MIDGRADE = "midgrade"
+    PREMIUM = "premium"
+
+
 @dataclass(frozen=True, slots=True)
-class VehicleProfile:
-    """Vehicle inputs required by the V1 gasoline energy model."""
+class GasolineVehicleProfile:
+    """Stable vehicle inputs required by gasoline energy models."""
 
     fuel_efficiency_mpg: MilesPerGallon
-    fuel_price_per_gallon: MoneyPerGallon
+    fuel_grade: GasolineGrade
 
     def __post_init__(self) -> None:
         if self.fuel_efficiency_mpg <= 0:
             raise ValueError("fuel_efficiency_mpg must be greater than zero")
 
-        if self.fuel_price_per_gallon < 0:
-            raise ValueError("fuel_price_per_gallon cannot be negative")
+
+class FuelPriceSource(StrEnum):
+    """Source category for a gasoline price."""
+
+    USER_OVERRIDE = "user_override"
+    LOCAL_MARKET = "local_market"
+    REGIONAL_MARKET = "regional_market"
+
+
+@dataclass(frozen=True, slots=True)
+class FuelPriceQuote:
+    """A grade-specific gasoline price available to the domain."""
+
+    price_per_gallon: MoneyPerGallon
+    fuel_grade: GasolineGrade
+    source: FuelPriceSource
+    observed_at: datetime | None
+
+    def __post_init__(self) -> None:
+        if self.price_per_gallon < 0:
+            raise ValueError("price_per_gallon cannot be negative")
+
+        if self.source is not FuelPriceSource.USER_OVERRIDE and self.observed_at is None:
+            raise ValueError("market fuel price requires an observation timestamp")
+
+        if self.observed_at is not None and (
+            self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None
+        ):
+            raise ValueError("observed_at must be timezone-aware")
+
 
 @dataclass(frozen=True, slots=True)
 class EnergyEstimate:
@@ -54,12 +92,14 @@ class EnergyEstimate:
         if self.cost < 0:
             raise ValueError("energy cost cannot be negative")
 
+
 @dataclass(frozen=True, slots=True)
 class DecisionCandidate:
     """A route paired with the energy estimate used for decision-making."""
 
     route: RouteCandidate
     energy_estimate: EnergyEstimate
+
 
 @dataclass(frozen=True, slots=True)
 class EligibilityResult:
@@ -75,6 +115,7 @@ class EligibilityResult:
         if not self.eligible and not self.reason:
             raise ValueError("ineligible route must have an ineligibility reason")
 
+
 class DecisionReason(StrEnum):
     """Structured reason explaining why a route was selected."""
 
@@ -86,6 +127,7 @@ class DecisionReason(StrEnum):
     NUMERICAL_TIE_SHORTER_DISTANCE_WINS = "numerical_tie_shorter_distance_wins"
     NUMERICAL_TIE_STABLE_ORDER_WINS = "numerical_tie_stable_order_wins"
     ONLY_ELIGIBLE_ROUTE = "only_eligible_route"
+
 
 @dataclass(frozen=True, slots=True)
 class DecisionResult:

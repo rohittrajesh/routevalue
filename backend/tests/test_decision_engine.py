@@ -121,13 +121,14 @@ def test_calculate_generalized_cost_combines_all_components() -> None:
 
     assert result == Decimal("17.00")
 
+
 def test_decide_route_returns_no_recommendation_when_none_are_eligible() -> None:
     result = decide_route(
-    [],
-    value_of_time_per_hour=Decimal("20.00"),
-    candidate_count=2,
-    missing_data_present=True,
-)
+        [],
+        value_of_time_per_hour=Decimal("20.00"),
+        candidate_count=2,
+        missing_data_present=True,
+    )
 
     assert result.recommended_route is None
     assert result.reason is None
@@ -149,11 +150,11 @@ def test_decide_route_selects_only_eligible_candidate() -> None:
     )
 
     result = decide_route(
-    [candidate],
-    value_of_time_per_hour=Decimal("20.00"),
-    candidate_count=2,
-    missing_data_present=True,
-)
+        [candidate],
+        value_of_time_per_hour=Decimal("20.00"),
+        candidate_count=2,
+        missing_data_present=True,
+    )
 
     assert result.recommended_route is route
     assert result.reason is DecisionReason.ONLY_ELIGIBLE_ROUTE
@@ -194,6 +195,7 @@ def test_decide_route_selects_cheaper_route_worth_extra_time() -> None:
     assert result.candidate_count == 2
     assert result.eligible_count == 2
 
+
 def test_select_lowest_generalized_cost_can_choose_cheaper_slower_route() -> None:
     cheaper_slower = DecisionCandidate(
         route=RouteCandidate(
@@ -219,6 +221,7 @@ def test_select_lowest_generalized_cost_can_choose_cheaper_slower_route() -> Non
 
     assert result is cheaper_slower
 
+
 def test_select_lowest_generalized_cost_can_choose_faster_costlier_route() -> None:
     slower_cheaper = DecisionCandidate(
         route=RouteCandidate(
@@ -243,6 +246,7 @@ def test_select_lowest_generalized_cost_can_choose_faster_costlier_route() -> No
     )
 
     assert result is faster_costlier
+
 
 def test_select_lowest_generalized_cost_supports_multiple_candidates() -> None:
     first = DecisionCandidate(
@@ -277,6 +281,7 @@ def test_select_lowest_generalized_cost_supports_multiple_candidates() -> None:
 
     assert result is second
 
+
 def test_select_lowest_generalized_cost_resolves_exact_tie() -> None:
     shorter = DecisionCandidate(
         route=RouteCandidate(
@@ -302,6 +307,7 @@ def test_select_lowest_generalized_cost_resolves_exact_tie() -> None:
 
     assert result is shorter
 
+
 def test_is_numerical_tie_below_tolerance() -> None:
     assert is_numerical_tie(
         Decimal("10.00"),
@@ -321,6 +327,7 @@ def test_is_numerical_tie_above_tolerance_is_not_tie() -> None:
         Decimal("10.00"),
         Decimal("10.11"),
     )
+
 
 def test_select_lowest_generalized_cost_resolves_numerical_tie() -> None:
     lower_cost = DecisionCandidate(
@@ -347,6 +354,7 @@ def test_select_lowest_generalized_cost_resolves_numerical_tie() -> None:
 
     assert result is faster_near_tie
 
+
 def test_select_lowest_generalized_cost_selects_lower_cost_at_tolerance() -> None:
     lower_cost = DecisionCandidate(
         route=RouteCandidate(
@@ -372,6 +380,7 @@ def test_select_lowest_generalized_cost_selects_lower_cost_at_tolerance() -> Non
 
     assert result is lower_cost
 
+
 def test_resolve_numerical_tie_prefers_faster_route() -> None:
     slower_cheaper = DecisionCandidate(
         route=RouteCandidate(
@@ -390,11 +399,10 @@ def test_resolve_numerical_tie_prefers_faster_route() -> None:
         energy_estimate=EnergyEstimate(cost=Decimal(0)),
     )
 
-    result = resolve_numerical_tie(
-        [slower_cheaper, faster_costlier]
-    )
+    result = resolve_numerical_tie([slower_cheaper, faster_costlier])
 
     assert result is faster_costlier
+
 
 def test_resolve_numerical_tie_prefers_lower_monetary_cost() -> None:
     cheaper = DecisionCandidate(
@@ -414,11 +422,10 @@ def test_resolve_numerical_tie_prefers_lower_monetary_cost() -> None:
         energy_estimate=EnergyEstimate(cost=Decimal(0)),
     )
 
-    result = resolve_numerical_tie(
-        [costlier, cheaper]
-    )
+    result = resolve_numerical_tie([costlier, cheaper])
 
     assert result is cheaper
+
 
 def test_resolve_numerical_tie_prefers_shorter_distance() -> None:
     longer = DecisionCandidate(
@@ -438,11 +445,10 @@ def test_resolve_numerical_tie_prefers_shorter_distance() -> None:
         energy_estimate=EnergyEstimate(cost=Decimal(0)),
     )
 
-    result = resolve_numerical_tie(
-        [longer, shorter]
-    )
+    result = resolve_numerical_tie([longer, shorter])
 
     assert result is shorter
+
 
 def test_resolve_numerical_tie_preserves_input_order_as_final_fallback() -> None:
     first = DecisionCandidate(
@@ -462,11 +468,10 @@ def test_resolve_numerical_tie_preserves_input_order_as_final_fallback() -> None
         energy_estimate=EnergyEstimate(cost=Decimal("2.00")),
     )
 
-    result = resolve_numerical_tie(
-        [first, second]
-    )
+    result = resolve_numerical_tie([first, second])
 
     assert result is first
+
 
 def test_decide_route_selects_faster_route_worth_extra_cost() -> None:
     slower_cheaper = DecisionCandidate(
@@ -497,6 +502,7 @@ def test_decide_route_selects_faster_route_worth_extra_cost() -> None:
     assert result.reason is DecisionReason.FASTER_ROUTE_WORTH_EXTRA_COST
     assert result.numerical_tie is False
 
+
 def test_decide_route_selects_faster_and_cheaper_route() -> None:
     worse_route = DecisionCandidate(
         route=RouteCandidate(
@@ -525,6 +531,7 @@ def test_decide_route_selects_faster_and_cheaper_route() -> None:
     assert result.recommended_route is better_route.route
     assert result.reason is DecisionReason.FASTER_AND_CHEAPER
     assert result.numerical_tie is False
+
 
 def test_decide_route_reports_numerical_tie_faster_wins() -> None:
     slower = DecisionCandidate(
@@ -555,6 +562,7 @@ def test_decide_route_reports_numerical_tie_faster_wins() -> None:
     assert result.reason is DecisionReason.NUMERICAL_TIE_FASTER_WINS
     assert result.numerical_tie is True
 
+
 def test_decide_route_reports_numerical_tie_cheaper_wins() -> None:
     costlier = DecisionCandidate(
         route=RouteCandidate(
@@ -583,6 +591,7 @@ def test_decide_route_reports_numerical_tie_cheaper_wins() -> None:
     assert result.recommended_route is cheaper.route
     assert result.reason is DecisionReason.NUMERICAL_TIE_CHEAPER_WINS
     assert result.numerical_tie is True
+
 
 def test_decide_route_reports_numerical_tie_shorter_distance_wins() -> None:
     longer = DecisionCandidate(
@@ -613,6 +622,7 @@ def test_decide_route_reports_numerical_tie_shorter_distance_wins() -> None:
     assert result.reason is DecisionReason.NUMERICAL_TIE_SHORTER_DISTANCE_WINS
     assert result.numerical_tie is True
 
+
 def test_decide_route_reports_stable_order_as_final_tie_break() -> None:
     first = DecisionCandidate(
         route=RouteCandidate(
@@ -641,6 +651,7 @@ def test_decide_route_reports_stable_order_as_final_tie_break() -> None:
     assert result.recommended_route is first.route
     assert result.reason is DecisionReason.NUMERICAL_TIE_STABLE_ORDER_WINS
     assert result.numerical_tie is True
+
 
 def test_decide_route_handles_three_eligible_candidates() -> None:
     slow_cheap = DecisionCandidate(
@@ -680,6 +691,7 @@ def test_decide_route_handles_three_eligible_candidates() -> None:
     assert result.numerical_tie is False
     assert result.candidate_count == 3
     assert result.eligible_count == 3
+
 
 def test_numerical_tie_set_is_anchored_to_lowest_generalized_cost() -> None:
     lowest = DecisionCandidate(
@@ -722,6 +734,7 @@ def test_numerical_tie_set_is_anchored_to_lowest_generalized_cost() -> None:
     assert result.reason is DecisionReason.NUMERICAL_TIE_FASTER_WINS
     assert result.numerical_tie is True
 
+
 def test_decide_route_does_not_treat_exact_tolerance_as_numerical_tie() -> None:
     cheaper_slower = DecisionCandidate(
         route=RouteCandidate(
@@ -750,6 +763,7 @@ def test_decide_route_does_not_treat_exact_tolerance_as_numerical_tie() -> None:
     assert result.recommended_route is cheaper_slower.route
     assert result.reason is DecisionReason.CHEAPER_ROUTE_WORTH_EXTRA_TIME
     assert result.numerical_tie is False
+
 
 def test_decision_is_independent_of_input_order_when_routes_are_distinguishable() -> None:
     worse = DecisionCandidate(
@@ -787,6 +801,7 @@ def test_decision_is_independent_of_input_order_when_routes_are_distinguishable(
     assert reversed_result.recommended_route is better.route
     assert forward_result.reason is DecisionReason.FASTER_AND_CHEAPER
     assert reversed_result.reason is DecisionReason.FASTER_AND_CHEAPER
+
 
 def test_decide_route_rejects_negative_value_of_time() -> None:
     with pytest.raises(

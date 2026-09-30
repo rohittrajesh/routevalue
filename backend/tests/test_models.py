@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -8,8 +9,11 @@ from routevalue.domain.models import (
     DecisionResult,
     EligibilityResult,
     EnergyEstimate,
+    FuelPriceQuote,
+    FuelPriceSource,
+    GasolineGrade,
+    GasolineVehicleProfile,
     RouteCandidate,
-    VehicleProfile,
 )
 
 
@@ -54,6 +58,7 @@ def test_route_candidate_rejects_negative_duration() -> None:
             toll_cost=Decimal(0),
         )
 
+
 def test_route_candidate_allows_unknown_toll_cost() -> None:
     route = RouteCandidate(
         distance_meters=10_000,
@@ -72,56 +77,117 @@ def test_route_candidate_rejects_negative_toll_cost() -> None:
             toll_cost=Decimal("-0.01"),
         )
 
-def test_vehicle_profile_accepts_valid_values() -> None:
-    vehicle = VehicleProfile(
+
+def test_gasoline_vehicle_profile_accepts_valid_values() -> None:
+    vehicle = GasolineVehicleProfile(
         fuel_efficiency_mpg=Decimal("28.5"),
-        fuel_price_per_gallon=Decimal("4.75"),
+        fuel_grade=GasolineGrade.REGULAR,
     )
 
     assert vehicle.fuel_efficiency_mpg == Decimal("28.5")
-    assert vehicle.fuel_price_per_gallon == Decimal("4.75")
+    assert vehicle.fuel_grade is GasolineGrade.REGULAR
 
 
-def test_vehicle_profile_allows_zero_fuel_price() -> None:
-    vehicle = VehicleProfile(
-        fuel_efficiency_mpg=Decimal(30),
-        fuel_price_per_gallon=Decimal(0),
+def test_gasoline_vehicle_profile_rejects_zero_fuel_efficiency() -> None:
+    with pytest.raises(
+        ValueError,
+        match="fuel_efficiency_mpg must be greater than zero",
+    ):
+        GasolineVehicleProfile(
+            fuel_efficiency_mpg=Decimal(0),
+            fuel_grade=GasolineGrade.REGULAR,
+        )
+
+
+def test_gasoline_vehicle_profile_rejects_negative_fuel_efficiency() -> None:
+    with pytest.raises(
+        ValueError,
+        match="fuel_efficiency_mpg must be greater than zero",
+    ):
+        GasolineVehicleProfile(
+            fuel_efficiency_mpg=Decimal(-1),
+            fuel_grade=GasolineGrade.REGULAR,
+        )
+
+
+def test_fuel_price_quote_accepts_market_price() -> None:
+    observed_at = datetime(2026, 9, 29, 12, 0, tzinfo=UTC)
+
+    quote = FuelPriceQuote(
+        price_per_gallon=Decimal("4.59"),
+        fuel_grade=GasolineGrade.REGULAR,
+        source=FuelPriceSource.LOCAL_MARKET,
+        observed_at=observed_at,
     )
 
-    assert vehicle.fuel_price_per_gallon == Decimal(0)
+    assert quote.price_per_gallon == Decimal("4.59")
+    assert quote.fuel_grade is GasolineGrade.REGULAR
+    assert quote.source is FuelPriceSource.LOCAL_MARKET
+    assert quote.observed_at == observed_at
 
 
-def test_vehicle_profile_rejects_zero_fuel_efficiency() -> None:
+def test_fuel_price_quote_allows_user_override_without_timestamp() -> None:
+    quote = FuelPriceQuote(
+        price_per_gallon=Decimal("4.25"),
+        fuel_grade=GasolineGrade.PREMIUM,
+        source=FuelPriceSource.USER_OVERRIDE,
+        observed_at=None,
+    )
+
+    assert quote.observed_at is None
+
+
+def test_fuel_price_quote_rejects_negative_price() -> None:
     with pytest.raises(
         ValueError,
-        match="fuel_efficiency_mpg must be greater than zero",
+        match="price_per_gallon cannot be negative",
     ):
-        VehicleProfile(
-            fuel_efficiency_mpg=Decimal(0),
-            fuel_price_per_gallon=Decimal("4.75"),
+        FuelPriceQuote(
+            price_per_gallon=Decimal("-0.01"),
+            fuel_grade=GasolineGrade.REGULAR,
+            source=FuelPriceSource.USER_OVERRIDE,
+            observed_at=None,
         )
 
 
-def test_vehicle_profile_rejects_negative_fuel_efficiency() -> None:
+def test_market_fuel_price_requires_timestamp() -> None:
     with pytest.raises(
         ValueError,
-        match="fuel_efficiency_mpg must be greater than zero",
+        match="market fuel price requires an observation timestamp",
     ):
-        VehicleProfile(
-            fuel_efficiency_mpg=Decimal(-1),
-            fuel_price_per_gallon=Decimal("4.75"),
+        FuelPriceQuote(
+            price_per_gallon=Decimal("4.59"),
+            fuel_grade=GasolineGrade.REGULAR,
+            source=FuelPriceSource.LOCAL_MARKET,
+            observed_at=None,
         )
 
 
-def test_vehicle_profile_rejects_negative_fuel_price() -> None:
+def test_regional_fuel_price_requires_timestamp() -> None:
     with pytest.raises(
         ValueError,
-        match="fuel_price_per_gallon cannot be negative",
+        match="market fuel price requires an observation timestamp",
     ):
-        VehicleProfile(
-            fuel_efficiency_mpg=Decimal(30),
-            fuel_price_per_gallon=Decimal("-0.01"),
+        FuelPriceQuote(
+            price_per_gallon=Decimal("4.59"),
+            fuel_grade=GasolineGrade.REGULAR,
+            source=FuelPriceSource.REGIONAL_MARKET,
+            observed_at=None,
         )
+
+
+def test_fuel_price_quote_rejects_naive_timestamp() -> None:
+    with pytest.raises(
+        ValueError,
+        match="observed_at must be timezone-aware",
+    ):
+        FuelPriceQuote(
+            price_per_gallon=Decimal("4.59"),
+            fuel_grade=GasolineGrade.REGULAR,
+            source=FuelPriceSource.LOCAL_MARKET,
+            observed_at=datetime(2026, 9, 29, 12, 0),  # noqa: DTZ001
+        )
+
 
 def test_energy_estimate_accepts_positive_cost() -> None:
     estimate = EnergyEstimate(cost=Decimal("6.42"))
@@ -138,6 +204,7 @@ def test_energy_estimate_allows_zero_cost() -> None:
 def test_energy_estimate_rejects_negative_cost() -> None:
     with pytest.raises(ValueError, match="energy cost cannot be negative"):
         EnergyEstimate(cost=Decimal("-0.01"))
+
 
 def test_eligibility_result_represents_eligible_route() -> None:
     result = EligibilityResult(
@@ -157,6 +224,7 @@ def test_eligibility_result_preserves_ineligibility_reason() -> None:
 
     assert result.eligible is False
     assert result.reason == "example ineligibility reason"
+
 
 def test_eligibility_result_rejects_reason_for_eligible_route() -> None:
     with pytest.raises(
@@ -178,6 +246,7 @@ def test_eligibility_result_requires_reason_for_ineligible_route() -> None:
             eligible=False,
             reason=None,
         )
+
 
 def test_decision_result_accepts_valid_recommendation() -> None:
     route = RouteCandidate(
@@ -292,6 +361,7 @@ def test_decision_result_requires_recommendation_when_routes_are_eligible() -> N
             eligible_count=1,
         )
 
+
 def test_decision_result_requires_reason_for_recommendation() -> None:
     route = RouteCandidate(
         distance_meters=10_000,
@@ -326,6 +396,7 @@ def test_decision_result_rejects_reason_without_recommendation() -> None:
             candidate_count=1,
             eligible_count=0,
         )
+
 
 def test_decision_candidate_pairs_route_with_energy_estimate() -> None:
     route = RouteCandidate(
