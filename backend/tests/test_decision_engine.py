@@ -36,25 +36,6 @@ def test_calculate_monetary_cost_adds_toll_and_energy_cost() -> None:
     assert result == Decimal("7.75")
 
 
-def test_calculate_monetary_cost_rejects_unknown_toll_cost() -> None:
-    route = RouteCandidate(
-        distance_meters=10_000,
-        duration_seconds=1_800,
-        toll_cost=None,
-    )
-    energy_estimate = EnergyEstimate(cost=Decimal("4.25"))
-    candidate = DecisionCandidate(
-        route=route,
-        energy_estimate=energy_estimate,
-    )
-
-    with pytest.raises(
-        ValueError,
-        match="toll_cost is required to score a route",
-    ):
-        calculate_monetary_cost(candidate)
-
-
 def test_calculate_time_cost_converts_seconds_to_hours() -> None:
     route = RouteCandidate(
         distance_meters=10_000,

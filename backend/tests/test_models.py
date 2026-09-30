@@ -13,6 +13,7 @@ from routevalue.domain.models import (
     FuelPriceSource,
     GasolineGrade,
     GasolineVehicleProfile,
+    IneligibilityReason,
     RouteCandidate,
 )
 
@@ -219,11 +220,11 @@ def test_eligibility_result_represents_eligible_route() -> None:
 def test_eligibility_result_preserves_ineligibility_reason() -> None:
     result = EligibilityResult(
         eligible=False,
-        reason="example ineligibility reason",
+        reason=IneligibilityReason.MISSING_TOLL_COST,
     )
 
     assert result.eligible is False
-    assert result.reason == "example ineligibility reason"
+    assert result.reason is IneligibilityReason.MISSING_TOLL_COST
 
 
 def test_eligibility_result_rejects_reason_for_eligible_route() -> None:
@@ -233,7 +234,7 @@ def test_eligibility_result_rejects_reason_for_eligible_route() -> None:
     ):
         EligibilityResult(
             eligible=True,
-            reason="should not be here",
+            reason=IneligibilityReason.MISSING_TOLL_COST,
         )
 
 
@@ -413,3 +414,21 @@ def test_decision_candidate_pairs_route_with_energy_estimate() -> None:
 
     assert candidate.route is route
     assert candidate.energy_estimate is energy_estimate
+
+
+def test_decision_candidate_rejects_route_with_unknown_toll_cost() -> None:
+    route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=None,
+    )
+    energy_estimate = EnergyEstimate(cost=Decimal("3.75"))
+
+    with pytest.raises(
+        ValueError,
+        match="decision candidate requires known toll cost",
+    ):
+        DecisionCandidate(
+            route=route,
+            energy_estimate=energy_estimate,
+        )

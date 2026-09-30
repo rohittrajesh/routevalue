@@ -95,10 +95,21 @@ class EnergyEstimate:
 
 @dataclass(frozen=True, slots=True)
 class DecisionCandidate:
-    """A route paired with the energy estimate used for decision-making."""
+    """An eligible route paired with the energy estimate used for decision-making."""
 
     route: RouteCandidate
     energy_estimate: EnergyEstimate
+
+    def __post_init__(self) -> None:
+        if self.route.toll_cost is None:
+            raise ValueError("decision candidate requires known toll cost")
+
+
+class IneligibilityReason(StrEnum):
+    """Structured reason explaining why a route cannot enter optimization."""
+
+    MISSING_TOLL_COST = "missing_toll_cost"
+    MISSING_ENERGY_ESTIMATE = "missing_energy_estimate"
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,7 +117,7 @@ class EligibilityResult:
     """Result of evaluating whether a route may enter normal optimization."""
 
     eligible: bool
-    reason: str | None
+    reason: IneligibilityReason | None
 
     def __post_init__(self) -> None:
         if self.eligible and self.reason is not None:
