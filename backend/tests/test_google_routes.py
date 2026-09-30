@@ -256,7 +256,9 @@ def test_google_routes_field_mask_requests_only_required_route_fields() -> None:
     )
 
 
-def test_google_routes_provider_sends_expected_compute_routes_request() -> None:
+def test_google_routes_provider_sends_expected_compute_routes_requests() -> None:
+    request_payloads: list[object] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST"
         assert str(request.url) == GOOGLE_ROUTES_COMPUTE_URL
@@ -265,18 +267,7 @@ def test_google_routes_provider_sends_expected_compute_routes_request() -> None:
         assert request.headers["X-Goog-FieldMask"] == GOOGLE_ROUTES_FIELD_MASK
         assert request.headers["Content-Type"] == "application/json"
 
-        assert json.loads(request.content) == {
-            "origin": {
-                "address": "Origin",
-            },
-            "destination": {
-                "address": "Destination",
-            },
-            "travelMode": "DRIVE",
-            "routingPreference": "TRAFFIC_AWARE",
-            "computeAlternativeRoutes": True,
-            "extraComputations": ["TOLLS"],
-        }
+        request_payloads.append(json.loads(request.content))
 
         return httpx.Response(
             status_code=200,
@@ -300,6 +291,35 @@ def test_google_routes_provider_sends_expected_compute_routes_request() -> None:
 
     assert tuple(routes) == ()
 
+    assert request_payloads == [
+        {
+            "origin": {
+                "address": "Origin",
+            },
+            "destination": {
+                "address": "Destination",
+            },
+            "travelMode": "DRIVE",
+            "routingPreference": "TRAFFIC_AWARE",
+            "computeAlternativeRoutes": True,
+            "extraComputations": ["TOLLS"],
+        },
+        {
+            "origin": {
+                "address": "Origin",
+            },
+            "destination": {
+                "address": "Destination",
+            },
+            "travelMode": "DRIVE",
+            "routingPreference": "TRAFFIC_AWARE",
+            "computeAlternativeRoutes": True,
+            "extraComputations": ["TOLLS"],
+            "routeModifiers": {
+                "avoidTolls": True,
+            },
+        },
+    ]
 
 def test_google_routes_provider_normalizes_fake_google_response_in_order() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
@@ -484,7 +504,7 @@ def test_google_routes_provider_retries_transport_failure_then_succeeds() -> Non
         )
 
     assert routes == ()
-    assert attempts == 3
+    assert attempts == 4
     assert delays == [
         0.25,
         0.5,
@@ -564,7 +584,7 @@ def test_google_routes_provider_retries_rate_limit_response() -> None:
         )
 
     assert routes == ()
-    assert attempts == 2
+    assert attempts == 3
     assert delays == [
         0.25,
     ]
@@ -606,7 +626,7 @@ def test_google_routes_provider_retries_server_error_response() -> None:
         )
 
     assert routes == ()
-    assert attempts == 2
+    assert attempts == 3
     assert delays == [
         0.25,
     ]
@@ -645,3 +665,178 @@ def test_google_routes_provider_does_not_retry_permanent_http_failure() -> None:
     assert exc_info.value.status_code == 403
     assert attempts == 1
     assert delays == []
+
+def test_build_google_routes_request_payload_can_request_avoid_tolls() -> None:
+    request = RouteSearchRequest(
+        origin="Origin",
+        destination="Destination",
+    )
+
+    payload = build_google_routes_request_payload(
+        request,
+        avoid_tolls=True,
+    )
+
+    assert payload == {
+        "origin": {
+            "address": "Origin",
+        },
+        "destination": {
+            "address": "Destination",
+        },
+        "travelMode": "DRIVE",
+        "routingPreference": "TRAFFIC_AWARE",
+        "computeAlternativeRoutes": True,
+        "extraComputations": ["TOLLS"],
+        "routeModifiers": {
+            "avoidTolls": True,
+        },
+    }
+
+def test_google_routes_provider_merges_candidate_sets_in_stable_order() -> None:
+        request_count = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal request_count
+            request_count += 1
+
+            if request_count == 1:
+                return httpx.Response(
+                    status_code=200,
+                    json={
+                        "routes": [
+                            {
+                                "distanceMeters": 10_000,
+                                "duration": "900s",
+                            },
+                            {
+                                "distanceMeters": 12_000,
+                                "duration": "800s",
+                                "travelAdvisory": {
+                                    "tollInfo": {
+                                        "estimatedPrice": [
+                                            {
+                                                "currencyCode": "USD",
+                                                "units": "3",
+                                            }
+                                        ]
+                                    }
+                                },
+                            },
+                        ]
+                    },
+                )
+
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "routes": [
+                        {
+                            "distanceMeters": 12_000,
+                            "duration": "800s",
+                            "travelAdvisory": {
+                                "tollInfo": {
+                                    "estimatedPrice": [
+                                        {
+                                            "currencyCode": "USD",
+                                            "units": "3",
+                                        }
+                                    ]
+                                }
+                            },
+                        },
+                        {
+                            "distanceMeters": 14_000,
+                            "duration": "1_000s",
+                            "travelAdvisory": {
+                                "tollInfo": {
+                                    "estimatedPrice": [
+                                        {
+                                            "currencyCode": "USD",
+                                            "units": "1",
+                                            "nanos": 250_000_000,
+                                        }
+                                    ]
+                                }
+                            },
+                        },
+                    ]
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+
+        with httpx.Client(transport=transport) as client:
+            provider = GoogleRoutesRouteProvider(
+                api_key="test-api-key",
+                client=client,
+            )
+
+            routes = provider.get_routes(
+                RouteSearchRequest(
+                    origin="Origin",
+                    destination="Destination",
+                )
+            )
+
+        assert routes == (
+            RouteCandidate(
+                distance_meters=10_000,
+                duration_seconds=900,
+                toll_cost=Decimal(0),
+            ),
+            RouteCandidate(
+                distance_meters=12_000,
+                duration_seconds=800,
+                toll_cost=Decimal(3),
+            ),
+            RouteCandidate(
+                distance_meters=14_000,
+                duration_seconds=1_000,
+                toll_cost=Decimal("1.25"),
+            ),
+        )
+
+def test_google_routes_provider_propagates_avoid_tolls_acquisition_failure() -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        if request_count == 1:
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "routes": [
+                        {
+                            "distanceMeters": 10_000,
+                            "duration": "900s",
+                        }
+                    ]
+                },
+            )
+
+        return httpx.Response(
+            status_code=403,
+            json={},
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as client:
+        provider = GoogleRoutesRouteProvider(
+            api_key="test-api-key",
+            client=client,
+        )
+
+        with pytest.raises(GoogleRoutesHTTPError) as exc_info:
+            provider.get_routes(
+                RouteSearchRequest(
+                    origin="Origin",
+                    destination="Destination",
+                )
+            )
+
+    assert exc_info.value.status_code == 403
+    assert request_count == 2

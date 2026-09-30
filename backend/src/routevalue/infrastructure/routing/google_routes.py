@@ -58,7 +58,30 @@ class GoogleRoutesRouteProvider:
         self,
         request: RouteSearchRequest,
     ) -> tuple[RouteCandidate, ...]:
-        """Return Google routes normalized into stable provider order."""
+        """Return a stable merged set of normalized Google route candidates."""
+
+        baseline_routes = self._request_routes(
+            request,
+            avoid_tolls=False,
+        )
+
+        avoid_tolls_routes = self._request_routes(
+            request,
+            avoid_tolls=True,
+        )
+
+        return _merge_unique_routes(
+            baseline_routes,
+            avoid_tolls_routes,
+        )
+
+    def _request_routes(
+        self,
+        request: RouteSearchRequest,
+        *,
+        avoid_tolls: bool,
+    ) -> tuple[RouteCandidate, ...]:
+        """Execute one Google Routes acquisition with bounded retries."""
 
         for attempt_index in range(_GOOGLE_ROUTES_MAX_ATTEMPTS):
             try:
@@ -68,7 +91,10 @@ class GoogleRoutesRouteProvider:
                         "X-Goog-Api-Key": self._api_key,
                         "X-Goog-FieldMask": GOOGLE_ROUTES_FIELD_MASK,
                     },
-                    json=build_google_routes_request_payload(request),
+                    json=build_google_routes_request_payload(
+                        request,
+                        avoid_tolls=avoid_tolls,
+                    ),
                 )
             except httpx.RequestError as exc:
                 if attempt_index == _GOOGLE_ROUTES_MAX_ATTEMPTS - 1:
@@ -159,10 +185,12 @@ class _GoogleComputeRoutesResponse(BaseModel):
 
 def build_google_routes_request_payload(
     request: RouteSearchRequest,
+    *,
+    avoid_tolls: bool = False,
 ) -> dict[str, object]:
     """Build a Google Compute Routes request from provider-neutral inputs."""
 
-    return {
+    payload: dict[str, object] = {
         "origin": {
             "address": request.origin,
         },
@@ -174,6 +202,13 @@ def build_google_routes_request_payload(
         "computeAlternativeRoutes": True,
         "extraComputations": ["TOLLS"],
     }
+
+    if avoid_tolls:
+        payload["routeModifiers"] = {
+            "avoidTolls": True,
+        }
+
+    return payload
 
 
 def _parse_duration_seconds(duration: str) -> int:
@@ -251,6 +286,19 @@ def parse_google_routes_response(
         for route in response.routes
     )
 
+def _merge_unique_routes(
+    *route_groups: tuple[RouteCandidate, ...],
+) -> tuple[RouteCandidate, ...]:
+    """Merge route groups in order while preserving only the first exact duplicate."""
+
+    unique_routes: list[RouteCandidate] = []
+
+    for route_group in route_groups:
+        for route in route_group:
+            if route not in unique_routes:
+                unique_routes.append(route)
+
+    return tuple(unique_routes)
 
 def _is_retryable_http_status(status_code: int) -> bool:
     """Return whether a Google HTTP status represents a transient failure."""
