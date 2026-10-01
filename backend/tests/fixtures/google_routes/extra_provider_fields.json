@@ -1,0 +1,30 @@
+{
+  "providerMetadata": {
+    "schemaVersion": "future-version"
+  },
+  "routes": [
+    {
+      "distanceMeters": 12500,
+      "duration": "1000s",
+      "futureRouteField": {
+        "someNewProviderValue": true
+      },
+      "travelAdvisory": {
+        "futureAdvisoryField": "ignored",
+        "tollInfo": {
+          "estimatedPrice": [
+            {
+              "currencyCode": "USD",
+              "units": "1",
+              "nanos": 250000000,
+              "futureMoneyField": "ignored"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "futureTopLevelField": [
+    "ignored"
+  ]
+}

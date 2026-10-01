@@ -1,0 +1,17 @@
+{
+  "routes": [
+    {
+      "duration": "901s",
+      "travelAdvisory": {
+        "tollInfo": {
+          "estimatedPrice": [
+            {
+              "currencyCode": "USD",
+              "units": "1"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

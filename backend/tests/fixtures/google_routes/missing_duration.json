@@ -1,0 +1,17 @@
+{
+  "routes": [
+    {
+      "distanceMeters": 10320,
+      "travelAdvisory": {
+        "tollInfo": {
+          "estimatedPrice": [
+            {
+              "currencyCode": "USD",
+              "units": "1"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

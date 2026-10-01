@@ -1,0 +1,29 @@
+{
+  "routes": [
+    {
+      "distanceMeters": 10320,
+      "duration": "901s",
+      "travelAdvisory": {
+        "tollInfo": {}
+      }
+    },
+    {
+      "distanceMeters": 11880,
+      "duration": "955s",
+      "travelAdvisory": {
+        "tollInfo": {
+          "estimatedPrice": [
+            {
+              "currencyCode": "USD",
+              "units": "2"
+            },
+            {
+              "currencyCode": "MXN",
+              "units": "40"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

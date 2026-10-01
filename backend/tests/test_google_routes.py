@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import httpx
 import pytest
@@ -18,11 +19,133 @@ from routevalue.infrastructure.routing.google_routes import (
     parse_google_routes_response,
 )
 
+_GOOGLE_ROUTES_FIXTURE_DIR = Path(__file__).parent / "fixtures" / "google_routes"
+
+
+def _load_google_routes_fixture(name: str) -> object:
+    fixture_path = _GOOGLE_ROUTES_FIXTURE_DIR / name
+    payload: object = json.loads(fixture_path.read_text(encoding="utf-8"))
+    return payload
+
 
 def test_parse_google_routes_response_returns_empty_tuple_when_no_routes() -> None:
     routes = parse_google_routes_response({})
 
     assert routes == ()
+
+
+def test_parse_google_routes_response_normalizes_realistic_multi_route_fixture() -> None:
+    payload = _load_google_routes_fixture("multi_route_happy_path.json")
+
+    routes = parse_google_routes_response(payload)
+
+    assert routes == (
+        RouteCandidate(
+            distance_meters=150_338,
+            duration_seconds=6_650,
+            toll_cost=Decimal("4.4"),
+        ),
+        RouteCandidate(
+            distance_meters=158_921,
+            duration_seconds=7_012,
+            toll_cost=Decimal(0),
+        ),
+    )
+
+
+def test_parse_google_routes_response_preserves_unknown_tolls_from_fixture() -> None:
+    payload = _load_google_routes_fixture("ambiguous_toll_data.json")
+
+    routes = parse_google_routes_response(payload)
+
+    assert routes == (
+        RouteCandidate(
+            distance_meters=10_320,
+            duration_seconds=901,
+            toll_cost=None,
+        ),
+        RouteCandidate(
+            distance_meters=11_880,
+            duration_seconds=955,
+            toll_cost=None,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "missing_distance.json",
+        "missing_duration.json",
+    ],
+)
+def test_parse_google_routes_response_rejects_fixture_missing_required_route_field(
+    fixture_name: str,
+) -> None:
+    payload = _load_google_routes_fixture(fixture_name)
+
+    with pytest.raises(
+        GoogleRoutesResponseError,
+        match="invalid structure",
+    ):
+        parse_google_routes_response(payload)
+
+
+def test_parse_google_routes_response_ignores_unrecognized_provider_fields() -> None:
+    payload = _load_google_routes_fixture("extra_provider_fields.json")
+
+    routes = parse_google_routes_response(payload)
+
+    assert routes == (
+        RouteCandidate(
+            distance_meters=12_500,
+            duration_seconds=1_000,
+            toll_cost=Decimal("1.25"),
+        ),
+    )
+
+
+def test_google_routes_provider_normalizes_saved_fixture_through_http_boundary() -> None:
+    payload = _load_google_routes_fixture("multi_route_happy_path.json")
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return httpx.Response(
+            status_code=200,
+            json=payload,
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as client:
+        provider = GoogleRoutesRouteProvider(
+            api_key="test-api-key",
+            client=client,
+        )
+
+        routes = provider.get_routes(
+            RouteSearchRequest(
+                origin="Origin",
+                destination="Destination",
+            )
+        )
+
+    assert request_count == 2
+    assert routes == (
+        RouteCandidate(
+            distance_meters=150_338,
+            duration_seconds=6_650,
+            toll_cost=Decimal("4.4"),
+        ),
+        RouteCandidate(
+            distance_meters=158_921,
+            duration_seconds=7_012,
+            toll_cost=Decimal(0),
+        ),
+    )
 
 
 def test_parse_google_routes_response_preserves_google_route_order() -> None:
