@@ -7,6 +7,8 @@ from routevalue.api.schemas import (
     DecisionResponse,
     EligibilityResponse,
     EnergyEstimateResponse,
+    GasolineGradeInput,
+    GasolineInputs,
     RouteEvaluationResponse,
     RouteResponse,
     TripEvaluationRequest,
@@ -14,16 +16,76 @@ from routevalue.api.schemas import (
 )
 
 
+def _gasoline_inputs() -> GasolineInputs:
+    return GasolineInputs(
+        fuel_efficiency_mpg=Decimal(30),
+        fuel_grade=GasolineGradeInput.REGULAR,
+        fuel_price_per_gallon=Decimal("4.50"),
+    )
+
+
 def test_trip_evaluation_request_preserves_valid_values() -> None:
     request = TripEvaluationRequest(
         origin="  Origin  ",
         destination="  Destination  ",
         value_of_time_per_hour=Decimal("18.50"),
+        gasoline=_gasoline_inputs(),
     )
 
     assert request.origin == "  Origin  "
     assert request.destination == "  Destination  "
     assert request.value_of_time_per_hour == Decimal("18.50")
+    assert request.gasoline.fuel_efficiency_mpg == Decimal(30)
+    assert request.gasoline.fuel_grade is GasolineGradeInput.REGULAR
+    assert request.gasoline.fuel_price_per_gallon == Decimal("4.50")
+
+
+@pytest.mark.parametrize(
+    "fuel_efficiency_mpg",
+    [
+        Decimal(0),
+        Decimal(-1),
+    ],
+)
+def test_gasoline_inputs_rejects_non_positive_fuel_efficiency(
+    fuel_efficiency_mpg: Decimal,
+) -> None:
+    with pytest.raises(ValidationError):
+        GasolineInputs(
+            fuel_efficiency_mpg=fuel_efficiency_mpg,
+            fuel_grade=GasolineGradeInput.REGULAR,
+            fuel_price_per_gallon=Decimal("4.50"),
+        )
+
+
+def test_gasoline_inputs_allows_zero_fuel_price() -> None:
+    gasoline = GasolineInputs(
+        fuel_efficiency_mpg=Decimal(30),
+        fuel_grade=GasolineGradeInput.REGULAR,
+        fuel_price_per_gallon=Decimal(0),
+    )
+
+    assert gasoline.fuel_price_per_gallon == Decimal(0)
+
+
+def test_gasoline_inputs_rejects_negative_fuel_price() -> None:
+    with pytest.raises(ValidationError):
+        GasolineInputs(
+            fuel_efficiency_mpg=Decimal(30),
+            fuel_grade=GasolineGradeInput.REGULAR,
+            fuel_price_per_gallon=Decimal("-0.01"),
+        )
+
+
+def test_gasoline_inputs_rejects_unknown_fuel_grade() -> None:
+    with pytest.raises(ValidationError):
+        GasolineInputs.model_validate(
+            {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "diesel",
+                "fuel_price_per_gallon": "4.50",
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -44,6 +106,7 @@ def test_trip_evaluation_request_rejects_blank_endpoint(
             origin=origin,
             destination=destination,
             value_of_time_per_hour=Decimal("18.00"),
+            gasoline=_gasoline_inputs(),
         )
 
 
@@ -52,6 +115,7 @@ def test_trip_evaluation_request_allows_zero_value_of_time() -> None:
         origin="Origin",
         destination="Destination",
         value_of_time_per_hour=Decimal(0),
+        gasoline=_gasoline_inputs(),
     )
 
     assert request.value_of_time_per_hour == Decimal(0)
@@ -63,6 +127,7 @@ def test_trip_evaluation_request_rejects_negative_value_of_time() -> None:
             origin="Origin",
             destination="Destination",
             value_of_time_per_hour=Decimal("-0.01"),
+            gasoline=_gasoline_inputs(),
         )
 
 

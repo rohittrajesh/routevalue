@@ -55,6 +55,11 @@ def test_trip_evaluation_endpoint_returns_application_result() -> None:
                 "origin": "Origin",
                 "destination": "Destination",
                 "value_of_time_per_hour": "18.00",
+                "gasoline": {
+                    "fuel_efficiency_mpg": "30",
+                    "fuel_grade": "regular",
+                    "fuel_price_per_gallon": "4.50",
+                },
             },
         )
 
@@ -109,6 +114,11 @@ def test_trip_evaluation_endpoint_handles_zero_routes() -> None:
                 "origin": "Origin",
                 "destination": "Destination",
                 "value_of_time_per_hour": "18.00",
+                "gasoline": {
+                    "fuel_efficiency_mpg": "30",
+                    "fuel_grade": "regular",
+                    "fuel_price_per_gallon": "4.50",
+                },
             },
         )
 
@@ -161,6 +171,11 @@ def test_trip_evaluation_endpoint_preserves_missing_toll_cost() -> None:
                 "origin": "Origin",
                 "destination": "Destination",
                 "value_of_time_per_hour": "18.00",
+                "gasoline": {
+                    "fuel_efficiency_mpg": "30",
+                    "fuel_grade": "regular",
+                    "fuel_price_per_gallon": "4.50",
+                },
             },
         )
 
@@ -215,6 +230,11 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
                 "origin": "Origin",
                 "destination": "Destination",
                 "value_of_time_per_hour": "18.00",
+                "gasoline": {
+                    "fuel_efficiency_mpg": "30",
+                    "fuel_grade": "regular",
+                    "fuel_price_per_gallon": "4.50",
+                },
             },
         )
 
@@ -242,21 +262,76 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
         {
             "destination": "Destination",
             "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
         },
         {
             "origin": "   ",
             "destination": "Destination",
             "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
         },
         {
             "origin": "Origin",
             "destination": "   ",
             "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
         },
         {
             "origin": "Origin",
             "destination": "Destination",
             "value_of_time_per_hour": "-0.01",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
+        },
+        {
+            "origin": "Origin",
+            "destination": "Destination",
+            "value_of_time_per_hour": "18.00",
+        },
+        {
+            "origin": "Origin",
+            "destination": "Destination",
+            "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "0",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
+        },
+        {
+            "origin": "Origin",
+            "destination": "Destination",
+            "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "diesel",
+                "fuel_price_per_gallon": "4.50",
+            },
+        },
+        {
+            "origin": "Origin",
+            "destination": "Destination",
+            "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "-0.01",
+            },
         },
     ],
 )

@@ -4,6 +4,7 @@ from routevalue.api.schemas import (
     DecisionResponse,
     EligibilityResponse,
     EnergyEstimateResponse,
+    GasolineGradeInput,
     RouteEvaluationResponse,
     RouteResponse,
     TripEvaluationRequest,
@@ -17,6 +18,10 @@ from routevalue.domain.models import (
     DecisionResult,
     EligibilityResult,
     EnergyEstimate,
+    FuelPriceQuote,
+    FuelPriceSource,
+    GasolineGrade,
+    GasolineVehicleProfile,
     RouteCandidate,
 )
 from routevalue.domain.units import MoneyPerHour
@@ -39,6 +44,44 @@ def get_value_of_time_per_hour(
     """Extract the application value-of-time input from an HTTP trip request."""
 
     return request.value_of_time_per_hour
+
+
+def _to_gasoline_grade(
+    fuel_grade: GasolineGradeInput,
+) -> GasolineGrade:
+    """Map the public gasoline-grade value into the domain model."""
+
+    grade_mapping = {
+        GasolineGradeInput.REGULAR: GasolineGrade.REGULAR,
+        GasolineGradeInput.MIDGRADE: GasolineGrade.MIDGRADE,
+        GasolineGradeInput.PREMIUM: GasolineGrade.PREMIUM,
+    }
+
+    return grade_mapping[fuel_grade]
+
+
+def to_gasoline_vehicle_profile(
+    request: TripEvaluationRequest,
+) -> GasolineVehicleProfile:
+    """Build the domain gasoline vehicle profile from an HTTP request."""
+
+    return GasolineVehicleProfile(
+        fuel_efficiency_mpg=request.gasoline.fuel_efficiency_mpg,
+        fuel_grade=_to_gasoline_grade(request.gasoline.fuel_grade),
+    )
+
+
+def to_user_override_fuel_price_quote(
+    request: TripEvaluationRequest,
+) -> FuelPriceQuote:
+    """Build the user-supplied V1 fuel-price quote from an HTTP request."""
+
+    return FuelPriceQuote(
+        price_per_gallon=request.gasoline.fuel_price_per_gallon,
+        fuel_grade=_to_gasoline_grade(request.gasoline.fuel_grade),
+        source=FuelPriceSource.USER_OVERRIDE,
+        observed_at=None,
+    )
 
 
 def _to_route_response(route: RouteCandidate) -> RouteResponse:

@@ -8,6 +8,11 @@ from routevalue.api.dependencies import (
     get_google_routes_http_client,
     get_trip_evaluation_orchestrator,
 )
+from routevalue.api.schemas import (
+    GasolineGradeInput,
+    GasolineInputs,
+    TripEvaluationRequest,
+)
 from routevalue.application.models import RouteSearchRequest
 
 
@@ -27,8 +32,20 @@ def test_trip_evaluation_dependency_composes_google_route_provider() -> None:
 
     transport = httpx.MockTransport(handler)
 
+    api_request = TripEvaluationRequest(
+        origin="Origin",
+        destination="Destination",
+        value_of_time_per_hour=Decimal("18.00"),
+        gasoline=GasolineInputs(
+            fuel_efficiency_mpg=Decimal(30),
+            fuel_grade=GasolineGradeInput.REGULAR,
+            fuel_price_per_gallon=Decimal("4.50"),
+        ),
+    )
+
     with httpx.Client(transport=transport) as client:
         orchestrator = get_trip_evaluation_orchestrator(
+            request=api_request,
             api_key="test-google-routes-key",
             client=client,
         )

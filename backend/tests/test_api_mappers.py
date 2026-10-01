@@ -1,11 +1,19 @@
 from decimal import Decimal
 
+import pytest
+
 from routevalue.api.mappers import (
     get_value_of_time_per_hour,
+    to_gasoline_vehicle_profile,
     to_route_search_request,
     to_trip_evaluation_response,
+    to_user_override_fuel_price_quote,
 )
-from routevalue.api.schemas import TripEvaluationRequest
+from routevalue.api.schemas import (
+    GasolineGradeInput,
+    GasolineInputs,
+    TripEvaluationRequest,
+)
 from routevalue.application.models import (
     RouteEvaluation,
     RouteSearchRequest,
@@ -16,9 +24,20 @@ from routevalue.domain.models import (
     DecisionResult,
     EligibilityResult,
     EnergyEstimate,
+    FuelPriceSource,
+    GasolineGrade,
+    GasolineVehicleProfile,
     IneligibilityReason,
     RouteCandidate,
 )
+
+
+def _gasoline_inputs() -> GasolineInputs:
+    return GasolineInputs(
+        fuel_efficiency_mpg=Decimal(30),
+        fuel_grade=GasolineGradeInput.REGULAR,
+        fuel_price_per_gallon=Decimal("4.50"),
+    )
 
 
 def test_to_route_search_request_maps_api_request_to_application_model() -> None:
@@ -26,6 +45,7 @@ def test_to_route_search_request_maps_api_request_to_application_model() -> None
         origin="Origin",
         destination="Destination",
         value_of_time_per_hour=Decimal("18.00"),
+        gasoline=_gasoline_inputs(),
     )
 
     result = to_route_search_request(api_request)
@@ -41,6 +61,7 @@ def test_to_route_search_request_preserves_endpoint_strings() -> None:
         origin="  Origin  ",
         destination="  Destination  ",
         value_of_time_per_hour=Decimal("18.00"),
+        gasoline=_gasoline_inputs(),
     )
 
     result = to_route_search_request(api_request)
@@ -54,11 +75,74 @@ def test_get_value_of_time_per_hour_preserves_decimal_value() -> None:
         origin="Origin",
         destination="Destination",
         value_of_time_per_hour=Decimal("18.75"),
+        gasoline=_gasoline_inputs(),
     )
 
     result = get_value_of_time_per_hour(api_request)
 
     assert result == Decimal("18.75")
+
+
+def test_to_gasoline_vehicle_profile_maps_api_request() -> None:
+    api_request = TripEvaluationRequest(
+        origin="Origin",
+        destination="Destination",
+        value_of_time_per_hour=Decimal("18.00"),
+        gasoline=_gasoline_inputs(),
+    )
+
+    result = to_gasoline_vehicle_profile(api_request)
+
+    assert result == GasolineVehicleProfile(
+        fuel_efficiency_mpg=Decimal(30),
+        fuel_grade=GasolineGrade.REGULAR,
+    )
+
+
+def test_to_user_override_fuel_price_quote_maps_api_request() -> None:
+    api_request = TripEvaluationRequest(
+        origin="Origin",
+        destination="Destination",
+        value_of_time_per_hour=Decimal("18.00"),
+        gasoline=_gasoline_inputs(),
+    )
+
+    result = to_user_override_fuel_price_quote(api_request)
+
+    assert result.price_per_gallon == Decimal("4.50")
+    assert result.fuel_grade is GasolineGrade.REGULAR
+    assert result.source is FuelPriceSource.USER_OVERRIDE
+    assert result.observed_at is None
+
+
+@pytest.mark.parametrize(
+    ("api_grade", "domain_grade"),
+    [
+        (GasolineGradeInput.REGULAR, GasolineGrade.REGULAR),
+        (GasolineGradeInput.MIDGRADE, GasolineGrade.MIDGRADE),
+        (GasolineGradeInput.PREMIUM, GasolineGrade.PREMIUM),
+    ],
+)
+def test_gasoline_grade_mapping_supports_all_v1_grades(
+    api_grade: GasolineGradeInput,
+    domain_grade: GasolineGrade,
+) -> None:
+    request = TripEvaluationRequest(
+        origin="Origin",
+        destination="Destination",
+        value_of_time_per_hour=Decimal("18.00"),
+        gasoline=GasolineInputs(
+            fuel_efficiency_mpg=Decimal(30),
+            fuel_grade=api_grade,
+            fuel_price_per_gallon=Decimal("4.50"),
+        ),
+    )
+
+    vehicle = to_gasoline_vehicle_profile(request)
+    quote = to_user_override_fuel_price_quote(request)
+
+    assert vehicle.fuel_grade is domain_grade
+    assert quote.fuel_grade is domain_grade
 
 
 def test_to_trip_evaluation_response_maps_eligible_route() -> None:

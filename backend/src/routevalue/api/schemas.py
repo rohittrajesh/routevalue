@@ -1,8 +1,45 @@
 """HTTP request and response schemas for the RouteValue API."""
 
 from decimal import Decimal
+from enum import StrEnum
 
 from pydantic import BaseModel, field_validator
+
+
+class GasolineGradeInput(StrEnum):
+    """Gasoline grades accepted by the public V1 API."""
+
+    REGULAR = "regular"
+    MIDGRADE = "midgrade"
+    PREMIUM = "premium"
+
+
+class GasolineInputs(BaseModel):
+    """Gasoline-specific personalization inputs for one trip evaluation."""
+
+    fuel_efficiency_mpg: Decimal
+    fuel_grade: GasolineGradeInput
+    fuel_price_per_gallon: Decimal
+
+    @field_validator("fuel_efficiency_mpg")
+    @classmethod
+    def fuel_efficiency_must_be_positive(cls, value: Decimal) -> Decimal:
+        """Require a positive gasoline fuel-efficiency value."""
+
+        if value <= 0:
+            raise ValueError("fuel_efficiency_mpg must be greater than zero")
+
+        return value
+
+    @field_validator("fuel_price_per_gallon")
+    @classmethod
+    def fuel_price_cannot_be_negative(cls, value: Decimal) -> Decimal:
+        """Reject negative user-supplied gasoline prices."""
+
+        if value < 0:
+            raise ValueError("fuel_price_per_gallon cannot be negative")
+
+        return value
 
 
 class TripEvaluationRequest(BaseModel):
@@ -11,6 +48,7 @@ class TripEvaluationRequest(BaseModel):
     origin: str
     destination: str
     value_of_time_per_hour: Decimal
+    gasoline: GasolineInputs
 
     @field_validator("origin", "destination")
     @classmethod

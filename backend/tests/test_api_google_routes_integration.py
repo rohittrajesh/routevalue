@@ -1,5 +1,6 @@
 import json
 from collections.abc import Generator
+from decimal import Decimal
 
 import httpx
 import pytest
@@ -9,7 +10,7 @@ from routevalue.api.dependencies import get_google_routes_http_client
 from routevalue.main import app
 
 
-def test_trip_evaluation_endpoint_uses_google_routes_composition(
+def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     request_count = 0
@@ -87,6 +88,11 @@ def test_trip_evaluation_endpoint_uses_google_routes_composition(
                         "origin": "Origin",
                         "destination": "Destination",
                         "value_of_time_per_hour": "18.00",
+                        "gasoline": {
+                            "fuel_efficiency_mpg": "30",
+                            "fuel_grade": "regular",
+                            "fuel_price_per_gallon": "4.50",
+                        },
                     },
                 )
         finally:
@@ -95,39 +101,211 @@ def test_trip_evaluation_endpoint_uses_google_routes_composition(
     assert request_count == 2
     assert response.status_code == 200
 
+    body = response.json()
+
+    assert len(body["route_evaluations"]) == 2
+
+    first_evaluation = body["route_evaluations"][0]
+    second_evaluation = body["route_evaluations"][1]
+
+    assert first_evaluation["route"] == {
+        "distance_meters": 10_000,
+        "duration_seconds": 900,
+        "toll_cost": "0",
+    }
+    assert second_evaluation["route"] == {
+        "distance_meters": 12_000,
+        "duration_seconds": 800,
+        "toll_cost": "0",
+    }
+
+    assert first_evaluation["energy_estimate"] is not None
+    assert second_evaluation["energy_estimate"] is not None
+
+    first_energy_cost = Decimal(first_evaluation["energy_estimate"]["cost"])
+    second_energy_cost = Decimal(second_evaluation["energy_estimate"]["cost"])
+
+    assert first_energy_cost > 0
+    assert second_energy_cost > first_energy_cost
+
+    assert first_evaluation["eligibility"] == {
+        "eligible": True,
+        "reason": None,
+    }
+    assert second_evaluation["eligibility"] == {
+        "eligible": True,
+        "reason": None,
+    }
+
+    assert body["decision"]["recommended_route"] == second_evaluation["route"]
+    assert body["decision"]["reason"] == "faster_route_worth_extra_cost"
+    assert body["decision"]["numerical_tie"] is False
+    assert body["decision"]["missing_data_present"] is False
+    assert body["decision"]["candidate_count"] == 2
+    assert body["decision"]["eligible_count"] == 2
+
+
+def test_trip_evaluation_endpoint_maps_google_http_failure_to_bad_gateway(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return httpx.Response(
+            status_code=403,
+            json={
+                "error": {
+                    "message": "provider-specific failure",
+                }
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as google_client:
+
+        def override_google_routes_http_client() -> Generator[httpx.Client]:
+            yield google_client
+
+        monkeypatch.setenv(
+            "GOOGLE_ROUTES_API_KEY",
+            "integration-test-key",
+        )
+
+        app.dependency_overrides[get_google_routes_http_client] = override_google_routes_http_client
+
+        try:
+            with TestClient(app) as client:
+                response = client.post(
+                    "/trip-evaluations",
+                    json={
+                        "origin": "Origin",
+                        "destination": "Destination",
+                        "value_of_time_per_hour": "18.00",
+                        "gasoline": {
+                            "fuel_efficiency_mpg": "30",
+                            "fuel_grade": "regular",
+                            "fuel_price_per_gallon": "4.50",
+                        },
+                    },
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+    assert request_count == 1
+    assert response.status_code == 502
     assert response.json() == {
-        "route_evaluations": [
-            {
-                "route": {
-                    "distance_meters": 10_000,
-                    "duration_seconds": 900,
-                    "toll_cost": "0",
-                },
-                "energy_estimate": None,
-                "eligibility": {
-                    "eligible": False,
-                    "reason": "missing_energy_estimate",
-                },
+        "detail": "routing provider request failed",
+    }
+
+
+def test_trip_evaluation_endpoint_maps_invalid_google_response_to_bad_gateway(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return httpx.Response(
+            status_code=200,
+            content=b"not-json",
+            headers={
+                "Content-Type": "application/json",
             },
-            {
-                "route": {
-                    "distance_meters": 12_000,
-                    "duration_seconds": 800,
-                    "toll_cost": "0",
-                },
-                "energy_estimate": None,
-                "eligibility": {
-                    "eligible": False,
-                    "reason": "missing_energy_estimate",
-                },
-            },
-        ],
-        "decision": {
-            "recommended_route": None,
-            "reason": None,
-            "numerical_tie": False,
-            "missing_data_present": True,
-            "candidate_count": 2,
-            "eligible_count": 0,
-        },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as google_client:
+
+        def override_google_routes_http_client() -> Generator[httpx.Client]:
+            yield google_client
+
+        monkeypatch.setenv(
+            "GOOGLE_ROUTES_API_KEY",
+            "integration-test-key",
+        )
+
+        app.dependency_overrides[get_google_routes_http_client] = override_google_routes_http_client
+
+        try:
+            with TestClient(app) as client:
+                response = client.post(
+                    "/trip-evaluations",
+                    json={
+                        "origin": "Origin",
+                        "destination": "Destination",
+                        "value_of_time_per_hour": "18.00",
+                        "gasoline": {
+                            "fuel_efficiency_mpg": "30",
+                            "fuel_grade": "regular",
+                            "fuel_price_per_gallon": "4.50",
+                        },
+                    },
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+    assert request_count == 1
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "routing provider returned an invalid response",
+    }
+
+
+def test_trip_evaluation_endpoint_maps_google_server_failure_to_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        return httpx.Response(
+            status_code=503,
+            json={},
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as google_client:
+
+        def override_google_routes_http_client() -> Generator[httpx.Client]:
+            yield google_client
+
+        monkeypatch.setenv(
+            "GOOGLE_ROUTES_API_KEY",
+            "integration-test-key",
+        )
+
+        app.dependency_overrides[get_google_routes_http_client] = override_google_routes_http_client
+
+        try:
+            with TestClient(app) as client:
+                response = client.post(
+                    "/trip-evaluations",
+                    json={
+                        "origin": "Origin",
+                        "destination": "Destination",
+                        "value_of_time_per_hour": "18.00",
+                        "gasoline": {
+                            "fuel_efficiency_mpg": "30",
+                            "fuel_grade": "regular",
+                            "fuel_price_per_gallon": "4.50",
+                        },
+                    },
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+    assert request_count == 3
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "routing provider unavailable",
     }

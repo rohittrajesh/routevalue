@@ -7,9 +7,16 @@ from typing import Annotated
 import httpx
 from fastapi import Depends
 
+from routevalue.api.mappers import (
+    to_gasoline_vehicle_profile,
+    to_user_override_fuel_price_quote,
+)
+from routevalue.api.schemas import TripEvaluationRequest
 from routevalue.application.ports import EnergyCostEstimator, RouteProvider
 from routevalue.application.trip_evaluation import TripEvaluationOrchestrator
-from routevalue.infrastructure.in_memory import InMemoryEnergyCostEstimator
+from routevalue.infrastructure.energy.gasoline import (
+    GasolineEnergyCostEstimator,
+)
 from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesRouteProvider,
 )
@@ -36,6 +43,7 @@ def get_google_routes_http_client() -> Generator[httpx.Client]:
 
 
 def get_trip_evaluation_orchestrator(
+    request: TripEvaluationRequest,
     api_key: Annotated[
         str,
         Depends(get_google_routes_api_key),
@@ -45,13 +53,17 @@ def get_trip_evaluation_orchestrator(
         Depends(get_google_routes_http_client),
     ],
 ) -> TripEvaluationOrchestrator:
-    """Build the production orchestrator used by the HTTP API."""
+    """Build the production orchestrator for one HTTP trip request."""
 
     route_provider: RouteProvider = GoogleRoutesRouteProvider(
         api_key=api_key,
         client=client,
     )
-    energy_cost_estimator: EnergyCostEstimator = InMemoryEnergyCostEstimator({})
+
+    energy_cost_estimator: EnergyCostEstimator = GasolineEnergyCostEstimator(
+        vehicle=to_gasoline_vehicle_profile(request),
+        fuel_price_quote=to_user_override_fuel_price_quote(request),
+    )
 
     return TripEvaluationOrchestrator(
         route_provider=route_provider,
