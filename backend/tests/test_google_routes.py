@@ -162,9 +162,11 @@ def test_google_routes_provider_normalizes_saved_fixture_through_http_boundary()
             client=client,
         )
 
-        routes = provider.get_routes(_route_search_request())
+        provided_routes = provider.get_routes(_route_search_request())
+        routes = tuple(provided_route.route for provided_route in provided_routes)
 
     assert request_count == 2
+    assert all(provided_route.geometry is None for provided_route in provided_routes)
     assert routes == (
         RouteCandidate(
             distance_meters=150_338,
@@ -518,7 +520,9 @@ def test_google_routes_provider_normalizes_fake_google_response_in_order() -> No
             client=client,
         )
 
-        routes = provider.get_routes(_route_search_request())
+        routes = tuple(
+            provided_route.route for provided_route in provider.get_routes(_route_search_request())
+        )
 
     assert routes == (
         RouteCandidate(
@@ -886,7 +890,9 @@ def test_google_routes_provider_merges_candidate_sets_in_stable_order() -> None:
             client=client,
         )
 
-        routes = provider.get_routes(_route_search_request())
+        routes = tuple(
+            provided_route.route for provided_route in provider.get_routes(_route_search_request())
+        )
 
     assert routes == (
         RouteCandidate(

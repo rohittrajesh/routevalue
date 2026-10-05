@@ -7,7 +7,11 @@ from time import sleep
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from routevalue.application.models import ResolvedLocation, RouteSearchRequest
+from routevalue.application.models import (
+    ProvidedRoute,
+    ResolvedLocation,
+    RouteSearchRequest,
+)
 from routevalue.domain.models import RouteCandidate
 
 _NANOS_PER_UNIT = Decimal(1000000000)
@@ -57,8 +61,8 @@ class GoogleRoutesRouteProvider:
     def get_routes(
         self,
         request: RouteSearchRequest,
-    ) -> tuple[RouteCandidate, ...]:
-        """Return a stable merged set of normalized Google route candidates."""
+    ) -> tuple[ProvidedRoute, ...]:
+        """Return a stable merged set of normalized Google routes."""
 
         baseline_routes = self._request_routes(
             request,
@@ -70,10 +74,12 @@ class GoogleRoutesRouteProvider:
             avoid_tolls=True,
         )
 
-        return _merge_unique_routes(
+        merged_routes = _merge_unique_routes(
             baseline_routes,
             avoid_tolls_routes,
         )
+
+        return tuple(ProvidedRoute(route=route) for route in merged_routes)
 
     def _request_routes(
         self,

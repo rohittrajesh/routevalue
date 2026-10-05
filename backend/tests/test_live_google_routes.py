@@ -25,7 +25,7 @@ def test_google_routes_live_smoke() -> None:
             client=client,
         )
 
-        routes = provider.get_routes(
+        provided_routes = provider.get_routes(
             RouteSearchRequest(
                 origin=ResolvedLocation(
                     display_name="UC San Diego",
@@ -40,9 +40,12 @@ def test_google_routes_live_smoke() -> None:
             )
         )
 
-    assert routes
+    assert provided_routes
 
-    for route in routes:
+    for provided_route in provided_routes:
+        route = provided_route.route
+
         assert route.distance_meters > 0
         assert route.duration_seconds > 0
         assert route.toll_cost is None or route.toll_cost >= 0
+        assert provided_route.geometry is None

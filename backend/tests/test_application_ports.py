@@ -3,20 +3,24 @@ from decimal import Decimal
 
 import pytest
 
-from routevalue.application.models import ResolvedLocation, RouteSearchRequest
+from routevalue.application.models import (
+    ProvidedRoute,
+    ResolvedLocation,
+    RouteSearchRequest,
+)
 from routevalue.application.ports import EnergyCostEstimator, RouteProvider
 from routevalue.domain.models import EnergyEstimate, RouteCandidate
 
 
 class FakeRouteProvider:
-    def __init__(self, routes: Sequence[RouteCandidate]) -> None:
+    def __init__(self, routes: Sequence[ProvidedRoute]) -> None:
         self._routes = tuple(routes)
         self.requests: list[RouteSearchRequest] = []
 
     def get_routes(
         self,
         request: RouteSearchRequest,
-    ) -> Sequence[RouteCandidate]:
+    ) -> Sequence[ProvidedRoute]:
         self.requests.append(request)
         return self._routes
 
@@ -37,7 +41,7 @@ class FakeEnergyCostEstimator:
 def get_routes_from_provider(
     provider: RouteProvider,
     request: RouteSearchRequest,
-) -> Sequence[RouteCandidate]:
+) -> Sequence[ProvidedRoute]:
     return provider.get_routes(request)
 
 
@@ -74,12 +78,25 @@ def test_fake_route_provider_returns_controlled_routes_in_stable_order() -> None
         duration_seconds=800,
         toll_cost=Decimal("2.50"),
     )
+
+    first_provided_route = ProvidedRoute(route=first_route)
+    second_provided_route = ProvidedRoute(route=second_route)
+
     request = _route_search_request()
-    provider = FakeRouteProvider([first_route, second_route])
+
+    provider = FakeRouteProvider(
+        [
+            first_provided_route,
+            second_provided_route,
+        ]
+    )
 
     routes = get_routes_from_provider(provider, request)
 
-    assert routes == (first_route, second_route)
+    assert routes == (
+        first_provided_route,
+        second_provided_route,
+    )
     assert provider.requests == [request]
 
 

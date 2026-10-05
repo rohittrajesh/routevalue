@@ -38,12 +38,14 @@ class TripEvaluationOrchestrator:
     ) -> TripEvaluationResult:
         """Evaluate all candidate routes for one trip."""
 
-        routes = tuple(self._route_provider.get_routes(request))
+        provided_routes = tuple(self._route_provider.get_routes(request))
 
         route_evaluations: list[RouteEvaluation] = []
         eligible_candidates: list[DecisionCandidate] = []
 
-        for route in routes:
+        for provided_route in provided_routes:
+            route = provided_route.route
+
             energy_estimate = self._energy_cost_estimator.estimate_energy(route)
 
             eligibility = evaluate_route_eligibility(
@@ -71,6 +73,7 @@ class TripEvaluationOrchestrator:
                     energy_estimate=energy_estimate,
                     eligibility=eligibility,
                     cost_breakdown=cost_breakdown,
+                    geometry=provided_route.geometry,
                 )
             )
 
@@ -81,7 +84,7 @@ class TripEvaluationOrchestrator:
         decision = decide_route(
             eligible_candidates,
             value_of_time_per_hour=value_of_time_per_hour,
-            candidate_count=len(routes),
+            candidate_count=len(provided_routes),
             missing_data_present=missing_data_present,
         )
 

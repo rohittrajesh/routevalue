@@ -3,8 +3,11 @@ from decimal import Decimal
 import pytest
 
 from routevalue.application.models import (
+    ProvidedRoute,
     ResolvedLocation,
     RouteEvaluation,
+    RouteGeometry,
+    RoutePoint,
     TripEvaluationResult,
 )
 from routevalue.domain.models import (
@@ -76,6 +79,177 @@ def test_resolved_location_rejects_invalid_external_reference(
             source=source,
             source_id=source_id,
         )
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (-90.0, -180.0),
+        (-90.0, 180.0),
+        (90.0, -180.0),
+        (90.0, 180.0),
+        (0.0, 0.0),
+    ],
+)
+def test_route_point_accepts_valid_coordinate_boundaries(
+    latitude: float,
+    longitude: float,
+) -> None:
+    point = RoutePoint(
+        latitude=latitude,
+        longitude=longitude,
+    )
+
+    assert point.latitude == latitude
+    assert point.longitude == longitude
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (-90.01, 0.0),
+        (90.01, 0.0),
+        (0.0, -180.01),
+        (0.0, 180.01),
+    ],
+)
+def test_route_point_rejects_invalid_coordinates(
+    latitude: float,
+    longitude: float,
+) -> None:
+    with pytest.raises(ValueError):
+        RoutePoint(
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+
+def test_route_geometry_preserves_point_order() -> None:
+    first_point = RoutePoint(
+        latitude=32.8801,
+        longitude=-117.2340,
+    )
+    second_point = RoutePoint(
+        latitude=32.8500,
+        longitude=-117.2200,
+    )
+    third_point = RoutePoint(
+        latitude=32.7338,
+        longitude=-117.1933,
+    )
+
+    geometry = RouteGeometry(
+        points=(
+            first_point,
+            second_point,
+            third_point,
+        )
+    )
+
+    assert geometry.points == (
+        first_point,
+        second_point,
+        third_point,
+    )
+
+
+@pytest.mark.parametrize(
+    "points",
+    [
+        (),
+        (
+            RoutePoint(
+                latitude=32.8801,
+                longitude=-117.2340,
+            ),
+        ),
+    ],
+)
+def test_route_geometry_requires_at_least_two_points(
+    points: tuple[RoutePoint, ...],
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="route geometry requires at least two points",
+    ):
+        RouteGeometry(points=points)
+
+
+def test_provided_route_associates_geometry_with_route_candidate() -> None:
+    route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+    geometry = RouteGeometry(
+        points=(
+            RoutePoint(
+                latitude=32.8801,
+                longitude=-117.2340,
+            ),
+            RoutePoint(
+                latitude=32.7338,
+                longitude=-117.1933,
+            ),
+        )
+    )
+
+    provided_route = ProvidedRoute(
+        route=route,
+        geometry=geometry,
+    )
+
+    assert provided_route.route == route
+    assert provided_route.geometry == geometry
+
+
+def test_provided_route_allows_missing_geometry() -> None:
+    route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+
+    provided_route = ProvidedRoute(route=route)
+
+    assert provided_route.route == route
+    assert provided_route.geometry is None
+
+
+def test_geometry_does_not_change_route_candidate_equality() -> None:
+    first_route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+    second_route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+
+    first_provided_route = ProvidedRoute(
+        route=first_route,
+        geometry=RouteGeometry(
+            points=(
+                RoutePoint(latitude=32.88, longitude=-117.23),
+                RoutePoint(latitude=32.73, longitude=-117.19),
+            )
+        ),
+    )
+    second_provided_route = ProvidedRoute(
+        route=second_route,
+        geometry=RouteGeometry(
+            points=(
+                RoutePoint(latitude=32.88, longitude=-117.23),
+                RoutePoint(latitude=32.80, longitude=-117.20),
+                RoutePoint(latitude=32.73, longitude=-117.19),
+            )
+        ),
+    )
+
+    assert first_provided_route.route == second_provided_route.route
+    assert first_provided_route.geometry != second_provided_route.geometry
 
 
 def test_trip_evaluation_result_preserves_route_evaluations_and_decision() -> None:

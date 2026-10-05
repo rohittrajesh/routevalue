@@ -3,18 +3,18 @@
 from collections.abc import Sequence
 from typing import Protocol
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ProvidedRoute, RouteSearchRequest
 from routevalue.domain.models import EnergyEstimate, RouteCandidate
 
 
 class RouteProvider(Protocol):
-    """Provides normalized route candidates to the application layer."""
+    """Provides normalized routes to the application layer."""
 
     def get_routes(
         self,
         request: RouteSearchRequest,
-    ) -> Sequence[RouteCandidate]:
-        """Return normalized candidate routes in stable provider order."""
+    ) -> Sequence[ProvidedRoute]:
+        """Return normalized provided routes in stable provider order."""
         ...
 
 

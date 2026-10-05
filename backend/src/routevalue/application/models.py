@@ -42,6 +42,40 @@ class ResolvedLocation:
 
 
 @dataclass(frozen=True, slots=True)
+class RoutePoint:
+    """One provider-neutral latitude/longitude point along a route."""
+
+    latitude: float
+    longitude: float
+
+    def __post_init__(self) -> None:
+        if not -90 <= self.latitude <= 90:
+            raise ValueError("latitude must be between -90 and 90")
+
+        if not -180 <= self.longitude <= 180:
+            raise ValueError("longitude must be between -180 and 180")
+
+
+@dataclass(frozen=True, slots=True)
+class RouteGeometry:
+    """Provider-neutral ordered geometry for one complete route."""
+
+    points: tuple[RoutePoint, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.points) < 2:
+            raise ValueError("route geometry requires at least two points")
+
+
+@dataclass(frozen=True, slots=True)
+class ProvidedRoute:
+    """A normalized route candidate with optional presentation geometry."""
+
+    route: RouteCandidate
+    geometry: RouteGeometry | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class RouteSearchRequest:
     """Provider-neutral request for candidate routes between two locations."""
 
@@ -57,6 +91,7 @@ class RouteEvaluation:
     energy_estimate: EnergyEstimate | None
     eligibility: EligibilityResult
     cost_breakdown: CostBreakdown | None
+    geometry: RouteGeometry | None = None
 
     def __post_init__(self) -> None:
         if self.eligibility.eligible and self.cost_breakdown is None:

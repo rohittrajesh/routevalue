@@ -1,6 +1,12 @@
 from decimal import Decimal
 
-from routevalue.application.models import ResolvedLocation, RouteSearchRequest
+from routevalue.application.models import (
+    ProvidedRoute,
+    ResolvedLocation,
+    RouteGeometry,
+    RoutePoint,
+    RouteSearchRequest,
+)
 from routevalue.domain.models import EnergyEstimate, RouteCandidate
 from routevalue.infrastructure.in_memory import (
     InMemoryEnergyCostEstimator,
@@ -34,19 +40,37 @@ def test_in_memory_route_provider_preserves_configured_order() -> None:
         duration_seconds=800,
         toll_cost=Decimal("2.00"),
     )
+    second_geometry = RouteGeometry(
+        points=(
+            RoutePoint(
+                latitude=32.8801,
+                longitude=-117.2340,
+            ),
+            RoutePoint(
+                latitude=32.7338,
+                longitude=-117.1933,
+            ),
+        )
+    )
 
     provider = InMemoryRouteProvider(
         (
             first_route,
-            second_route,
+            ProvidedRoute(
+                route=second_route,
+                geometry=second_geometry,
+            ),
         )
     )
 
     routes = provider.get_routes(_route_search_request())
 
     assert tuple(routes) == (
-        first_route,
-        second_route,
+        ProvidedRoute(route=first_route),
+        ProvidedRoute(
+            route=second_route,
+            geometry=second_geometry,
+        ),
     )
 
 

@@ -2,20 +2,26 @@
 
 from collections.abc import Mapping, Sequence
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ProvidedRoute, RouteSearchRequest
 from routevalue.domain.models import EnergyEstimate, RouteCandidate
 
 
 class InMemoryRouteProvider:
     """Return a controlled set of normalized routes from memory."""
 
-    def __init__(self, routes: Sequence[RouteCandidate]) -> None:
-        self._routes = tuple(routes)
+    def __init__(
+        self,
+        routes: Sequence[RouteCandidate | ProvidedRoute],
+    ) -> None:
+        self._routes = tuple(
+            route if isinstance(route, ProvidedRoute) else ProvidedRoute(route=route)
+            for route in routes
+        )
 
     def get_routes(
         self,
         request: RouteSearchRequest,
-    ) -> Sequence[RouteCandidate]:
+    ) -> Sequence[ProvidedRoute]:
         """Return routes in the exact configured order."""
 
         return self._routes
