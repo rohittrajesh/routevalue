@@ -64,17 +64,11 @@ describe("TripResults", () => {
   it("renders personalized costs from the API response", () => {
     render(<TripResults result={successfulResult} />);
 
-    expect(
-      screen.getAllByText("$9.85").length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("$9.85").length).toBeGreaterThan(0);
 
-    expect(
-      screen.getByText("$12.10"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("$12.10")).toBeInTheDocument();
 
-    expect(
-      screen.getAllByText("Value of travel time"),
-    ).toHaveLength(2);
+    expect(screen.getAllByText("Value of travel time")).toHaveLength(2);
   });
 
   it("marks the backend-recommended route as the best match", () => {
@@ -86,9 +80,7 @@ describe("TripResults", () => {
       }),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText(/route 1 is your best match/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/route 1 is your best match/i)).toBeInTheDocument();
 
     expect(
       screen.getByText(
@@ -128,14 +120,10 @@ describe("TripResults", () => {
 
     render(<TripResults result={unavailableResult} />);
 
-    expect(
-      screen.getByText(/unable to score this route/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/unable to score this route/i)).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        /toll information is unavailable/i,
-      ),
+      screen.getByText(/toll information is unavailable/i),
     ).toBeInTheDocument();
   });
 });

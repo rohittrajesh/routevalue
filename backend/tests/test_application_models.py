@@ -2,7 +2,11 @@ from decimal import Decimal
 
 import pytest
 
-from routevalue.application.models import RouteEvaluation, TripEvaluationResult
+from routevalue.application.models import (
+    ResolvedLocation,
+    RouteEvaluation,
+    TripEvaluationResult,
+)
 from routevalue.domain.models import (
     CostBreakdown,
     DecisionReason,
@@ -12,6 +16,66 @@ from routevalue.domain.models import (
     IneligibilityReason,
     RouteCandidate,
 )
+
+
+def test_resolved_location_preserves_normalized_location_data() -> None:
+    location = ResolvedLocation(
+        display_name="UC San Diego",
+        latitude=32.8801,
+        longitude=-117.2340,
+        source="google_places",
+        source_id="test-place-id",
+    )
+
+    assert location.display_name == "UC San Diego"
+    assert location.latitude == 32.8801
+    assert location.longitude == -117.2340
+    assert location.source == "google_places"
+    assert location.source_id == "test-place-id"
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (-90.01, 0),
+        (90.01, 0),
+        (0, -180.01),
+        (0, 180.01),
+    ],
+)
+def test_resolved_location_rejects_invalid_coordinates(
+    latitude: float,
+    longitude: float,
+) -> None:
+    with pytest.raises(ValueError):
+        ResolvedLocation(
+            display_name="Location",
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+
+@pytest.mark.parametrize(
+    ("source", "source_id"),
+    [
+        ("google_places", None),
+        (None, "place-id"),
+        ("", "place-id"),
+        ("google_places", ""),
+    ],
+)
+def test_resolved_location_rejects_invalid_external_reference(
+    source: str | None,
+    source_id: str | None,
+) -> None:
+    with pytest.raises(ValueError):
+        ResolvedLocation(
+            display_name="Location",
+            latitude=32.88,
+            longitude=-117.23,
+            source=source,
+            source_id=source_id,
+        )
 
 
 def test_trip_evaluation_result_preserves_route_evaluations_and_decision() -> None:

@@ -7,7 +7,7 @@ from time import sleep
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ResolvedLocation, RouteSearchRequest
 from routevalue.domain.models import RouteCandidate
 
 _NANOS_PER_UNIT = Decimal(1000000000)
@@ -183,6 +183,26 @@ class _GoogleComputeRoutesResponse(BaseModel):
     routes: tuple[_GoogleRoute, ...] = ()
 
 
+def _to_google_waypoint(
+    location: ResolvedLocation,
+) -> dict[str, object]:
+    """Convert a provider-neutral location into a Google Routes waypoint."""
+
+    if location.source == "google_places" and location.source_id is not None:
+        return {
+            "placeId": location.source_id,
+        }
+
+    return {
+        "location": {
+            "latLng": {
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+            }
+        }
+    }
+
+
 def build_google_routes_request_payload(
     request: RouteSearchRequest,
     *,
@@ -191,12 +211,8 @@ def build_google_routes_request_payload(
     """Build a Google Compute Routes request from provider-neutral inputs."""
 
     payload: dict[str, object] = {
-        "origin": {
-            "address": request.origin,
-        },
-        "destination": {
-            "address": request.destination,
-        },
+        "origin": _to_google_waypoint(request.origin),
+        "destination": _to_google_waypoint(request.destination),
         "travelMode": "DRIVE",
         "routingPreference": "TRAFFIC_AWARE",
         "computeAlternativeRoutes": True,

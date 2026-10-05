@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from decimal import Decimal
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ResolvedLocation, RouteSearchRequest
 from routevalue.application.ports import EnergyCostEstimator, RouteProvider
 from routevalue.application.trip_evaluation import TripEvaluationOrchestrator
 from routevalue.domain.models import (
@@ -41,6 +41,25 @@ class FakeEnergyCostEstimator:
         return self._estimates[route]
 
 
+def _route_search_request() -> RouteSearchRequest:
+    return RouteSearchRequest(
+        origin=ResolvedLocation(
+            display_name="Origin",
+            latitude=32.88,
+            longitude=-117.23,
+            source="google_places",
+            source_id="origin-place-id",
+        ),
+        destination=ResolvedLocation(
+            display_name="Destination",
+            latitude=32.88,
+            longitude=-117.23,
+            source="google_places",
+            source_id="destination-place-id",
+        ),
+    )
+
+
 def test_evaluate_trip_coordinates_happy_path() -> None:
     first_route = RouteCandidate(
         distance_meters=10_000,
@@ -53,10 +72,7 @@ def test_evaluate_trip_coordinates_happy_path() -> None:
         toll_cost=Decimal(0),
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider: RouteProvider = FakeRouteProvider([first_route, second_route])
     energy_estimator: EnergyCostEstimator = FakeEnergyCostEstimator(
@@ -90,10 +106,7 @@ def test_evaluate_trip_coordinates_happy_path() -> None:
 
 
 def test_evaluate_trip_handles_no_routes() -> None:
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider([])
     energy_estimator = FakeEnergyCostEstimator({})
@@ -131,10 +144,7 @@ def test_evaluate_trip_handles_one_eligible_route() -> None:
         cost=Decimal("2.00"),
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider([route])
     energy_estimator = FakeEnergyCostEstimator(
@@ -183,10 +193,7 @@ def test_evaluate_trip_excludes_route_with_missing_toll_cost() -> None:
         cost=Decimal("2.00"),
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider([route])
     energy_estimator = FakeEnergyCostEstimator(
@@ -226,10 +233,7 @@ def test_evaluate_trip_excludes_route_with_missing_energy_estimate() -> None:
         toll_cost=Decimal(0),
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider([route])
     energy_estimator = FakeEnergyCostEstimator(
@@ -274,10 +278,7 @@ def test_evaluate_trip_optimizes_only_eligible_routes() -> None:
         toll_cost=None,
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider(
         [
@@ -328,10 +329,7 @@ def test_evaluate_trip_treats_zero_monetary_values_as_known_data() -> None:
         cost=Decimal(0),
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider([route])
     energy_estimator = FakeEnergyCostEstimator(
@@ -376,10 +374,7 @@ def test_evaluate_trip_preserves_provider_order_for_final_tie_break() -> None:
         toll_cost=Decimal("1.00"),
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider(
         [
@@ -430,10 +425,7 @@ def test_evaluate_trip_preserves_primary_reason_when_multiple_data_are_missing()
         toll_cost=None,
     )
 
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     route_provider = FakeRouteProvider([route])
     energy_estimator = FakeEnergyCostEstimator(

@@ -11,9 +11,43 @@ from routevalue.api.dependencies import (
 from routevalue.api.schemas import (
     GasolineGradeInput,
     GasolineInputs,
+    ResolvedLocationInput,
     TripEvaluationRequest,
 )
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ResolvedLocation, RouteSearchRequest
+
+
+def _resolved_location_input(
+    display_name: str,
+    *,
+    source_id: str,
+) -> ResolvedLocationInput:
+    return ResolvedLocationInput(
+        display_name=display_name,
+        latitude=32.88,
+        longitude=-117.23,
+        source="google_places",
+        source_id=source_id,
+    )
+
+
+def _route_search_request() -> RouteSearchRequest:
+    return RouteSearchRequest(
+        origin=ResolvedLocation(
+            display_name="Origin",
+            latitude=32.88,
+            longitude=-117.23,
+            source="google_places",
+            source_id="origin-place-id",
+        ),
+        destination=ResolvedLocation(
+            display_name="Destination",
+            latitude=32.88,
+            longitude=-117.23,
+            source="google_places",
+            source_id="destination-place-id",
+        ),
+    )
 
 
 def test_trip_evaluation_dependency_composes_google_route_provider() -> None:
@@ -33,8 +67,14 @@ def test_trip_evaluation_dependency_composes_google_route_provider() -> None:
     transport = httpx.MockTransport(handler)
 
     api_request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
+        origin=_resolved_location_input(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        destination=_resolved_location_input(
+            "Destination",
+            source_id="destination-place-id",
+        ),
         value_of_time_per_hour=Decimal("18.00"),
         gasoline=GasolineInputs(
             fuel_efficiency_mpg=Decimal(30),
@@ -51,10 +91,7 @@ def test_trip_evaluation_dependency_composes_google_route_provider() -> None:
         )
 
         result = orchestrator.evaluate_trip(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            ),
+            _route_search_request(),
             value_of_time_per_hour=Decimal("18.00"),
         )
 

@@ -62,9 +62,7 @@ export function formatDecisionReason(reason: string | null): string {
   }
 }
 
-export function formatEligibilityReason(
-  reason: string | null,
-): string {
+export function formatEligibilityReason(reason: string | null): string {
   switch (reason) {
     case "missing_toll_cost":
       return "Toll information is unavailable for this route.";

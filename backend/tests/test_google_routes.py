@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ResolvedLocation, RouteSearchRequest
 from routevalue.application.ports import RouteProvider
 from routevalue.domain.models import RouteCandidate
 from routevalue.infrastructure.routing.google_routes import (
@@ -26,6 +26,42 @@ def _load_google_routes_fixture(name: str) -> object:
     fixture_path = _GOOGLE_ROUTES_FIXTURE_DIR / name
     payload: object = json.loads(fixture_path.read_text(encoding="utf-8"))
     return payload
+
+
+def _location(
+    display_name: str,
+    *,
+    source_id: str | None = None,
+    latitude: float = 32.88,
+    longitude: float = -117.23,
+) -> ResolvedLocation:
+    if source_id is not None:
+        return ResolvedLocation(
+            display_name=display_name,
+            latitude=latitude,
+            longitude=longitude,
+            source="google_places",
+            source_id=source_id,
+        )
+
+    return ResolvedLocation(
+        display_name=display_name,
+        latitude=latitude,
+        longitude=longitude,
+    )
+
+
+def _route_search_request() -> RouteSearchRequest:
+    return RouteSearchRequest(
+        origin=_location(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        destination=_location(
+            "Destination",
+            source_id="destination-place-id",
+        ),
+    )
 
 
 def test_parse_google_routes_response_returns_empty_tuple_when_no_routes() -> None:
@@ -126,12 +162,7 @@ def test_google_routes_provider_normalizes_saved_fixture_through_http_boundary()
             client=client,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert request_count == 2
     assert routes == (
@@ -324,20 +355,15 @@ def test_parse_google_routes_response_rejects_malformed_duration() -> None:
         parse_google_routes_response(payload)
 
 
-def test_build_google_routes_request_payload_maps_route_search_request() -> None:
-    request = RouteSearchRequest(
-        origin="UC San Diego",
-        destination="San Diego International Airport",
-    )
-
-    payload = build_google_routes_request_payload(request)
+def test_build_google_routes_request_payload_maps_place_ids() -> None:
+    payload = build_google_routes_request_payload(_route_search_request())
 
     assert payload == {
         "origin": {
-            "address": "UC San Diego",
+            "placeId": "origin-place-id",
         },
         "destination": {
-            "address": "San Diego International Airport",
+            "placeId": "destination-place-id",
         },
         "travelMode": "DRIVE",
         "routingPreference": "TRAFFIC_AWARE",
@@ -346,27 +372,42 @@ def test_build_google_routes_request_payload_maps_route_search_request() -> None
     }
 
 
-def test_build_google_routes_request_payload_preserves_endpoint_strings() -> None:
+def test_build_google_routes_request_payload_uses_coordinates_without_place_id() -> None:
     request = RouteSearchRequest(
-        origin="  Origin  ",
-        destination="  Destination  ",
+        origin=_location(
+            "Origin",
+            latitude=32.8801,
+            longitude=-117.2340,
+        ),
+        destination=_location(
+            "Destination",
+            latitude=32.7338,
+            longitude=-117.1933,
+        ),
     )
 
     payload = build_google_routes_request_payload(request)
 
     assert payload["origin"] == {
-        "address": "  Origin  ",
+        "location": {
+            "latLng": {
+                "latitude": 32.8801,
+                "longitude": -117.2340,
+            }
+        }
     }
     assert payload["destination"] == {
-        "address": "  Destination  ",
+        "location": {
+            "latLng": {
+                "latitude": 32.7338,
+                "longitude": -117.1933,
+            }
+        }
     }
 
 
 def test_build_google_routes_request_payload_does_not_set_departure_time() -> None:
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     payload = build_google_routes_request_payload(request)
 
@@ -405,22 +446,17 @@ def test_google_routes_provider_sends_expected_compute_routes_requests() -> None
             client=client,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert tuple(routes) == ()
 
     assert request_payloads == [
         {
             "origin": {
-                "address": "Origin",
+                "placeId": "origin-place-id",
             },
             "destination": {
-                "address": "Destination",
+                "placeId": "destination-place-id",
             },
             "travelMode": "DRIVE",
             "routingPreference": "TRAFFIC_AWARE",
@@ -429,10 +465,10 @@ def test_google_routes_provider_sends_expected_compute_routes_requests() -> None
         },
         {
             "origin": {
-                "address": "Origin",
+                "placeId": "origin-place-id",
             },
             "destination": {
-                "address": "Destination",
+                "placeId": "destination-place-id",
             },
             "travelMode": "DRIVE",
             "routingPreference": "TRAFFIC_AWARE",
@@ -482,12 +518,7 @@ def test_google_routes_provider_normalizes_fake_google_response_in_order() -> No
             client=client,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert routes == (
         RouteCandidate(
@@ -522,12 +553,7 @@ def test_google_routes_provider_wraps_transport_failure() -> None:
             GoogleRoutesTransportError,
             match="request failed",
         ):
-            provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
+            provider.get_routes(_route_search_request())
 
 
 def test_google_routes_provider_wraps_non_success_http_response() -> None:
@@ -552,12 +578,7 @@ def test_google_routes_provider_wraps_non_success_http_response() -> None:
         )
 
         with pytest.raises(GoogleRoutesHTTPError) as exc_info:
-            provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
+            provider.get_routes(_route_search_request())
 
     assert exc_info.value.status_code == 403
 
@@ -584,12 +605,7 @@ def test_google_routes_provider_wraps_invalid_json_response() -> None:
             GoogleRoutesResponseError,
             match="not valid JSON",
         ):
-            provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
+            provider.get_routes(_route_search_request())
 
 
 def test_google_routes_provider_retries_transport_failure_then_succeeds() -> None:
@@ -620,12 +636,7 @@ def test_google_routes_provider_retries_transport_failure_then_succeeds() -> Non
             sleeper=delays.append,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert routes == ()
     assert attempts == 4
@@ -658,12 +669,7 @@ def test_google_routes_provider_stops_retrying_transport_failure() -> None:
         )
 
         with pytest.raises(GoogleRoutesTransportError):
-            provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
+            provider.get_routes(_route_search_request())
 
     assert attempts == 3
     assert delays == [
@@ -700,12 +706,7 @@ def test_google_routes_provider_retries_rate_limit_response() -> None:
             sleeper=delays.append,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert routes == ()
     assert attempts == 3
@@ -742,12 +743,7 @@ def test_google_routes_provider_retries_server_error_response() -> None:
             sleeper=delays.append,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert routes == ()
     assert attempts == 3
@@ -779,12 +775,7 @@ def test_google_routes_provider_does_not_retry_permanent_http_failure() -> None:
         )
 
         with pytest.raises(GoogleRoutesHTTPError) as exc_info:
-            provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
+            provider.get_routes(_route_search_request())
 
     assert exc_info.value.status_code == 403
     assert attempts == 1
@@ -792,10 +783,7 @@ def test_google_routes_provider_does_not_retry_permanent_http_failure() -> None:
 
 
 def test_build_google_routes_request_payload_can_request_avoid_tolls() -> None:
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
 
     payload = build_google_routes_request_payload(
         request,
@@ -804,10 +792,10 @@ def test_build_google_routes_request_payload_can_request_avoid_tolls() -> None:
 
     assert payload == {
         "origin": {
-            "address": "Origin",
+            "placeId": "origin-place-id",
         },
         "destination": {
-            "address": "Destination",
+            "placeId": "destination-place-id",
         },
         "travelMode": "DRIVE",
         "routingPreference": "TRAFFIC_AWARE",
@@ -898,12 +886,7 @@ def test_google_routes_provider_merges_candidate_sets_in_stable_order() -> None:
             client=client,
         )
 
-        routes = provider.get_routes(
-            RouteSearchRequest(
-                origin="Origin",
-                destination="Destination",
-            )
-        )
+        routes = provider.get_routes(_route_search_request())
 
     assert routes == (
         RouteCandidate(
@@ -958,12 +941,7 @@ def test_google_routes_provider_propagates_avoid_tolls_acquisition_failure() -> 
         )
 
         with pytest.raises(GoogleRoutesHTTPError) as exc_info:
-            provider.get_routes(
-                RouteSearchRequest(
-                    origin="Origin",
-                    destination="Destination",
-                )
-            )
+            provider.get_routes(_route_search_request())
 
     assert exc_info.value.status_code == 403
     assert request_count == 2

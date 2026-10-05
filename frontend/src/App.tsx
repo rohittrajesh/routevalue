@@ -64,10 +64,7 @@ function App() {
             route costs.
           </p>
 
-          <TripForm
-            onSubmit={handleTripSubmit}
-            isSubmitting={isSubmitting}
-          />
+          <TripForm onSubmit={handleTripSubmit} isSubmitting={isSubmitting} />
 
           {error !== null && (
             <div className="status-message error-message" role="alert">
@@ -99,9 +96,7 @@ function App() {
         </aside>
       </section>
 
-      {result !== null && (
-        <TripResults result={result} />
-      )}
+      {result !== null && <TripResults result={result} />}
     </main>
   );
 }

@@ -12,9 +12,11 @@ from routevalue.api.mappers import (
 from routevalue.api.schemas import (
     GasolineGradeInput,
     GasolineInputs,
+    ResolvedLocationInput,
     TripEvaluationRequest,
 )
 from routevalue.application.models import (
+    ResolvedLocation,
     RouteEvaluation,
     RouteSearchRequest,
     TripEvaluationResult,
@@ -33,50 +35,100 @@ from routevalue.domain.models import (
 )
 
 
-def _gasoline_inputs() -> GasolineInputs:
+def _gasoline_inputs(
+    *,
+    fuel_grade: GasolineGradeInput = GasolineGradeInput.REGULAR,
+) -> GasolineInputs:
     return GasolineInputs(
         fuel_efficiency_mpg=Decimal(30),
-        fuel_grade=GasolineGradeInput.REGULAR,
+        fuel_grade=fuel_grade,
         fuel_price_per_gallon=Decimal("4.50"),
     )
 
 
-def test_to_route_search_request_maps_api_request_to_application_model() -> None:
-    api_request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
-        value_of_time_per_hour=Decimal("18.00"),
-        gasoline=_gasoline_inputs(),
+def _resolved_location_input(
+    display_name: str,
+    *,
+    source_id: str,
+) -> ResolvedLocationInput:
+    return ResolvedLocationInput(
+        display_name=display_name,
+        latitude=32.88,
+        longitude=-117.23,
+        source="google_places",
+        source_id=source_id,
     )
+
+
+def _trip_evaluation_request(
+    *,
+    value_of_time_per_hour: Decimal = Decimal("18.00"),
+    gasoline: GasolineInputs | None = None,
+) -> TripEvaluationRequest:
+    return TripEvaluationRequest(
+        origin=_resolved_location_input(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        destination=_resolved_location_input(
+            "Destination",
+            source_id="destination-place-id",
+        ),
+        value_of_time_per_hour=value_of_time_per_hour,
+        gasoline=gasoline if gasoline is not None else _gasoline_inputs(),
+    )
+
+
+def test_to_route_search_request_maps_api_request_to_application_model() -> None:
+    api_request = _trip_evaluation_request()
 
     result = to_route_search_request(api_request)
 
     assert result == RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
+        origin=ResolvedLocation(
+            display_name="Origin",
+            latitude=32.88,
+            longitude=-117.23,
+            source="google_places",
+            source_id="origin-place-id",
+        ),
+        destination=ResolvedLocation(
+            display_name="Destination",
+            latitude=32.88,
+            longitude=-117.23,
+            source="google_places",
+            source_id="destination-place-id",
+        ),
     )
 
 
-def test_to_route_search_request_preserves_endpoint_strings() -> None:
+def test_to_route_search_request_preserves_location_coordinates() -> None:
     api_request = TripEvaluationRequest(
-        origin="  Origin  ",
-        destination="  Destination  ",
+        origin=ResolvedLocationInput(
+            display_name="Origin",
+            latitude=33.123456,
+            longitude=-117.654321,
+        ),
+        destination=ResolvedLocationInput(
+            display_name="Destination",
+            latitude=32.987654,
+            longitude=-117.123456,
+        ),
         value_of_time_per_hour=Decimal("18.00"),
         gasoline=_gasoline_inputs(),
     )
 
     result = to_route_search_request(api_request)
 
-    assert result.origin == "  Origin  "
-    assert result.destination == "  Destination  "
+    assert result.origin.latitude == 33.123456
+    assert result.origin.longitude == -117.654321
+    assert result.destination.latitude == 32.987654
+    assert result.destination.longitude == -117.123456
 
 
 def test_get_value_of_time_per_hour_preserves_decimal_value() -> None:
-    api_request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
+    api_request = _trip_evaluation_request(
         value_of_time_per_hour=Decimal("18.75"),
-        gasoline=_gasoline_inputs(),
     )
 
     result = get_value_of_time_per_hour(api_request)
@@ -85,12 +137,7 @@ def test_get_value_of_time_per_hour_preserves_decimal_value() -> None:
 
 
 def test_to_gasoline_vehicle_profile_maps_api_request() -> None:
-    api_request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
-        value_of_time_per_hour=Decimal("18.00"),
-        gasoline=_gasoline_inputs(),
-    )
+    api_request = _trip_evaluation_request()
 
     result = to_gasoline_vehicle_profile(api_request)
 
@@ -101,12 +148,7 @@ def test_to_gasoline_vehicle_profile_maps_api_request() -> None:
 
 
 def test_to_user_override_fuel_price_quote_maps_api_request() -> None:
-    api_request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
-        value_of_time_per_hour=Decimal("18.00"),
-        gasoline=_gasoline_inputs(),
-    )
+    api_request = _trip_evaluation_request()
 
     result = to_user_override_fuel_price_quote(api_request)
 
@@ -128,15 +170,8 @@ def test_gasoline_grade_mapping_supports_all_v1_grades(
     api_grade: GasolineGradeInput,
     domain_grade: GasolineGrade,
 ) -> None:
-    request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
-        value_of_time_per_hour=Decimal("18.00"),
-        gasoline=GasolineInputs(
-            fuel_efficiency_mpg=Decimal(30),
-            fuel_grade=api_grade,
-            fuel_price_per_gallon=Decimal("4.50"),
-        ),
+    request = _trip_evaluation_request(
+        gasoline=_gasoline_inputs(fuel_grade=api_grade),
     )
 
     vehicle = to_gasoline_vehicle_profile(request)

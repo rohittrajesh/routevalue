@@ -10,6 +10,7 @@ from routevalue.api.schemas import (
     EnergyEstimateResponse,
     GasolineGradeInput,
     GasolineInputs,
+    ResolvedLocationInput,
     RouteEvaluationResponse,
     RouteResponse,
     TripEvaluationRequest,
@@ -25,16 +26,46 @@ def _gasoline_inputs() -> GasolineInputs:
     )
 
 
+def _resolved_location_input(
+    display_name: str = "Location",
+    *,
+    source_id: str = "test-place-id",
+) -> ResolvedLocationInput:
+    return ResolvedLocationInput(
+        display_name=display_name,
+        latitude=32.88,
+        longitude=-117.23,
+        source="google_places",
+        source_id=source_id,
+    )
+
+
 def test_trip_evaluation_request_preserves_valid_values() -> None:
     request = TripEvaluationRequest(
-        origin="  Origin  ",
-        destination="  Destination  ",
+        origin=_resolved_location_input(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        destination=_resolved_location_input(
+            "Destination",
+            source_id="destination-place-id",
+        ),
         value_of_time_per_hour=Decimal("18.50"),
         gasoline=_gasoline_inputs(),
     )
 
-    assert request.origin == "  Origin  "
-    assert request.destination == "  Destination  "
+    assert request.origin.display_name == "Origin"
+    assert request.origin.latitude == 32.88
+    assert request.origin.longitude == -117.23
+    assert request.origin.source == "google_places"
+    assert request.origin.source_id == "origin-place-id"
+
+    assert request.destination.display_name == "Destination"
+    assert request.destination.latitude == 32.88
+    assert request.destination.longitude == -117.23
+    assert request.destination.source == "google_places"
+    assert request.destination.source_id == "destination-place-id"
+
     assert request.value_of_time_per_hour == Decimal("18.50")
     assert request.gasoline.fuel_efficiency_mpg == Decimal(30)
     assert request.gasoline.fuel_grade is GasolineGradeInput.REGULAR
@@ -90,31 +121,45 @@ def test_gasoline_inputs_rejects_unknown_fuel_grade() -> None:
 
 
 @pytest.mark.parametrize(
-    ("origin", "destination"),
+    ("field", "value"),
     [
-        ("", "Destination"),
-        ("   ", "Destination"),
-        ("Origin", ""),
-        ("Origin", "   "),
+        ("origin", "Origin"),
+        ("destination", "Destination"),
     ],
 )
-def test_trip_evaluation_request_rejects_blank_endpoint(
-    origin: str,
-    destination: str,
+def test_trip_evaluation_request_rejects_unresolved_string_endpoint(
+    field: str,
+    value: str,
 ) -> None:
+    payload: dict[str, object] = {
+        "origin": _resolved_location_input(
+            "Origin",
+            source_id="origin-place-id",
+        ).model_dump(),
+        "destination": _resolved_location_input(
+            "Destination",
+            source_id="destination-place-id",
+        ).model_dump(),
+        "value_of_time_per_hour": "18.00",
+        "gasoline": _gasoline_inputs().model_dump(),
+    }
+
+    payload[field] = value
+
     with pytest.raises(ValidationError):
-        TripEvaluationRequest(
-            origin=origin,
-            destination=destination,
-            value_of_time_per_hour=Decimal("18.00"),
-            gasoline=_gasoline_inputs(),
-        )
+        TripEvaluationRequest.model_validate(payload)
 
 
 def test_trip_evaluation_request_allows_zero_value_of_time() -> None:
     request = TripEvaluationRequest(
-        origin="Origin",
-        destination="Destination",
+        origin=_resolved_location_input(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        destination=_resolved_location_input(
+            "Destination",
+            source_id="destination-place-id",
+        ),
         value_of_time_per_hour=Decimal(0),
         gasoline=_gasoline_inputs(),
     )
@@ -125,10 +170,85 @@ def test_trip_evaluation_request_allows_zero_value_of_time() -> None:
 def test_trip_evaluation_request_rejects_negative_value_of_time() -> None:
     with pytest.raises(ValidationError):
         TripEvaluationRequest(
-            origin="Origin",
-            destination="Destination",
+            origin=_resolved_location_input(
+                "Origin",
+                source_id="origin-place-id",
+            ),
+            destination=_resolved_location_input(
+                "Destination",
+                source_id="destination-place-id",
+            ),
             value_of_time_per_hour=Decimal("-0.01"),
             gasoline=_gasoline_inputs(),
+        )
+
+
+def test_resolved_location_input_preserves_normalized_values() -> None:
+    location = ResolvedLocationInput(
+        display_name="UC San Diego",
+        latitude=32.8801,
+        longitude=-117.2340,
+        source="google_places",
+        source_id="test-place-id",
+    )
+
+    assert location.display_name == "UC San Diego"
+    assert location.latitude == 32.8801
+    assert location.longitude == -117.2340
+    assert location.source == "google_places"
+    assert location.source_id == "test-place-id"
+
+
+def test_resolved_location_input_rejects_blank_display_name() -> None:
+    with pytest.raises(ValidationError):
+        ResolvedLocationInput(
+            display_name="   ",
+            latitude=32.88,
+            longitude=-117.23,
+        )
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (-90.01, 0),
+        (90.01, 0),
+        (0, -180.01),
+        (0, 180.01),
+    ],
+)
+def test_resolved_location_input_rejects_invalid_coordinates(
+    latitude: float,
+    longitude: float,
+) -> None:
+    with pytest.raises(ValidationError):
+        ResolvedLocationInput(
+            display_name="Location",
+            latitude=latitude,
+            longitude=longitude,
+        )
+
+
+@pytest.mark.parametrize(
+    ("source", "source_id"),
+    [
+        ("google_places", None),
+        (None, "place-id"),
+        ("", "place-id"),
+        ("google_places", ""),
+    ],
+)
+def test_resolved_location_input_rejects_invalid_external_reference(
+    source: str | None,
+    source_id: str | None,
+) -> None:
+    with pytest.raises(ValidationError):
+        ResolvedLocationInput(
+            display_name="Location",
+            latitude=32.88,
+            longitude=-117.23,
+            source=source,
+            source_id=source_id,
         )
 
 

@@ -6,12 +6,14 @@ from routevalue.api.schemas import (
     EligibilityResponse,
     EnergyEstimateResponse,
     GasolineGradeInput,
+    ResolvedLocationInput,
     RouteEvaluationResponse,
     RouteResponse,
     TripEvaluationRequest,
     TripEvaluationResponse,
 )
 from routevalue.application.models import (
+    ResolvedLocation,
     RouteSearchRequest,
     TripEvaluationResult,
 )
@@ -35,8 +37,8 @@ def to_route_search_request(
     """Convert an HTTP trip request into an application route-search request."""
 
     return RouteSearchRequest(
-        origin=request.origin,
-        destination=request.destination,
+        origin=_to_resolved_location(request.origin),
+        destination=_to_resolved_location(request.destination),
     )
 
 
@@ -176,4 +178,18 @@ def to_trip_evaluation_response(
     return TripEvaluationResponse(
         route_evaluations=route_evaluations,
         decision=_to_decision_response(result.decision),
+    )
+
+
+def _to_resolved_location(
+    location: ResolvedLocationInput,
+) -> ResolvedLocation:
+    """Convert an API location into the provider-neutral application model."""
+
+    return ResolvedLocation(
+        display_name=location.display_name,
+        latitude=location.latitude,
+        longitude=location.longitude,
+        source=location.source,
+        source_id=location.source_id,
     )

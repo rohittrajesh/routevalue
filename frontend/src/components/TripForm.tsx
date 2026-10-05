@@ -1,85 +1,82 @@
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import type {
   GasolineGrade,
+  ResolvedLocationInput,
   TripEvaluationRequest,
 } from "../types/api";
+import PlaceAutocompleteInput from "./PlaceAutocompleteInput";
 
 interface TripFormProps {
   onSubmit: (request: TripEvaluationRequest) => void;
   isSubmitting: boolean;
 }
 
-function TripForm({
-  onSubmit,
-  isSubmitting,
-}: TripFormProps) {
+function TripForm({ onSubmit, isSubmitting }: TripFormProps) {
+  const [origin, setOrigin] = useState<ResolvedLocationInput | null>(null);
+
+  const [destination, setDestination] = useState<ResolvedLocationInput | null>(
+    null,
+  );
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (origin === null || destination === null) {
+      return;
+    }
 
     const form = new FormData(event.currentTarget);
 
     const request: TripEvaluationRequest = {
-      origin: String(form.get("origin") ?? ""),
-      destination: String(form.get("destination") ?? ""),
-      value_of_time_per_hour: String(
-        form.get("value_of_time_per_hour") ?? "",
-      ),
+      origin,
+      destination,
+      value_of_time_per_hour: String(form.get("value_of_time_per_hour") ?? ""),
       gasoline: {
-        fuel_efficiency_mpg: String(
-          form.get("fuel_efficiency_mpg") ?? "",
-        ),
+        fuel_efficiency_mpg: String(form.get("fuel_efficiency_mpg") ?? ""),
         fuel_grade: String(
           form.get("fuel_grade") ?? "regular",
         ) as GasolineGrade,
-        fuel_price_per_gallon: String(
-          form.get("fuel_price_per_gallon") ?? "",
-        ),
+        fuel_price_per_gallon: String(form.get("fuel_price_per_gallon") ?? ""),
       },
     };
 
     onSubmit(request);
   }
 
+  const locationsResolved = origin !== null && destination !== null;
+
   return (
     <form className="trip-form" onSubmit={handleSubmit}>
       <div className="form-section">
         <div className="form-section-heading">
           <span className="section-number">01</span>
+
           <div>
             <h3>Your trip</h3>
-            <p>Where are you going?</p>
+            <p>Search for and select both locations.</p>
           </div>
         </div>
 
         <div className="field-grid">
-          <label className="field">
-            <span>Origin</span>
-            <input
-              name="origin"
-              type="text"
-              placeholder="UC San Diego"
-              autoComplete="street-address"
-              required
-            />
-          </label>
+          <PlaceAutocompleteInput
+            label="Origin"
+            placeholder="UC San Diego"
+            onLocationChange={setOrigin}
+          />
 
-          <label className="field">
-            <span>Destination</span>
-            <input
-              name="destination"
-              type="text"
-              placeholder="San Diego International Airport"
-              autoComplete="street-address"
-              required
-            />
-          </label>
+          <PlaceAutocompleteInput
+            label="Destination"
+            placeholder="San Diego International Airport"
+            onLocationChange={setDestination}
+          />
         </div>
       </div>
 
       <div className="form-section">
         <div className="form-section-heading">
           <span className="section-number">02</span>
+
           <div>
             <h3>Your time</h3>
             <p>How much is an hour of your travel time worth?</p>
@@ -109,6 +106,7 @@ function TripForm({
       <div className="form-section">
         <div className="form-section-heading">
           <span className="section-number">03</span>
+
           <div>
             <h3>Your vehicle</h3>
             <p>Used to estimate fuel cost for each route.</p>
@@ -166,17 +164,18 @@ function TripForm({
 
       <div className="form-actions">
         <p>
-          RouteValue compares travel time, fuel, and tolls using your
-          preferences.
+          {locationsResolved
+            ? "Both locations are resolved and ready for comparison."
+            : "Select an autocomplete suggestion for both locations before comparing routes."}
         </p>
 
         <button
-  className="primary-button"
-  type="submit"
-  disabled={isSubmitting}
->
-  {isSubmitting ? "Comparing routes..." : "Compare routes"}
-</button>
+          className="primary-button"
+          type="submit"
+          disabled={isSubmitting || !locationsResolved}
+        >
+          {isSubmitting ? "Comparing routes..." : "Compare routes"}
+        </button>
       </div>
     </form>
   );

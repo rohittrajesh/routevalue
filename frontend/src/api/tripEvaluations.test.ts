@@ -1,24 +1,27 @@
-import {
-  afterEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
   TripEvaluationRequest,
   TripEvaluationResponse,
 } from "../types/api";
 
-import {
-  ApiRequestError,
-  evaluateTrip,
-} from "./tripEvaluations";
+import { ApiRequestError, evaluateTrip } from "./tripEvaluations";
 
 const request: TripEvaluationRequest = {
-  origin: "Origin",
-  destination: "Destination",
+  origin: {
+    display_name: "Origin",
+    latitude: 32.88,
+    longitude: -117.23,
+    source: "google_places",
+    source_id: "origin-place-id",
+  },
+  destination: {
+    display_name: "Destination",
+    latitude: 32.88,
+    longitude: -117.23,
+    source: "google_places",
+    source_id: "destination-place-id",
+  },
   value_of_time_per_hour: "20.00",
   gasoline: {
     fuel_efficiency_mpg: "30",
@@ -53,9 +56,7 @@ describe("evaluateTrip", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      evaluateTrip(request),
-    ).resolves.toEqual(responseBody);
+    await expect(evaluateTrip(request)).resolves.toEqual(responseBody);
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/trip-evaluations",
@@ -76,9 +77,7 @@ describe("evaluateTrip", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      evaluateTrip(request),
-    ).rejects.toEqual(
+    await expect(evaluateTrip(request)).rejects.toEqual(
       expect.objectContaining({
         message: "routing provider unavailable",
         status: 503,
@@ -97,9 +96,7 @@ describe("evaluateTrip", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      evaluateTrip(request),
-    ).rejects.toEqual(
+    await expect(evaluateTrip(request)).rejects.toEqual(
       new ApiRequestError(
         "Some trip information is invalid. Please check your inputs.",
         422,

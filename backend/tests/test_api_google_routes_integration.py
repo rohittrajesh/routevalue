@@ -10,6 +10,39 @@ from routevalue.api.dependencies import get_google_routes_http_client
 from routevalue.main import app
 
 
+def _location_payload(
+    display_name: str,
+    *,
+    source_id: str,
+) -> dict[str, object]:
+    return {
+        "display_name": display_name,
+        "latitude": 32.88,
+        "longitude": -117.23,
+        "source": "google_places",
+        "source_id": source_id,
+    }
+
+
+def _trip_payload() -> dict[str, object]:
+    return {
+        "origin": _location_payload(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        "destination": _location_payload(
+            "Destination",
+            source_id="destination-place-id",
+        ),
+        "value_of_time_per_hour": "18.00",
+        "gasoline": {
+            "fuel_efficiency_mpg": "30",
+            "fuel_grade": "regular",
+            "fuel_price_per_gallon": "4.50",
+        },
+    }
+
+
 def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -24,10 +57,10 @@ def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
         payload = json.loads(request.content)
 
         assert payload["origin"] == {
-            "address": "Origin",
+            "placeId": "origin-place-id",
         }
         assert payload["destination"] == {
-            "address": "Destination",
+            "placeId": "destination-place-id",
         }
 
         if request_count == 1:
@@ -84,16 +117,7 @@ def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
             with TestClient(app) as client:
                 response = client.post(
                     "/trip-evaluations",
-                    json={
-                        "origin": "Origin",
-                        "destination": "Destination",
-                        "value_of_time_per_hour": "18.00",
-                        "gasoline": {
-                            "fuel_efficiency_mpg": "30",
-                            "fuel_grade": "regular",
-                            "fuel_price_per_gallon": "4.50",
-                        },
-                    },
+                    json=_trip_payload(),
                 )
         finally:
             app.dependency_overrides.clear()
@@ -181,16 +205,7 @@ def test_trip_evaluation_endpoint_maps_google_http_failure_to_bad_gateway(
             with TestClient(app) as client:
                 response = client.post(
                     "/trip-evaluations",
-                    json={
-                        "origin": "Origin",
-                        "destination": "Destination",
-                        "value_of_time_per_hour": "18.00",
-                        "gasoline": {
-                            "fuel_efficiency_mpg": "30",
-                            "fuel_grade": "regular",
-                            "fuel_price_per_gallon": "4.50",
-                        },
-                    },
+                    json=_trip_payload(),
                 )
         finally:
             app.dependency_overrides.clear()
@@ -237,16 +252,7 @@ def test_trip_evaluation_endpoint_maps_invalid_google_response_to_bad_gateway(
             with TestClient(app) as client:
                 response = client.post(
                     "/trip-evaluations",
-                    json={
-                        "origin": "Origin",
-                        "destination": "Destination",
-                        "value_of_time_per_hour": "18.00",
-                        "gasoline": {
-                            "fuel_efficiency_mpg": "30",
-                            "fuel_grade": "regular",
-                            "fuel_price_per_gallon": "4.50",
-                        },
-                    },
+                    json=_trip_payload(),
                 )
         finally:
             app.dependency_overrides.clear()
@@ -290,16 +296,7 @@ def test_trip_evaluation_endpoint_maps_google_server_failure_to_service_unavaila
             with TestClient(app) as client:
                 response = client.post(
                     "/trip-evaluations",
-                    json={
-                        "origin": "Origin",
-                        "destination": "Destination",
-                        "value_of_time_per_hour": "18.00",
-                        "gasoline": {
-                            "fuel_efficiency_mpg": "30",
-                            "fuel_grade": "regular",
-                            "fuel_price_per_gallon": "4.50",
-                        },
-                    },
+                    json=_trip_payload(),
                 )
         finally:
             app.dependency_overrides.clear()

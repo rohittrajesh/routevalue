@@ -12,18 +12,41 @@ from routevalue.domain.models import (
 
 
 @dataclass(frozen=True, slots=True)
+class ResolvedLocation:
+    """Provider-neutral resolved location for routing."""
+
+    display_name: str
+    latitude: float
+    longitude: float
+    source: str | None = None
+    source_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.display_name.strip():
+            raise ValueError("display_name cannot be blank")
+
+        if not -90 <= self.latitude <= 90:
+            raise ValueError("latitude must be between -90 and 90")
+
+        if not -180 <= self.longitude <= 180:
+            raise ValueError("longitude must be between -180 and 180")
+
+        if (self.source is None) != (self.source_id is None):
+            raise ValueError("source and source_id must be provided together")
+
+        if self.source is not None and not self.source.strip():
+            raise ValueError("source cannot be blank")
+
+        if self.source_id is not None and not self.source_id.strip():
+            raise ValueError("source_id cannot be blank")
+
+
+@dataclass(frozen=True, slots=True)
 class RouteSearchRequest:
     """Provider-neutral request for candidate routes between two locations."""
 
-    origin: str
-    destination: str
-
-    def __post_init__(self) -> None:
-        if not self.origin.strip():
-            raise ValueError("origin cannot be blank")
-
-        if not self.destination.strip():
-            raise ValueError("destination cannot be blank")
+    origin: ResolvedLocation
+    destination: ResolvedLocation
 
 
 @dataclass(frozen=True, slots=True)

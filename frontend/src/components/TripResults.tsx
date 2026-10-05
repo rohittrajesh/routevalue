@@ -1,7 +1,4 @@
-import type {
-  RouteResponse,
-  TripEvaluationResponse,
-} from "../types/api";
+import type { RouteResponse, TripEvaluationResponse } from "../types/api";
 
 import {
   formatDecisionReason,
@@ -15,10 +12,7 @@ interface TripResultsProps {
   result: TripEvaluationResponse;
 }
 
-function routesMatch(
-  first: RouteResponse,
-  second: RouteResponse,
-): boolean {
+function routesMatch(first: RouteResponse, second: RouteResponse): boolean {
   return (
     first.distance_meters === second.distance_meters &&
     first.duration_seconds === second.duration_seconds &&
@@ -37,9 +31,7 @@ function TripResults({ result }: TripResultsProps) {
         );
 
   const recommendedEvaluation =
-    recommendedIndex >= 0
-      ? result.route_evaluations[recommendedIndex]
-      : null;
+    recommendedIndex >= 0 ? result.route_evaluations[recommendedIndex] : null;
 
   return (
     <section
@@ -59,8 +51,8 @@ function TripResults({ result }: TripResultsProps) {
         </div>
 
         <span className="route-count">
-          {result.decision.eligible_count} of{" "}
-          {result.decision.candidate_count} eligible
+          {result.decision.eligible_count} of {result.decision.candidate_count}{" "}
+          eligible
         </span>
       </div>
 
@@ -73,9 +65,7 @@ function TripResults({ result }: TripResultsProps) {
 
             <strong>Route {recommendedIndex + 1} is your best match.</strong>
 
-            <p>
-              {formatDecisionReason(result.decision.reason)}
-            </p>
+            <p>{formatDecisionReason(result.decision.reason)}</p>
           </div>
 
           {recommendedEvaluation.cost_breakdown !== null && (
@@ -112,9 +102,7 @@ function TripResults({ result }: TripResultsProps) {
 
           return (
             <article
-              className={`route-card ${
-                recommended ? "recommended-route" : ""
-              }`}
+              className={`route-card ${recommended ? "recommended-route" : ""}`}
               aria-label={`Route ${index + 1}${
                 recommended ? ", recommended" : ""
               }`}
@@ -122,27 +110,17 @@ function TripResults({ result }: TripResultsProps) {
             >
               <div className="route-card-header">
                 <div>
-                  <p className="route-number">
-                    Route {index + 1}
-                  </p>
+                  <p className="route-number">Route {index + 1}</p>
 
-                  <h3>
-                    {formatDuration(
-                      evaluation.route.duration_seconds,
-                    )}
-                  </h3>
+                  <h3>{formatDuration(evaluation.route.duration_seconds)}</h3>
 
                   <p className="route-distance">
-                    {formatDistance(
-                      evaluation.route.distance_meters,
-                    )}
+                    {formatDistance(evaluation.route.distance_meters)}
                   </p>
                 </div>
 
                 {recommended && (
-                  <span className="recommended-badge">
-                    Best match
-                  </span>
+                  <span className="recommended-badge">Best match</span>
                 )}
               </div>
 
@@ -152,14 +130,10 @@ function TripResults({ result }: TripResultsProps) {
                     <span>Personalized route cost</span>
 
                     <strong>
-                      {formatMoney(
-                        evaluation.cost_breakdown.generalized_cost,
-                      )}
+                      {formatMoney(evaluation.cost_breakdown.generalized_cost)}
                     </strong>
 
-                    <small>
-                      Fuel + tolls + value of your travel time
-                    </small>
+                    <small>Fuel + tolls + value of your travel time</small>
                   </div>
 
                   <dl className="cost-details">
@@ -168,36 +142,26 @@ function TripResults({ result }: TripResultsProps) {
                       <dd>
                         {evaluation.energy_estimate === null
                           ? "Unavailable"
-                          : formatMoney(
-                              evaluation.energy_estimate.cost,
-                            )}
+                          : formatMoney(evaluation.energy_estimate.cost)}
                       </dd>
                     </div>
 
                     <div>
                       <dt>Tolls</dt>
-                      <dd>
-                        {formatMoney(
-                          evaluation.route.toll_cost,
-                        )}
-                      </dd>
+                      <dd>{formatMoney(evaluation.route.toll_cost)}</dd>
                     </div>
 
                     <div className="cost-subtotal">
                       <dt>Direct monetary cost</dt>
                       <dd>
-                        {formatMoney(
-                          evaluation.cost_breakdown.monetary_cost,
-                        )}
+                        {formatMoney(evaluation.cost_breakdown.monetary_cost)}
                       </dd>
                     </div>
 
                     <div>
                       <dt>Value of travel time</dt>
                       <dd>
-                        {formatMoney(
-                          evaluation.cost_breakdown.time_cost,
-                        )}
+                        {formatMoney(evaluation.cost_breakdown.time_cost)}
                       </dd>
                     </div>
                   </dl>
@@ -207,9 +171,7 @@ function TripResults({ result }: TripResultsProps) {
                   <strong>Unable to score this route</strong>
 
                   <span>
-                    {formatEligibilityReason(
-                      evaluation.eligibility.reason,
-                    )}
+                    {formatEligibilityReason(evaluation.eligibility.reason)}
                   </span>
                 </div>
               )}

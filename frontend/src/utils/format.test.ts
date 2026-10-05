@@ -36,27 +36,21 @@ describe("formatMoney", () => {
 
 describe("formatDecisionReason", () => {
   it("formats a standard RouteValue decision", () => {
-    expect(
-  formatDecisionReason("faster_and_cheaper"),
-).toBe(
-  "Faster and cheaper than the next-best personalized-cost alternative.",
-);
+    expect(formatDecisionReason("faster_and_cheaper")).toBe(
+      "Faster and cheaper than the next-best personalized-cost alternative.",
+    );
   });
 });
 
 describe("formatEligibilityReason", () => {
   it("formats a missing toll reason", () => {
-    expect(
-      formatEligibilityReason("missing_toll_cost"),
-    ).toBe(
+    expect(formatEligibilityReason("missing_toll_cost")).toBe(
       "Toll information is unavailable for this route.",
     );
   });
 
   it("formats a missing energy reason", () => {
-    expect(
-      formatEligibilityReason("missing_energy_estimate"),
-    ).toBe(
+    expect(formatEligibilityReason("missing_energy_estimate")).toBe(
       "Fuel-cost information is unavailable for this route.",
     );
   });

@@ -3,7 +3,7 @@ import os
 import httpx
 import pytest
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ResolvedLocation, RouteSearchRequest
 from routevalue.infrastructure.routing.google_routes import GoogleRoutesRouteProvider
 
 _RUN_LIVE_GOOGLE_ROUTES = os.getenv("RUN_LIVE_GOOGLE_ROUTES") == "1"
@@ -27,8 +27,16 @@ def test_google_routes_live_smoke() -> None:
 
         routes = provider.get_routes(
             RouteSearchRequest(
-                origin="UC San Diego",
-                destination="San Diego International Airport",
+                origin=ResolvedLocation(
+                    display_name="UC San Diego",
+                    latitude=32.8801,
+                    longitude=-117.2340,
+                ),
+                destination=ResolvedLocation(
+                    display_name="San Diego International Airport",
+                    latitude=32.7338,
+                    longitude=-117.1933,
+                ),
             )
         )
 

@@ -583,12 +583,7 @@ h1 {
   padding: 24px 26px;
   border: 1px solid #b8d4c1;
   border-radius: 18px;
-  background:
-    linear-gradient(
-      135deg,
-      #f2f9f4 0%,
-      #edf7f1 100%
-    );
+  background: linear-gradient(135deg, #f2f9f4 0%, #edf7f1 100%);
 }
 
 .recommendation-copy {
@@ -894,10 +889,7 @@ h1 {
 }
 
 .route-grid {
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(270px, 1fr)
-  );
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
   align-items: stretch;
 }
 
@@ -963,4 +955,104 @@ h1 {
   .route-card {
     padding: 20px;
   }
+}
+
+/* M11-D place autocomplete */
+
+.place-autocomplete {
+  position: relative;
+}
+
+.place-autocomplete-label {
+  color: #4f5d73;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.place-autocomplete-control {
+  position: relative;
+}
+
+.place-autocomplete-control input {
+  padding-right: 82px;
+}
+
+.place-selected-indicator {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: #557160;
+  font-size: 0.7rem;
+  font-weight: 800;
+  transform: translateY(-50%);
+}
+
+.place-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid #d5dce7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgb(28 39 60 / 14%);
+  list-style: none;
+}
+
+.place-suggestion button {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #172033;
+  cursor: pointer;
+  text-align: left;
+}
+
+.place-suggestion button:hover,
+.place-suggestion.active button {
+  background: #f1f4f8;
+}
+
+.place-suggestion strong {
+  font-size: 0.88rem;
+}
+
+.place-suggestion span {
+  overflow: hidden;
+  color: #7a8699;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-autocomplete-status,
+.place-autocomplete-error {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.place-autocomplete-status {
+  color: #7a8699;
+}
+
+.place-autocomplete-error {
+  color: #9b4d4d;
+}
+
+.place-attribution {
+  padding: 7px 12px 5px;
+  border-top: 1px solid #edf0f4;
+  color: #7a8699;
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-align: right;
 }

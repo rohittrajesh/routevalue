@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from routevalue.application.models import RouteSearchRequest
+from routevalue.application.models import ResolvedLocation, RouteSearchRequest
 from routevalue.application.ports import EnergyCostEstimator, RouteProvider
 from routevalue.domain.models import EnergyEstimate, RouteCandidate
 
@@ -48,6 +48,21 @@ def get_energy_estimate(
     return estimator.estimate_energy(route)
 
 
+def _route_search_request() -> RouteSearchRequest:
+    return RouteSearchRequest(
+        origin=ResolvedLocation(
+            display_name="Origin",
+            latitude=32.88,
+            longitude=-117.23,
+        ),
+        destination=ResolvedLocation(
+            display_name="Destination",
+            latitude=32.88,
+            longitude=-117.23,
+        ),
+    )
+
+
 def test_fake_route_provider_returns_controlled_routes_in_stable_order() -> None:
     first_route = RouteCandidate(
         distance_meters=10_000,
@@ -59,10 +74,7 @@ def test_fake_route_provider_returns_controlled_routes_in_stable_order() -> None
         duration_seconds=800,
         toll_cost=Decimal("2.50"),
     )
-    request = RouteSearchRequest(
-        origin="Origin",
-        destination="Destination",
-    )
+    request = _route_search_request()
     provider = FakeRouteProvider([first_route, second_route])
 
     routes = get_routes_from_provider(provider, request)
@@ -72,21 +84,20 @@ def test_fake_route_provider_returns_controlled_routes_in_stable_order() -> None
 
 
 @pytest.mark.parametrize(
-    ("origin", "destination", "message"),
+    "display_name",
     [
-        ("", "Destination", "origin cannot be blank"),
-        ("Origin", "   ", "destination cannot be blank"),
+        "",
+        "   ",
     ],
 )
-def test_route_search_request_rejects_blank_endpoint(
-    origin: str,
-    destination: str,
-    message: str,
+def test_resolved_location_rejects_blank_display_name(
+    display_name: str,
 ) -> None:
-    with pytest.raises(ValueError, match=message):
-        RouteSearchRequest(
-            origin=origin,
-            destination=destination,
+    with pytest.raises(ValueError, match="display_name cannot be blank"):
+        ResolvedLocation(
+            display_name=display_name,
+            latitude=32.88,
+            longitude=-117.23,
         )
 
 

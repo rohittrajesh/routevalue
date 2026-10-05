@@ -13,6 +13,42 @@ from routevalue.infrastructure.in_memory import (
 from routevalue.main import app
 
 
+def _location_payload(
+    display_name: str,
+    *,
+    source_id: str,
+) -> dict[str, object]:
+    return {
+        "display_name": display_name,
+        "latitude": 32.88,
+        "longitude": -117.23,
+        "source": "google_places",
+        "source_id": source_id,
+    }
+
+
+def _valid_trip_payload(
+    *,
+    value_of_time_per_hour: str = "18.00",
+) -> dict[str, object]:
+    return {
+        "origin": _location_payload(
+            "Origin",
+            source_id="origin-place-id",
+        ),
+        "destination": _location_payload(
+            "Destination",
+            source_id="destination-place-id",
+        ),
+        "value_of_time_per_hour": value_of_time_per_hour,
+        "gasoline": {
+            "fuel_efficiency_mpg": "30",
+            "fuel_grade": "regular",
+            "fuel_price_per_gallon": "4.50",
+        },
+    }
+
+
 def _build_empty_trip_evaluation_orchestrator() -> TripEvaluationOrchestrator:
     """Build an orchestrator with no routes for isolated API tests."""
 
@@ -51,16 +87,7 @@ def test_trip_evaluation_endpoint_returns_application_result() -> None:
 
         response = client.post(
             "/trip-evaluations",
-            json={
-                "origin": "Origin",
-                "destination": "Destination",
-                "value_of_time_per_hour": "18.00",
-                "gasoline": {
-                    "fuel_efficiency_mpg": "30",
-                    "fuel_grade": "regular",
-                    "fuel_price_per_gallon": "4.50",
-                },
-            },
+            json=_valid_trip_payload(),
         )
 
         assert response.status_code == 200
@@ -115,16 +142,7 @@ def test_trip_evaluation_endpoint_handles_zero_routes() -> None:
 
         response = client.post(
             "/trip-evaluations",
-            json={
-                "origin": "Origin",
-                "destination": "Destination",
-                "value_of_time_per_hour": "18.00",
-                "gasoline": {
-                    "fuel_efficiency_mpg": "30",
-                    "fuel_grade": "regular",
-                    "fuel_price_per_gallon": "4.50",
-                },
-            },
+            json=_valid_trip_payload(),
         )
 
         assert response.status_code == 200
@@ -172,16 +190,7 @@ def test_trip_evaluation_endpoint_preserves_missing_toll_cost() -> None:
 
         response = client.post(
             "/trip-evaluations",
-            json={
-                "origin": "Origin",
-                "destination": "Destination",
-                "value_of_time_per_hour": "18.00",
-                "gasoline": {
-                    "fuel_efficiency_mpg": "30",
-                    "fuel_grade": "regular",
-                    "fuel_price_per_gallon": "4.50",
-                },
-            },
+            json=_valid_trip_payload(),
         )
 
         assert response.status_code == 200
@@ -195,6 +204,7 @@ def test_trip_evaluation_endpoint_preserves_missing_toll_cost() -> None:
             "eligible": False,
             "reason": "missing_toll_cost",
         }
+        assert evaluation["cost_breakdown"] is None
 
         assert body["decision"]["recommended_route"] is None
         assert body["decision"]["reason"] is None
@@ -203,7 +213,6 @@ def test_trip_evaluation_endpoint_preserves_missing_toll_cost() -> None:
         assert body["decision"]["eligible_count"] == 0
     finally:
         app.dependency_overrides.clear()
-        assert evaluation["cost_breakdown"] is None
 
 
 def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
@@ -232,16 +241,7 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
 
         response = client.post(
             "/trip-evaluations",
-            json={
-                "origin": "Origin",
-                "destination": "Destination",
-                "value_of_time_per_hour": "18.00",
-                "gasoline": {
-                    "fuel_efficiency_mpg": "30",
-                    "fuel_grade": "regular",
-                    "fuel_price_per_gallon": "4.50",
-                },
-            },
+            json=_valid_trip_payload(),
         )
 
         assert response.status_code == 200
@@ -267,7 +267,10 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
     "payload",
     [
         {
-            "destination": "Destination",
+            "destination": _location_payload(
+                "Destination",
+                source_id="destination-place-id",
+            ),
             "value_of_time_per_hour": "18.00",
             "gasoline": {
                 "fuel_efficiency_mpg": "30",
@@ -276,8 +279,32 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
             },
         },
         {
-            "origin": "   ",
-            "destination": "Destination",
+            "origin": {
+                "display_name": "   ",
+                "latitude": 32.88,
+                "longitude": -117.23,
+            },
+            "destination": _location_payload(
+                "Destination",
+                source_id="destination-place-id",
+            ),
+            "value_of_time_per_hour": "18.00",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
+        },
+        {
+            "origin": _location_payload(
+                "Origin",
+                source_id="origin-place-id",
+            ),
+            "destination": {
+                "display_name": "   ",
+                "latitude": 32.88,
+                "longitude": -117.23,
+            },
             "value_of_time_per_hour": "18.00",
             "gasoline": {
                 "fuel_efficiency_mpg": "30",
@@ -287,7 +314,10 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
         },
         {
             "origin": "Origin",
-            "destination": "   ",
+            "destination": _location_payload(
+                "Destination",
+                source_id="destination-place-id",
+            ),
             "value_of_time_per_hour": "18.00",
             "gasoline": {
                 "fuel_efficiency_mpg": "30",
@@ -296,24 +326,22 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
             },
         },
         {
-            "origin": "Origin",
-            "destination": "Destination",
+            **_valid_trip_payload(),
             "value_of_time_per_hour": "-0.01",
-            "gasoline": {
-                "fuel_efficiency_mpg": "30",
-                "fuel_grade": "regular",
-                "fuel_price_per_gallon": "4.50",
-            },
         },
         {
-            "origin": "Origin",
-            "destination": "Destination",
+            "origin": _location_payload(
+                "Origin",
+                source_id="origin-place-id",
+            ),
+            "destination": _location_payload(
+                "Destination",
+                source_id="destination-place-id",
+            ),
             "value_of_time_per_hour": "18.00",
         },
         {
-            "origin": "Origin",
-            "destination": "Destination",
-            "value_of_time_per_hour": "18.00",
+            **_valid_trip_payload(),
             "gasoline": {
                 "fuel_efficiency_mpg": "0",
                 "fuel_grade": "regular",
@@ -321,9 +349,7 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
             },
         },
         {
-            "origin": "Origin",
-            "destination": "Destination",
-            "value_of_time_per_hour": "18.00",
+            **_valid_trip_payload(),
             "gasoline": {
                 "fuel_efficiency_mpg": "30",
                 "fuel_grade": "diesel",
@@ -331,9 +357,7 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
             },
         },
         {
-            "origin": "Origin",
-            "destination": "Destination",
-            "value_of_time_per_hour": "18.00",
+            **_valid_trip_payload(),
             "gasoline": {
                 "fuel_efficiency_mpg": "30",
                 "fuel_grade": "regular",
@@ -403,8 +427,14 @@ def test_trip_evaluation_endpoint_changes_recommendation_with_value_of_time() ->
         client = TestClient(app)
 
         base_payload = {
-            "origin": "Origin",
-            "destination": "Destination",
+            "origin": _location_payload(
+                "Origin",
+                source_id="origin-place-id",
+            ),
+            "destination": _location_payload(
+                "Destination",
+                source_id="destination-place-id",
+            ),
             "gasoline": {
                 "fuel_efficiency_mpg": "30",
                 "fuel_grade": "regular",

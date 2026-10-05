@@ -2,8 +2,9 @@
 
 from decimal import Decimal
 from enum import StrEnum
+from typing import Self
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class GasolineGradeInput(StrEnum):
@@ -42,23 +43,49 @@ class GasolineInputs(BaseModel):
         return value
 
 
+class ResolvedLocationInput(BaseModel):
+    """Resolved routable location supplied by the client."""
+
+    display_name: str
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    source: str | None = None
+    source_id: str | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def display_name_cannot_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("display_name cannot be blank")
+
+        return value
+
+    @field_validator("source", "source_id")
+    @classmethod
+    def external_reference_value_cannot_be_blank(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("external reference value cannot be blank")
+
+        return value
+
+    @model_validator(mode="after")
+    def external_reference_must_be_complete(self) -> Self:
+        if (self.source is None) != (self.source_id is None):
+            raise ValueError("source and source_id must be provided together")
+
+        return self
+
+
 class TripEvaluationRequest(BaseModel):
     """HTTP request body for evaluating a trip."""
 
-    origin: str
-    destination: str
+    origin: ResolvedLocationInput
+    destination: ResolvedLocationInput
     value_of_time_per_hour: Decimal
     gasoline: GasolineInputs
-
-    @field_validator("origin", "destination")
-    @classmethod
-    def endpoint_cannot_be_blank(cls, value: str) -> str:
-        """Reject blank route endpoints without normalizing valid input."""
-
-        if not value.strip():
-            raise ValueError("route endpoint cannot be blank")
-
-        return value
 
     @field_validator("value_of_time_per_hour")
     @classmethod

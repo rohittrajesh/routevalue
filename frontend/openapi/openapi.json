@@ -1,0 +1,445 @@
+{
+  "components": {
+    "schemas": {
+      "CostBreakdownResponse": {
+        "description": "Public representation of a route's personalized cost breakdown.",
+        "properties": {
+          "generalized_cost": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Generalized Cost",
+            "type": "string"
+          },
+          "monetary_cost": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Monetary Cost",
+            "type": "string"
+          },
+          "time_cost": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Time Cost",
+            "type": "string"
+          }
+        },
+        "required": ["monetary_cost", "time_cost", "generalized_cost"],
+        "title": "CostBreakdownResponse",
+        "type": "object"
+      },
+      "DecisionResponse": {
+        "description": "Public representation of the final route decision.",
+        "properties": {
+          "candidate_count": {
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "eligible_count": {
+            "title": "Eligible Count",
+            "type": "integer"
+          },
+          "missing_data_present": {
+            "title": "Missing Data Present",
+            "type": "boolean"
+          },
+          "numerical_tie": {
+            "title": "Numerical Tie",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "recommended_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "recommended_route",
+          "reason",
+          "numerical_tie",
+          "missing_data_present",
+          "candidate_count",
+          "eligible_count"
+        ],
+        "title": "DecisionResponse",
+        "type": "object"
+      },
+      "EligibilityResponse": {
+        "description": "Public representation of route eligibility.",
+        "properties": {
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": ["eligible", "reason"],
+        "title": "EligibilityResponse",
+        "type": "object"
+      },
+      "EnergyEstimateResponse": {
+        "description": "Public representation of a route's monetary energy estimate.",
+        "properties": {
+          "cost": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cost",
+            "type": "string"
+          }
+        },
+        "required": ["cost"],
+        "title": "EnergyEstimateResponse",
+        "type": "object"
+      },
+      "GasolineGradeInput": {
+        "description": "Gasoline grades accepted by the public V1 API.",
+        "enum": ["regular", "midgrade", "premium"],
+        "title": "GasolineGradeInput",
+        "type": "string"
+      },
+      "GasolineInputs": {
+        "description": "Gasoline-specific personalization inputs for one trip evaluation.",
+        "properties": {
+          "fuel_efficiency_mpg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Fuel Efficiency Mpg"
+          },
+          "fuel_grade": {
+            "$ref": "#/components/schemas/GasolineGradeInput"
+          },
+          "fuel_price_per_gallon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Fuel Price Per Gallon"
+          }
+        },
+        "required": [
+          "fuel_efficiency_mpg",
+          "fuel_grade",
+          "fuel_price_per_gallon"
+        ],
+        "title": "GasolineInputs",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ResolvedLocationInput": {
+        "description": "Resolved routable location supplied by the client.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          }
+        },
+        "required": ["display_name", "latitude", "longitude"],
+        "title": "ResolvedLocationInput",
+        "type": "object"
+      },
+      "RouteEvaluationResponse": {
+        "description": "Public evaluation details for one route.",
+        "properties": {
+          "cost_breakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostBreakdownResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eligibility": {
+            "$ref": "#/components/schemas/EligibilityResponse"
+          },
+          "energy_estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnergyEstimateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "route": {
+            "$ref": "#/components/schemas/RouteResponse"
+          }
+        },
+        "required": [
+          "route",
+          "energy_estimate",
+          "eligibility",
+          "cost_breakdown"
+        ],
+        "title": "RouteEvaluationResponse",
+        "type": "object"
+      },
+      "RouteResponse": {
+        "description": "Public representation of one normalized route.",
+        "properties": {
+          "distance_meters": {
+            "title": "Distance Meters",
+            "type": "integer"
+          },
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "integer"
+          },
+          "toll_cost": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toll Cost"
+          }
+        },
+        "required": ["distance_meters", "duration_seconds", "toll_cost"],
+        "title": "RouteResponse",
+        "type": "object"
+      },
+      "TripEvaluationRequest": {
+        "description": "HTTP request body for evaluating a trip.",
+        "properties": {
+          "destination": {
+            "$ref": "#/components/schemas/ResolvedLocationInput"
+          },
+          "gasoline": {
+            "$ref": "#/components/schemas/GasolineInputs"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/ResolvedLocationInput"
+          },
+          "value_of_time_per_hour": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Value Of Time Per Hour"
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "value_of_time_per_hour",
+          "gasoline"
+        ],
+        "title": "TripEvaluationRequest",
+        "type": "object"
+      },
+      "TripEvaluationResponse": {
+        "description": "HTTP response body for one trip evaluation.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/DecisionResponse"
+          },
+          "route_evaluations": {
+            "items": {
+              "$ref": "#/components/schemas/RouteEvaluationResponse"
+            },
+            "title": "Route Evaluations",
+            "type": "array"
+          }
+        },
+        "required": ["route_evaluations", "decision"],
+        "title": "TripEvaluationResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "RouteValue API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Report whether the RouteValue API process is available.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Check Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check"
+      }
+    },
+    "/trip-evaluations": {
+      "post": {
+        "description": "Evaluate candidate routes for one trip.",
+        "operationId": "evaluate_trip_trip_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripEvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripEvaluationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Evaluate Trip"
+      }
+    }
+  }
+}
