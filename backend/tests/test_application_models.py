@@ -4,6 +4,7 @@ import pytest
 
 from routevalue.application.models import RouteEvaluation, TripEvaluationResult
 from routevalue.domain.models import (
+    CostBreakdown,
     DecisionReason,
     DecisionResult,
     EligibilityResult,
@@ -32,7 +33,13 @@ def test_trip_evaluation_result_preserves_route_evaluations_and_decision() -> No
             eligible=True,
             reason=None,
         ),
+        cost_breakdown=CostBreakdown(
+            monetary_cost=Decimal("1.25"),
+            time_cost=Decimal("4.50"),
+            generalized_cost=Decimal("5.75"),
+        ),
     )
+
     ineligible_evaluation = RouteEvaluation(
         route=ineligible_route,
         energy_estimate=EnergyEstimate(cost=Decimal("1.50")),
@@ -40,6 +47,7 @@ def test_trip_evaluation_result_preserves_route_evaluations_and_decision() -> No
             eligible=False,
             reason=IneligibilityReason.MISSING_TOLL_COST,
         ),
+        cost_breakdown=None,
     )
 
     decision = DecisionResult(
@@ -79,6 +87,11 @@ def test_trip_evaluation_result_rejects_candidate_count_mismatch() -> None:
             eligible=True,
             reason=None,
         ),
+        cost_breakdown=CostBreakdown(
+            monetary_cost=Decimal("1.25"),
+            time_cost=Decimal("4.50"),
+            generalized_cost=Decimal("5.75"),
+        ),
     )
     decision = DecisionResult(
         recommended_route=route,
@@ -111,6 +124,11 @@ def test_trip_evaluation_result_rejects_eligible_count_mismatch() -> None:
         eligibility=EligibilityResult(
             eligible=True,
             reason=None,
+        ),
+        cost_breakdown=CostBreakdown(
+            monetary_cost=Decimal("1.25"),
+            time_cost=Decimal("4.50"),
+            generalized_cost=Decimal("5.75"),
         ),
     )
     decision = DecisionResult(
@@ -145,6 +163,7 @@ def test_trip_evaluation_result_rejects_missing_data_mismatch() -> None:
             eligible=False,
             reason=IneligibilityReason.MISSING_TOLL_COST,
         ),
+        cost_breakdown=None,
     )
     decision = DecisionResult(
         recommended_route=None,

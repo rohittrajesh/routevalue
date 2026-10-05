@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from routevalue.api.schemas import (
+    CostBreakdownResponse,
     DecisionResponse,
     EligibilityResponse,
     EnergyEstimateResponse,
@@ -146,6 +147,11 @@ def test_trip_evaluation_response_is_json_serializable() -> None:
                 eligibility=EligibilityResponse(
                     eligible=True,
                     reason=None,
+                ),
+                cost_breakdown=CostBreakdownResponse(
+                    monetary_cost=Decimal("3.75"),
+                    time_cost=Decimal("4.50"),
+                    generalized_cost=Decimal("8.25"),
                 ),
             )
         ],

@@ -6,7 +6,10 @@ from routevalue.application.models import (
     TripEvaluationResult,
 )
 from routevalue.application.ports import EnergyCostEstimator, RouteProvider
-from routevalue.domain.decision_engine import decide_route
+from routevalue.domain.decision_engine import (
+    calculate_cost_breakdown,
+    decide_route,
+)
 from routevalue.domain.eligibility import (
     build_decision_candidate_if_eligible,
     evaluate_route_eligibility,
@@ -48,21 +51,28 @@ class TripEvaluationOrchestrator:
                 energy_estimate=energy_estimate,
             )
 
-            route_evaluations.append(
-                RouteEvaluation(
-                    route=route,
-                    energy_estimate=energy_estimate,
-                    eligibility=eligibility,
-                )
-            )
-
             decision_candidate = build_decision_candidate_if_eligible(
                 route,
                 energy_estimate=energy_estimate,
             )
 
+            cost_breakdown = None
+
             if decision_candidate is not None:
+                cost_breakdown = calculate_cost_breakdown(
+                    decision_candidate,
+                    value_of_time_per_hour,
+                )
                 eligible_candidates.append(decision_candidate)
+
+            route_evaluations.append(
+                RouteEvaluation(
+                    route=route,
+                    energy_estimate=energy_estimate,
+                    eligibility=eligibility,
+                    cost_breakdown=cost_breakdown,
+                )
+            )
 
         missing_data_present = any(
             not evaluation.eligibility.eligible for evaluation in route_evaluations

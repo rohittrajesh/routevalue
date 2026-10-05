@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from routevalue.domain.models import (
+    CostBreakdown,
     DecisionResult,
     EligibilityResult,
     EnergyEstimate,
@@ -32,6 +33,14 @@ class RouteEvaluation:
     route: RouteCandidate
     energy_estimate: EnergyEstimate | None
     eligibility: EligibilityResult
+    cost_breakdown: CostBreakdown | None
+
+    def __post_init__(self) -> None:
+        if self.eligibility.eligible and self.cost_breakdown is None:
+            raise ValueError("eligible route requires a cost breakdown")
+
+        if not self.eligibility.eligible and self.cost_breakdown is not None:
+            raise ValueError("ineligible route cannot have a cost breakdown")
 
 
 @dataclass(frozen=True, slots=True)

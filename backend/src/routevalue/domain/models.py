@@ -105,6 +105,25 @@ class DecisionCandidate:
             raise ValueError("decision candidate requires known toll cost")
 
 
+@dataclass(frozen=True, slots=True)
+class CostBreakdown:
+    """Authoritative generalized-cost components for one eligible route."""
+
+    monetary_cost: Money
+    time_cost: Money
+    generalized_cost: Money
+
+    def __post_init__(self) -> None:
+        if self.monetary_cost < 0:
+            raise ValueError("monetary_cost cannot be negative")
+
+        if self.time_cost < 0:
+            raise ValueError("time_cost cannot be negative")
+
+        if self.generalized_cost != self.monetary_cost + self.time_cost:
+            raise ValueError("generalized_cost must equal monetary_cost plus time_cost")
+
+
 class IneligibilityReason(StrEnum):
     """Structured reason explaining why a route cannot enter optimization."""
 

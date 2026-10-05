@@ -20,6 +20,7 @@ from routevalue.application.models import (
     TripEvaluationResult,
 )
 from routevalue.domain.models import (
+    CostBreakdown,
     DecisionReason,
     DecisionResult,
     EligibilityResult,
@@ -162,6 +163,11 @@ def test_to_trip_evaluation_response_maps_eligible_route() -> None:
                     eligible=True,
                     reason=None,
                 ),
+                cost_breakdown=CostBreakdown(
+                    monetary_cost=Decimal("3.75"),
+                    time_cost=Decimal("4.50"),
+                    generalized_cost=Decimal("8.25"),
+                ),
             ),
         ),
         decision=DecisionResult(
@@ -187,6 +193,10 @@ def test_to_trip_evaluation_response_maps_eligible_route() -> None:
     assert evaluation.energy_estimate.cost == Decimal("2.25")
     assert evaluation.eligibility.eligible
     assert evaluation.eligibility.reason is None
+    assert evaluation.cost_breakdown is not None
+    assert evaluation.cost_breakdown.monetary_cost == Decimal("3.75")
+    assert evaluation.cost_breakdown.time_cost == Decimal("4.50")
+    assert evaluation.cost_breakdown.generalized_cost == Decimal("8.25")
 
     assert response.decision.recommended_route is not None
     assert response.decision.recommended_route.distance_meters == 10_000
@@ -211,6 +221,7 @@ def test_to_trip_evaluation_response_preserves_missing_data() -> None:
                     eligible=False,
                     reason=IneligibilityReason.MISSING_TOLL_COST,
                 ),
+                cost_breakdown=None,
             ),
         ),
         decision=DecisionResult(
@@ -235,6 +246,7 @@ def test_to_trip_evaluation_response_preserves_missing_data() -> None:
     assert response.decision.recommended_route is None
     assert response.decision.reason is None
     assert response.decision.missing_data_present
+    assert evaluation.cost_breakdown is None
 
 
 def test_to_trip_evaluation_response_maps_decision_reason_to_string() -> None:
@@ -258,6 +270,11 @@ def test_to_trip_evaluation_response_maps_decision_reason_to_string() -> None:
                     eligible=True,
                     reason=None,
                 ),
+                cost_breakdown=CostBreakdown(
+                    monetary_cost=Decimal("2.00"),
+                    time_cost=Decimal("4.50"),
+                    generalized_cost=Decimal("6.50"),
+                ),
             ),
             RouteEvaluation(
                 route=second_route,
@@ -265,6 +282,11 @@ def test_to_trip_evaluation_response_maps_decision_reason_to_string() -> None:
                 eligibility=EligibilityResult(
                     eligible=True,
                     reason=None,
+                ),
+                cost_breakdown=CostBreakdown(
+                    monetary_cost=Decimal("2.00"),
+                    time_cost=Decimal("4.50"),
+                    generalized_cost=Decimal("6.50"),
                 ),
             ),
         ),
@@ -300,6 +322,11 @@ def test_to_trip_evaluation_response_preserves_zero_monetary_values() -> None:
                     eligible=True,
                     reason=None,
                 ),
+                cost_breakdown=CostBreakdown(
+                    monetary_cost=Decimal(0),
+                    time_cost=Decimal("4.50"),
+                    generalized_cost=Decimal("4.50"),
+                ),
             ),
         ),
         decision=DecisionResult(
@@ -319,3 +346,7 @@ def test_to_trip_evaluation_response_preserves_zero_monetary_values() -> None:
     assert evaluation.route.toll_cost == Decimal(0)
     assert evaluation.energy_estimate is not None
     assert evaluation.energy_estimate.cost == Decimal(0)
+    assert evaluation.cost_breakdown is not None
+    assert evaluation.cost_breakdown.monetary_cost == Decimal(0)
+    assert evaluation.cost_breakdown.time_cost == Decimal("4.50")
+    assert evaluation.cost_breakdown.generalized_cost == Decimal("4.50")

@@ -81,6 +81,11 @@ def test_trip_evaluation_endpoint_returns_application_result() -> None:
                     "eligible": True,
                     "reason": None,
                 },
+                "cost_breakdown": {
+                    "monetary_cost": "3.75",
+                    "time_cost": "4.5000",
+                    "generalized_cost": "8.2500",
+                },
             }
         ]
 
@@ -198,6 +203,7 @@ def test_trip_evaluation_endpoint_preserves_missing_toll_cost() -> None:
         assert body["decision"]["eligible_count"] == 0
     finally:
         app.dependency_overrides.clear()
+        assert evaluation["cost_breakdown"] is None
 
 
 def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
@@ -244,6 +250,7 @@ def test_trip_evaluation_endpoint_preserves_missing_energy_estimate() -> None:
         evaluation = body["route_evaluations"][0]
 
         assert evaluation["energy_estimate"] is None
+        assert evaluation["cost_breakdown"] is None
         assert evaluation["eligibility"] == {
             "eligible": False,
             "reason": "missing_energy_estimate",
@@ -352,5 +359,113 @@ def test_trip_evaluation_endpoint_rejects_invalid_request(
 
         assert response.status_code == 422
         assert response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_trip_evaluation_endpoint_changes_recommendation_with_value_of_time() -> None:
+    faster_route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal("5.00"),
+    )
+    cheaper_route = RouteCandidate(
+        distance_meters=12_000,
+        duration_seconds=1_800,
+        toll_cost=Decimal(0),
+    )
+
+    def override_trip_evaluation_orchestrator() -> TripEvaluationOrchestrator:
+        return TripEvaluationOrchestrator(
+            route_provider=InMemoryRouteProvider(
+                (
+                    faster_route,
+                    cheaper_route,
+                )
+            ),
+            energy_cost_estimator=InMemoryEnergyCostEstimator(
+                {
+                    faster_route: EnergyEstimate(
+                        cost=Decimal("3.00"),
+                    ),
+                    cheaper_route: EnergyEstimate(
+                        cost=Decimal("2.00"),
+                    ),
+                }
+            ),
+        )
+
+    app.dependency_overrides[get_trip_evaluation_orchestrator] = (
+        override_trip_evaluation_orchestrator
+    )
+
+    try:
+        client = TestClient(app)
+
+        base_payload = {
+            "origin": "Origin",
+            "destination": "Destination",
+            "gasoline": {
+                "fuel_efficiency_mpg": "30",
+                "fuel_grade": "regular",
+                "fuel_price_per_gallon": "4.50",
+            },
+        }
+
+        low_value_response = client.post(
+            "/trip-evaluations",
+            json={
+                **base_payload,
+                "value_of_time_per_hour": "10.00",
+            },
+        )
+
+        high_value_response = client.post(
+            "/trip-evaluations",
+            json={
+                **base_payload,
+                "value_of_time_per_hour": "30.00",
+            },
+        )
+
+        assert low_value_response.status_code == 200
+        assert high_value_response.status_code == 200
+
+        low_value_body = low_value_response.json()
+        high_value_body = high_value_response.json()
+
+        assert low_value_body["decision"]["recommended_route"] == {
+            "distance_meters": 12_000,
+            "duration_seconds": 1_800,
+            "toll_cost": "0",
+        }
+        assert low_value_body["decision"]["reason"] == "cheaper_route_worth_extra_time"
+
+        assert high_value_body["decision"]["recommended_route"] == {
+            "distance_meters": 10_000,
+            "duration_seconds": 900,
+            "toll_cost": "5.00",
+        }
+        assert high_value_body["decision"]["reason"] == "faster_route_worth_extra_cost"
+
+        low_value_faster_cost = Decimal(
+            low_value_body["route_evaluations"][0]["cost_breakdown"]["generalized_cost"]
+        )
+        low_value_cheaper_cost = Decimal(
+            low_value_body["route_evaluations"][1]["cost_breakdown"]["generalized_cost"]
+        )
+
+        high_value_faster_cost = Decimal(
+            high_value_body["route_evaluations"][0]["cost_breakdown"]["generalized_cost"]
+        )
+        high_value_cheaper_cost = Decimal(
+            high_value_body["route_evaluations"][1]["cost_breakdown"]["generalized_cost"]
+        )
+
+        assert low_value_faster_cost == Decimal("10.50")
+        assert low_value_cheaper_cost == Decimal("7.00")
+
+        assert high_value_faster_cost == Decimal("15.50")
+        assert high_value_cheaper_cost == Decimal("17.00")
     finally:
         app.dependency_overrides.clear()

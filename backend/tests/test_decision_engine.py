@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 
 from routevalue.domain.decision_engine import (
+    calculate_cost_breakdown,
     calculate_generalized_cost,
     calculate_monetary_cost,
     calculate_time_cost,
@@ -795,3 +796,26 @@ def test_decide_route_rejects_negative_value_of_time() -> None:
             candidate_count=0,
             missing_data_present=False,
         )
+
+
+def test_calculate_cost_breakdown_exposes_authoritative_components() -> None:
+    route = RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=1_800,
+        toll_cost=Decimal("2.00"),
+    )
+    candidate = DecisionCandidate(
+        route=route,
+        energy_estimate=EnergyEstimate(
+            cost=Decimal("3.00"),
+        ),
+    )
+
+    breakdown = calculate_cost_breakdown(
+        candidate,
+        Decimal("20.00"),
+    )
+
+    assert breakdown.monetary_cost == Decimal("5.00")
+    assert breakdown.time_cost == Decimal("10.00")
+    assert breakdown.generalized_cost == Decimal("15.00")

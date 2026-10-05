@@ -1,6 +1,7 @@
 """Mappings between HTTP schemas and RouteValue application models."""
 
 from routevalue.api.schemas import (
+    CostBreakdownResponse,
     DecisionResponse,
     EligibilityResponse,
     EnergyEstimateResponse,
@@ -15,6 +16,7 @@ from routevalue.application.models import (
     TripEvaluationResult,
 )
 from routevalue.domain.models import (
+    CostBreakdown,
     DecisionResult,
     EligibilityResult,
     EnergyEstimate,
@@ -104,6 +106,18 @@ def _to_energy_estimate_response(
     )
 
 
+def _to_cost_breakdown_response(
+    breakdown: CostBreakdown,
+) -> CostBreakdownResponse:
+    """Convert a domain cost breakdown into its public API representation."""
+
+    return CostBreakdownResponse(
+        monetary_cost=breakdown.monetary_cost,
+        time_cost=breakdown.time_cost,
+        generalized_cost=breakdown.generalized_cost,
+    )
+
+
 def _to_eligibility_response(
     eligibility: EligibilityResult,
 ) -> EligibilityResponse:
@@ -150,6 +164,11 @@ def to_trip_evaluation_response(
                 else None
             ),
             eligibility=_to_eligibility_response(evaluation.eligibility),
+            cost_breakdown=(
+                _to_cost_breakdown_response(evaluation.cost_breakdown)
+                if evaluation.cost_breakdown is not None
+                else None
+            ),
         )
         for evaluation in result.route_evaluations
     ]

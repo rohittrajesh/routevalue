@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from decimal import Decimal
 
 from routevalue.domain.models import (
+    CostBreakdown,
     DecisionCandidate,
     DecisionReason,
     DecisionResult,
@@ -126,11 +127,11 @@ def calculate_time_cost(
     return value_of_time_per_hour * seconds_to_hours(route.duration_seconds)
 
 
-def calculate_generalized_cost(
+def calculate_cost_breakdown(
     candidate: DecisionCandidate,
     value_of_time_per_hour: MoneyPerHour,
-) -> Money:
-    """Calculate the generalized cost of a route."""
+) -> CostBreakdown:
+    """Calculate the authoritative generalized-cost breakdown for a route."""
 
     monetary_cost = calculate_monetary_cost(candidate)
     time_cost = calculate_time_cost(
@@ -138,7 +139,23 @@ def calculate_generalized_cost(
         value_of_time_per_hour,
     )
 
-    return monetary_cost + time_cost
+    return CostBreakdown(
+        monetary_cost=monetary_cost,
+        time_cost=time_cost,
+        generalized_cost=monetary_cost + time_cost,
+    )
+
+
+def calculate_generalized_cost(
+    candidate: DecisionCandidate,
+    value_of_time_per_hour: MoneyPerHour,
+) -> Money:
+    """Calculate the generalized cost of a route."""
+
+    return calculate_cost_breakdown(
+        candidate,
+        value_of_time_per_hour,
+    ).generalized_cost
 
 
 def select_lowest_generalized_cost_candidate(

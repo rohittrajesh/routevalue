@@ -85,6 +85,14 @@ class EnergyEstimateResponse(BaseModel):
     cost: Decimal
 
 
+class CostBreakdownResponse(BaseModel):
+    """Public representation of a route's personalized cost breakdown."""
+
+    monetary_cost: Decimal
+    time_cost: Decimal
+    generalized_cost: Decimal
+
+
 class EligibilityResponse(BaseModel):
     """Public representation of route eligibility."""
 
@@ -98,6 +106,7 @@ class RouteEvaluationResponse(BaseModel):
     route: RouteResponse
     energy_estimate: EnergyEstimateResponse | None
     eligibility: EligibilityResponse
+    cost_breakdown: CostBreakdownResponse | None
 
 
 class DecisionResponse(BaseModel):
