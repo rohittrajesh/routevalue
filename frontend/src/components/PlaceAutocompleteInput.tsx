@@ -262,7 +262,7 @@ function PlaceAutocompleteInput({
             </li>
           ))}
 
-          <li className="place-attribution" aria-hidden="true">
+          <li className="place-attribution" translate="no">
             Google Maps
           </li>
         </ul>
