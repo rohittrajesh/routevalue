@@ -8,12 +8,15 @@ from routevalue.api.schemas import (
     GasolineGradeInput,
     ResolvedLocationInput,
     RouteEvaluationResponse,
+    RouteGeometryResponse,
+    RoutePointResponse,
     RouteResponse,
     TripEvaluationRequest,
     TripEvaluationResponse,
 )
 from routevalue.application.models import (
     ResolvedLocation,
+    RouteGeometry,
     RouteSearchRequest,
     TripEvaluationResult,
 )
@@ -98,6 +101,22 @@ def _to_route_response(route: RouteCandidate) -> RouteResponse:
     )
 
 
+def _to_route_geometry_response(
+    geometry: RouteGeometry,
+) -> RouteGeometryResponse:
+    """Convert provider-neutral geometry into its public representation."""
+
+    return RouteGeometryResponse(
+        points=[
+            RoutePointResponse(
+                latitude=point.latitude,
+                longitude=point.longitude,
+            )
+            for point in geometry.points
+        ]
+    )
+
+
 def _to_energy_estimate_response(
     estimate: EnergyEstimate,
 ) -> EnergyEstimateResponse:
@@ -134,7 +153,7 @@ def _to_eligibility_response(
 def _to_decision_response(
     decision: DecisionResult,
 ) -> DecisionResponse:
-    """Convert a domain decision result into its public API representation."""
+    """Convert a domain decision result into the public API response."""
 
     recommended_route = (
         _to_route_response(decision.recommended_route)
@@ -169,6 +188,11 @@ def to_trip_evaluation_response(
             cost_breakdown=(
                 _to_cost_breakdown_response(evaluation.cost_breakdown)
                 if evaluation.cost_breakdown is not None
+                else None
+            ),
+            geometry=(
+                _to_route_geometry_response(evaluation.geometry)
+                if evaluation.geometry is not None
                 else None
             ),
         )

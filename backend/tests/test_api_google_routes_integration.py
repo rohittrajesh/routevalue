@@ -56,6 +56,9 @@ def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
 
         payload = json.loads(request.content)
 
+        assert payload["polylineEncoding"] == "GEO_JSON_LINESTRING"
+        assert payload["polylineQuality"] == "OVERVIEW"
+
         assert payload["origin"] == {
             "placeId": "origin-place-id",
         }
@@ -73,6 +76,16 @@ def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
                         {
                             "distanceMeters": 10_000,
                             "duration": "900s",
+                            "polyline": {
+                                "geoJsonLinestring": {
+                                    "type": "LineString",
+                                    "coordinates": [
+                                        [-117.2340, 32.8801],
+                                        [-117.2200, 32.8200],
+                                        [-117.1933, 32.7338],
+                                    ],
+                                }
+                            },
                         }
                     ]
                 },
@@ -90,10 +103,30 @@ def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
                     {
                         "distanceMeters": 10_000,
                         "duration": "900s",
+                        "polyline": {
+                            "geoJsonLinestring": {
+                                "type": "LineString",
+                                "coordinates": [
+                                    [-117.2340, 32.8801],
+                                    [-117.2200, 32.8200],
+                                    [-117.1933, 32.7338],
+                                ],
+                            }
+                        },
                     },
                     {
                         "distanceMeters": 12_000,
                         "duration": "800s",
+                        "polyline": {
+                            "geoJsonLinestring": {
+                                "type": "LineString",
+                                "coordinates": [
+                                    [-117.2340, 32.8801],
+                                    [-117.2050, 32.7900],
+                                    [-117.1933, 32.7338],
+                                ],
+                            }
+                        },
                     },
                 ]
             },
@@ -141,6 +174,40 @@ def test_trip_evaluation_endpoint_uses_google_routes_and_gasoline_composition(
         "distance_meters": 12_000,
         "duration_seconds": 800,
         "toll_cost": "0",
+    }
+
+    assert first_evaluation["geometry"] == {
+        "points": [
+            {
+                "latitude": 32.8801,
+                "longitude": -117.234,
+            },
+            {
+                "latitude": 32.82,
+                "longitude": -117.22,
+            },
+            {
+                "latitude": 32.7338,
+                "longitude": -117.1933,
+            },
+        ]
+    }
+
+    assert second_evaluation["geometry"] == {
+        "points": [
+            {
+                "latitude": 32.8801,
+                "longitude": -117.234,
+            },
+            {
+                "latitude": 32.79,
+                "longitude": -117.205,
+            },
+            {
+                "latitude": 32.7338,
+                "longitude": -117.1933,
+            },
+        ]
     }
 
     assert first_evaluation["energy_estimate"] is not None

@@ -1,6 +1,7 @@
 import type { components } from "../api/generated/schema";
 
 type ApiSchemas = components["schemas"];
+
 export type ResolvedLocationInput = ApiSchemas["ResolvedLocationInput"];
 
 export type GasolineGrade = ApiSchemas["GasolineGradeInput"];
@@ -26,6 +27,10 @@ export type TripEvaluationRequest = Omit<
 };
 
 export type RouteResponse = ApiSchemas["RouteResponse"];
+
+export type RoutePointResponse = ApiSchemas["RoutePointResponse"];
+
+export type RouteGeometryResponse = ApiSchemas["RouteGeometryResponse"];
 
 export type EnergyEstimateResponse = ApiSchemas["EnergyEstimateResponse"];
 

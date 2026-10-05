@@ -242,6 +242,16 @@
               }
             ]
           },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteGeometryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "route": {
             "$ref": "#/components/schemas/RouteResponse"
           }
@@ -253,6 +263,41 @@
           "cost_breakdown"
         ],
         "title": "RouteEvaluationResponse",
+        "type": "object"
+      },
+      "RouteGeometryResponse": {
+        "description": "Public representation of normalized route geometry.",
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RoutePointResponse"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": ["points"],
+        "title": "RouteGeometryResponse",
+        "type": "object"
+      },
+      "RoutePointResponse": {
+        "description": "Public representation of one normalized route-geometry point.",
+        "properties": {
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          }
+        },
+        "required": ["latitude", "longitude"],
+        "title": "RoutePointResponse",
         "type": "object"
       },
       "RouteResponse": {

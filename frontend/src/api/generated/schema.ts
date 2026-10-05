@@ -141,7 +141,26 @@ export interface components {
       cost_breakdown: components["schemas"]["CostBreakdownResponse"] | null;
       eligibility: components["schemas"]["EligibilityResponse"];
       energy_estimate: components["schemas"]["EnergyEstimateResponse"] | null;
+      geometry?: components["schemas"]["RouteGeometryResponse"] | null;
       route: components["schemas"]["RouteResponse"];
+    };
+    /**
+     * RouteGeometryResponse
+     * @description Public representation of normalized route geometry.
+     */
+    RouteGeometryResponse: {
+      /** Points */
+      points: components["schemas"]["RoutePointResponse"][];
+    };
+    /**
+     * RoutePointResponse
+     * @description Public representation of one normalized route-geometry point.
+     */
+    RoutePointResponse: {
+      /** Latitude */
+      latitude: number;
+      /** Longitude */
+      longitude: number;
     };
     /**
      * RouteResponse

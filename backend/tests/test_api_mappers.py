@@ -18,6 +18,8 @@ from routevalue.api.schemas import (
 from routevalue.application.models import (
     ResolvedLocation,
     RouteEvaluation,
+    RouteGeometry,
+    RoutePoint,
     RouteSearchRequest,
     TripEvaluationResult,
 )
@@ -188,6 +190,18 @@ def test_to_trip_evaluation_response_maps_eligible_route() -> None:
         toll_cost=Decimal("1.50"),
     )
     energy_estimate = EnergyEstimate(cost=Decimal("2.25"))
+    geometry = RouteGeometry(
+        points=(
+            RoutePoint(
+                latitude=32.8801,
+                longitude=-117.2340,
+            ),
+            RoutePoint(
+                latitude=32.7338,
+                longitude=-117.1933,
+            ),
+        )
+    )
 
     result = TripEvaluationResult(
         route_evaluations=(
@@ -203,6 +217,7 @@ def test_to_trip_evaluation_response_maps_eligible_route() -> None:
                     time_cost=Decimal("4.50"),
                     generalized_cost=Decimal("8.25"),
                 ),
+                geometry=geometry,
             ),
         ),
         decision=DecisionResult(
@@ -232,6 +247,12 @@ def test_to_trip_evaluation_response_maps_eligible_route() -> None:
     assert evaluation.cost_breakdown.monetary_cost == Decimal("3.75")
     assert evaluation.cost_breakdown.time_cost == Decimal("4.50")
     assert evaluation.cost_breakdown.generalized_cost == Decimal("8.25")
+
+    assert evaluation.geometry is not None
+    assert [(point.latitude, point.longitude) for point in evaluation.geometry.points] == [
+        (32.8801, -117.2340),
+        (32.7338, -117.1933),
+    ]
 
     assert response.decision.recommended_route is not None
     assert response.decision.recommended_route.distance_meters == 10_000
@@ -282,6 +303,7 @@ def test_to_trip_evaluation_response_preserves_missing_data() -> None:
     assert response.decision.reason is None
     assert response.decision.missing_data_present
     assert evaluation.cost_breakdown is None
+    assert evaluation.geometry is None
 
 
 def test_to_trip_evaluation_response_maps_decision_reason_to_string() -> None:

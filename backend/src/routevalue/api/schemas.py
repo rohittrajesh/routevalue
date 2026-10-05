@@ -106,6 +106,19 @@ class RouteResponse(BaseModel):
     toll_cost: Decimal | None
 
 
+class RoutePointResponse(BaseModel):
+    """Public representation of one normalized route-geometry point."""
+
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+class RouteGeometryResponse(BaseModel):
+    """Public representation of normalized route geometry."""
+
+    points: list[RoutePointResponse]
+
+
 class EnergyEstimateResponse(BaseModel):
     """Public representation of a route's monetary energy estimate."""
 
@@ -134,6 +147,7 @@ class RouteEvaluationResponse(BaseModel):
     energy_estimate: EnergyEstimateResponse | None
     eligibility: EligibilityResponse
     cost_breakdown: CostBreakdownResponse | None
+    geometry: RouteGeometryResponse | None = None
 
 
 class DecisionResponse(BaseModel):

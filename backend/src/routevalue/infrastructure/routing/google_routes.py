@@ -10,14 +10,22 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from routevalue.application.models import (
     ProvidedRoute,
     ResolvedLocation,
+    RouteGeometry,
+    RoutePoint,
     RouteSearchRequest,
 )
 from routevalue.domain.models import RouteCandidate
 
 _NANOS_PER_UNIT = Decimal(1000000000)
-GOOGLE_ROUTES_FIELD_MASK = "routes.distanceMeters,routes.duration,routes.travelAdvisory.tollInfo"
+
+GOOGLE_ROUTES_FIELD_MASK = (
+    "routes.distanceMeters,routes.duration,routes.travelAdvisory.tollInfo,routes.polyline"
+)
+
 GOOGLE_ROUTES_COMPUTE_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+
 _GOOGLE_ROUTES_MAX_ATTEMPTS = 3
+
 _GOOGLE_ROUTES_RETRY_DELAYS_SECONDS = (
     0.25,
     0.5,
@@ -74,19 +82,17 @@ class GoogleRoutesRouteProvider:
             avoid_tolls=True,
         )
 
-        merged_routes = _merge_unique_routes(
+        return _merge_unique_routes(
             baseline_routes,
             avoid_tolls_routes,
         )
-
-        return tuple(ProvidedRoute(route=route) for route in merged_routes)
 
     def _request_routes(
         self,
         request: RouteSearchRequest,
         *,
         avoid_tolls: bool,
-    ) -> tuple[RouteCandidate, ...]:
+    ) -> tuple[ProvidedRoute, ...]:
         """Execute one Google Routes acquisition with bounded retries."""
 
         for attempt_index in range(_GOOGLE_ROUTES_MAX_ATTEMPTS):
@@ -124,7 +130,7 @@ class GoogleRoutesRouteProvider:
             except ValueError as exc:
                 raise GoogleRoutesResponseError("Google Routes response is not valid JSON") from exc
 
-            return parse_google_routes_response(payload)
+            return parse_google_provided_routes_response(payload)
 
         raise AssertionError("Google Routes retry loop exhausted unexpectedly")
 
@@ -165,6 +171,17 @@ class _GoogleTravelAdvisory(BaseModel):
     )
 
 
+class _GooglePolyline(BaseModel):
+    """Provider-specific Google route polyline."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    geo_json_linestring: object | None = Field(
+        default=None,
+        alias="geoJsonLinestring",
+    )
+
+
 class _GoogleRoute(BaseModel):
     """Provider-specific route fields required by RouteValue."""
 
@@ -175,10 +192,13 @@ class _GoogleRoute(BaseModel):
         ge=0,
     )
     duration: str
+
     travel_advisory: _GoogleTravelAdvisory | None = Field(
         default=None,
         alias="travelAdvisory",
     )
+
+    polyline: _GooglePolyline | None = None
 
 
 class _GoogleComputeRoutesResponse(BaseModel):
@@ -222,6 +242,8 @@ def build_google_routes_request_payload(
         "travelMode": "DRIVE",
         "routingPreference": "TRAFFIC_AWARE",
         "computeAlternativeRoutes": True,
+        "polylineEncoding": "GEO_JSON_LINESTRING",
+        "polylineQuality": "OVERVIEW",
         "extraComputations": ["TOLLS"],
     }
 
@@ -289,37 +311,120 @@ def _parse_toll_cost(route: _GoogleRoute) -> Decimal | None:
     return _parse_google_money(price)
 
 
-def parse_google_routes_response(
-    payload: object,
-) -> tuple[RouteCandidate, ...]:
-    """Normalize a Google Compute Routes response in provider-returned order."""
+def _parse_route_geometry(
+    polyline: _GooglePolyline | None,
+) -> RouteGeometry | None:
+    """Normalize a Google GeoJSON LineString into RouteValue geometry."""
+
+    if polyline is None or polyline.geo_json_linestring is None:
+        return None
+
+    geo_json = polyline.geo_json_linestring
+
+    if not isinstance(geo_json, dict):
+        return None
+
+    if geo_json.get("type") != "LineString":
+        return None
+
+    coordinates = geo_json.get("coordinates")
+
+    if not isinstance(coordinates, list):
+        return None
+
+    points: list[RoutePoint] = []
+
+    for coordinate in coordinates:
+        if not isinstance(coordinate, list) or len(coordinate) < 2:
+            return None
+
+        longitude = coordinate[0]
+        latitude = coordinate[1]
+
+        if (
+            isinstance(longitude, bool)
+            or not isinstance(longitude, (int, float))
+            or isinstance(latitude, bool)
+            or not isinstance(latitude, (int, float))
+        ):
+            return None
+
+        try:
+            point = RoutePoint(
+                latitude=float(latitude),
+                longitude=float(longitude),
+            )
+        except ValueError:
+            return None
+
+        points.append(point)
 
     try:
-        response = _GoogleComputeRoutesResponse.model_validate(payload)
+        return RouteGeometry(points=tuple(points))
+    except ValueError:
+        return None
+
+
+def _validate_google_routes_response(
+    payload: object,
+) -> _GoogleComputeRoutesResponse:
+    """Validate the provider response fields RouteValue depends on."""
+
+    try:
+        return _GoogleComputeRoutesResponse.model_validate(payload)
     except ValidationError as exc:
         raise GoogleRoutesResponseError("Google Routes response has an invalid structure") from exc
 
+
+def _to_route_candidate(route: _GoogleRoute) -> RouteCandidate:
+    """Normalize one Google route into the RouteValue decision model."""
+
+    return RouteCandidate(
+        distance_meters=route.distance_meters,
+        duration_seconds=_parse_duration_seconds(route.duration),
+        toll_cost=_parse_toll_cost(route),
+    )
+
+
+def parse_google_routes_response(
+    payload: object,
+) -> tuple[RouteCandidate, ...]:
+    """Normalize Google route candidates in provider-returned order."""
+
+    response = _validate_google_routes_response(payload)
+
+    return tuple(_to_route_candidate(route) for route in response.routes)
+
+
+def parse_google_provided_routes_response(
+    payload: object,
+) -> tuple[ProvidedRoute, ...]:
+    """Normalize Google routes and optional geometry in provider order."""
+
+    response = _validate_google_routes_response(payload)
+
     return tuple(
-        RouteCandidate(
-            distance_meters=route.distance_meters,
-            duration_seconds=_parse_duration_seconds(route.duration),
-            toll_cost=_parse_toll_cost(route),
+        ProvidedRoute(
+            route=_to_route_candidate(route),
+            geometry=_parse_route_geometry(route.polyline),
         )
         for route in response.routes
     )
 
 
 def _merge_unique_routes(
-    *route_groups: tuple[RouteCandidate, ...],
-) -> tuple[RouteCandidate, ...]:
-    """Merge route groups in order while preserving only the first exact duplicate."""
+    *route_groups: tuple[ProvidedRoute, ...],
+) -> tuple[ProvidedRoute, ...]:
+    """Merge route groups while preserving the first exact candidate."""
 
-    unique_routes: list[RouteCandidate] = []
+    unique_routes: list[ProvidedRoute] = []
 
     for route_group in route_groups:
-        for route in route_group:
-            if route not in unique_routes:
-                unique_routes.append(route)
+        for provided_route in route_group:
+            duplicate = any(existing.route == provided_route.route for existing in unique_routes)
+
+            if not duplicate:
+                unique_routes.append(provided_route)
 
     return tuple(unique_routes)
 

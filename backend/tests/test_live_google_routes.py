@@ -48,4 +48,6 @@ def test_google_routes_live_smoke() -> None:
         assert route.distance_meters > 0
         assert route.duration_seconds > 0
         assert route.toll_cost is None or route.toll_cost >= 0
-        assert provided_route.geometry is None
+
+        assert provided_route.geometry is not None
+        assert len(provided_route.geometry.points) >= 2

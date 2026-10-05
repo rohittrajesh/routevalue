@@ -95,26 +95,27 @@ def test_trip_evaluation_endpoint_returns_application_result() -> None:
         body = response.json()
 
         assert body["route_evaluations"] == [
-            {
-                "route": {
-                    "distance_meters": 10_000,
-                    "duration_seconds": 900,
-                    "toll_cost": "1.50",
-                },
-                "energy_estimate": {
-                    "cost": "2.25",
-                },
-                "eligibility": {
-                    "eligible": True,
-                    "reason": None,
-                },
-                "cost_breakdown": {
-                    "monetary_cost": "3.75",
-                    "time_cost": "4.5000",
-                    "generalized_cost": "8.2500",
-                },
-            }
-        ]
+    {
+        "route": {
+            "distance_meters": 10_000,
+            "duration_seconds": 900,
+            "toll_cost": "1.50",
+        },
+        "energy_estimate": {
+            "cost": "2.25",
+        },
+        "eligibility": {
+            "eligible": True,
+            "reason": None,
+        },
+        "cost_breakdown": {
+            "monetary_cost": "3.75",
+            "time_cost": "4.5000",
+            "generalized_cost": "8.2500",
+        },
+        "geometry": None,
+    }
+]
 
         assert body["decision"] == {
             "recommended_route": {

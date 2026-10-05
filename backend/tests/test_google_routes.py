@@ -5,7 +5,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from routevalue.application.models import ResolvedLocation, RouteSearchRequest
+from routevalue.application.models import (
+    ResolvedLocation,
+    RouteGeometry,
+    RoutePoint,
+    RouteSearchRequest,
+)
 from routevalue.application.ports import RouteProvider
 from routevalue.domain.models import RouteCandidate
 from routevalue.infrastructure.routing.google_routes import (
@@ -16,6 +21,7 @@ from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesRouteProvider,
     GoogleRoutesTransportError,
     build_google_routes_request_payload,
+    parse_google_provided_routes_response,
     parse_google_routes_response,
 )
 
@@ -370,6 +376,8 @@ def test_build_google_routes_request_payload_maps_place_ids() -> None:
         "travelMode": "DRIVE",
         "routingPreference": "TRAFFIC_AWARE",
         "computeAlternativeRoutes": True,
+        "polylineEncoding": "GEO_JSON_LINESTRING",
+        "polylineQuality": "OVERVIEW",
         "extraComputations": ["TOLLS"],
     }
 
@@ -418,7 +426,7 @@ def test_build_google_routes_request_payload_does_not_set_departure_time() -> No
 
 def test_google_routes_field_mask_requests_only_required_route_fields() -> None:
     assert GOOGLE_ROUTES_FIELD_MASK == (
-        "routes.distanceMeters,routes.duration,routes.travelAdvisory.tollInfo"
+        "routes.distanceMeters,routes.duration,routes.travelAdvisory.tollInfo,routes.polyline"
     )
 
 
@@ -463,6 +471,8 @@ def test_google_routes_provider_sends_expected_compute_routes_requests() -> None
             "travelMode": "DRIVE",
             "routingPreference": "TRAFFIC_AWARE",
             "computeAlternativeRoutes": True,
+            "polylineEncoding": "GEO_JSON_LINESTRING",
+            "polylineQuality": "OVERVIEW",
             "extraComputations": ["TOLLS"],
         },
         {
@@ -475,6 +485,8 @@ def test_google_routes_provider_sends_expected_compute_routes_requests() -> None
             "travelMode": "DRIVE",
             "routingPreference": "TRAFFIC_AWARE",
             "computeAlternativeRoutes": True,
+            "polylineEncoding": "GEO_JSON_LINESTRING",
+            "polylineQuality": "OVERVIEW",
             "extraComputations": ["TOLLS"],
             "routeModifiers": {
                 "avoidTolls": True,
@@ -804,11 +816,95 @@ def test_build_google_routes_request_payload_can_request_avoid_tolls() -> None:
         "travelMode": "DRIVE",
         "routingPreference": "TRAFFIC_AWARE",
         "computeAlternativeRoutes": True,
+        "polylineEncoding": "GEO_JSON_LINESTRING",
+        "polylineQuality": "OVERVIEW",
         "extraComputations": ["TOLLS"],
         "routeModifiers": {
             "avoidTolls": True,
         },
     }
+
+
+def test_google_routes_provider_deduplicates_by_candidate_and_keeps_first_geometry() -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        if request_count == 1:
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "routes": [
+                        {
+                            "distanceMeters": 10_000,
+                            "duration": "900s",
+                            "polyline": {
+                                "geoJsonLinestring": {
+                                    "type": "LineString",
+                                    "coordinates": [
+                                        [-117.23, 32.88],
+                                        [-117.20, 32.80],
+                                    ],
+                                }
+                            },
+                        }
+                    ]
+                },
+            )
+
+        return httpx.Response(
+            status_code=200,
+            json={
+                "routes": [
+                    {
+                        "distanceMeters": 10_000,
+                        "duration": "900s",
+                        "polyline": {
+                            "geoJsonLinestring": {
+                                "type": "LineString",
+                                "coordinates": [
+                                    [-117.23, 32.88],
+                                    [-117.00, 32.70],
+                                ],
+                            }
+                        },
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as client:
+        provider = GoogleRoutesRouteProvider(
+            api_key="test-api-key",
+            client=client,
+        )
+
+        provided_routes = provider.get_routes(_route_search_request())
+
+    assert len(provided_routes) == 1
+
+    assert provided_routes[0].route == RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+
+    assert provided_routes[0].geometry == RouteGeometry(
+        points=(
+            RoutePoint(
+                latitude=32.88,
+                longitude=-117.23,
+            ),
+            RoutePoint(
+                latitude=32.80,
+                longitude=-117.20,
+            ),
+        )
+    )
 
 
 def test_google_routes_provider_merges_candidate_sets_in_stable_order() -> None:
@@ -951,3 +1047,200 @@ def test_google_routes_provider_propagates_avoid_tolls_acquisition_failure() -> 
 
     assert exc_info.value.status_code == 403
     assert request_count == 2
+
+
+def test_parse_google_provided_routes_response_normalizes_geojson_geometry() -> None:
+    payload = {
+        "routes": [
+            {
+                "distanceMeters": 10_000,
+                "duration": "900s",
+                "polyline": {
+                    "geoJsonLinestring": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [-117.2340, 32.8801],
+                            [-117.2200, 32.8200],
+                            [-117.1933, 32.7338],
+                        ],
+                    }
+                },
+            }
+        ]
+    }
+
+    provided_routes = parse_google_provided_routes_response(payload)
+
+    assert len(provided_routes) == 1
+
+    provided_route = provided_routes[0]
+
+    assert provided_route.route == RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+
+    assert provided_route.geometry == RouteGeometry(
+        points=(
+            RoutePoint(
+                latitude=32.8801,
+                longitude=-117.2340,
+            ),
+            RoutePoint(
+                latitude=32.8200,
+                longitude=-117.2200,
+            ),
+            RoutePoint(
+                latitude=32.7338,
+                longitude=-117.1933,
+            ),
+        )
+    )
+
+
+def test_parse_google_provided_routes_response_preserves_route_geometry_association() -> None:
+    payload = {
+        "routes": [
+            {
+                "distanceMeters": 10_000,
+                "duration": "900s",
+                "polyline": {
+                    "geoJsonLinestring": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [-117.23, 32.88],
+                            [-117.20, 32.80],
+                        ],
+                    }
+                },
+            },
+            {
+                "distanceMeters": 12_000,
+                "duration": "800s",
+                "polyline": {
+                    "geoJsonLinestring": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [-117.23, 32.88],
+                            [-117.10, 32.75],
+                        ],
+                    }
+                },
+            },
+        ]
+    }
+
+    provided_routes = parse_google_provided_routes_response(payload)
+
+    assert tuple(provided_route.route.distance_meters for provided_route in provided_routes) == (
+        10_000,
+        12_000,
+    )
+
+    assert provided_routes[0].geometry == RouteGeometry(
+        points=(
+            RoutePoint(latitude=32.88, longitude=-117.23),
+            RoutePoint(latitude=32.80, longitude=-117.20),
+        )
+    )
+
+    assert provided_routes[1].geometry == RouteGeometry(
+        points=(
+            RoutePoint(latitude=32.88, longitude=-117.23),
+            RoutePoint(latitude=32.75, longitude=-117.10),
+        )
+    )
+
+
+def test_parse_google_provided_routes_response_allows_missing_geometry() -> None:
+    payload = {
+        "routes": [
+            {
+                "distanceMeters": 10_000,
+                "duration": "900s",
+            }
+        ]
+    }
+
+    provided_routes = parse_google_provided_routes_response(payload)
+
+    assert len(provided_routes) == 1
+    assert provided_routes[0].geometry is None
+
+    assert provided_routes[0].route == RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )
+
+
+@pytest.mark.parametrize(
+    "geo_json_linestring",
+    [
+        {
+            "type": "Point",
+            "coordinates": [
+                [-117.23, 32.88],
+                [-117.20, 32.80],
+            ],
+        },
+        {
+            "type": "LineString",
+            "coordinates": "not-a-coordinate-list",
+        },
+        {
+            "type": "LineString",
+            "coordinates": [
+                [-117.23],
+                [-117.20, 32.80],
+            ],
+        },
+        {
+            "type": "LineString",
+            "coordinates": [
+                ["not-longitude", 32.88],
+                [-117.20, 32.80],
+            ],
+        },
+        {
+            "type": "LineString",
+            "coordinates": [
+                [-117.23, 95.0],
+                [-117.20, 32.80],
+            ],
+        },
+        {
+            "type": "LineString",
+            "coordinates": [
+                [-117.23, 32.88],
+            ],
+        },
+    ],
+)
+def test_parse_google_provided_routes_response_treats_invalid_geometry_as_missing(
+    geo_json_linestring: object,
+) -> None:
+    payload = {
+        "routes": [
+            {
+                "distanceMeters": 10_000,
+                "duration": "900s",
+                "polyline": {
+                    "geoJsonLinestring": geo_json_linestring,
+                },
+            }
+        ]
+    }
+
+    provided_routes = parse_google_provided_routes_response(payload)
+
+    assert len(provided_routes) == 1
+
+    assert provided_routes[0].geometry is None
+
+    assert provided_routes[0].route == RouteCandidate(
+        distance_meters=10_000,
+        duration_seconds=900,
+        toll_cost=Decimal(0),
+    )

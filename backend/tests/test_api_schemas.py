@@ -12,6 +12,8 @@ from routevalue.api.schemas import (
     GasolineInputs,
     ResolvedLocationInput,
     RouteEvaluationResponse,
+    RouteGeometryResponse,
+    RoutePointResponse,
     RouteResponse,
     TripEvaluationRequest,
     TripEvaluationResponse,
@@ -273,6 +275,18 @@ def test_trip_evaluation_response_is_json_serializable() -> None:
                     time_cost=Decimal("4.50"),
                     generalized_cost=Decimal("8.25"),
                 ),
+                geometry=RouteGeometryResponse(
+                    points=[
+                        RoutePointResponse(
+                            latitude=32.8801,
+                            longitude=-117.2340,
+                        ),
+                        RoutePointResponse(
+                            latitude=32.7338,
+                            longitude=-117.1933,
+                        ),
+                    ]
+                ),
             )
         ],
         decision=DecisionResponse(
@@ -293,3 +307,39 @@ def test_trip_evaluation_response_is_json_serializable() -> None:
 
     assert serialized["route_evaluations"][0]["route"]["toll_cost"] == "1.50"
     assert serialized["route_evaluations"][0]["energy_estimate"]["cost"] == "2.25"
+    assert serialized["route_evaluations"][0]["geometry"] == {
+        "points": [
+            {
+                "latitude": 32.8801,
+                "longitude": -117.234,
+            },
+            {
+                "latitude": 32.7338,
+                "longitude": -117.1933,
+            },
+        ]
+    }
+
+
+def test_route_evaluation_response_allows_missing_geometry() -> None:
+    response = RouteEvaluationResponse(
+        route=RouteResponse(
+            distance_meters=10_000,
+            duration_seconds=900,
+            toll_cost=Decimal(0),
+        ),
+        energy_estimate=EnergyEstimateResponse(
+            cost=Decimal("2.00"),
+        ),
+        eligibility=EligibilityResponse(
+            eligible=True,
+            reason=None,
+        ),
+        cost_breakdown=CostBreakdownResponse(
+            monetary_cost=Decimal("2.00"),
+            time_cost=Decimal("4.50"),
+            generalized_cost=Decimal("6.50"),
+        ),
+    )
+
+    assert response.geometry is None
