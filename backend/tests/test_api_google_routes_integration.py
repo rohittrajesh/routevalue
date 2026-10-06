@@ -280,7 +280,8 @@ def test_trip_evaluation_endpoint_maps_google_http_failure_to_bad_gateway(
     assert request_count == 1
     assert response.status_code == 502
     assert response.json() == {
-        "detail": "routing provider request failed",
+        "code": "routing_service_error",
+        "detail": "The routing service could not complete this request.",
     }
 
 
@@ -327,12 +328,21 @@ def test_trip_evaluation_endpoint_maps_invalid_google_response_to_bad_gateway(
     assert request_count == 1
     assert response.status_code == 502
     assert response.json() == {
-        "detail": "routing provider returned an invalid response",
+        "code": "routing_response_invalid",
+        "detail": "The routing service returned an invalid response. Please try again.",
     }
 
 
-def test_trip_evaluation_endpoint_maps_google_server_failure_to_service_unavailable(
+@pytest.mark.parametrize(
+    "status_code",
+    [
+        429,
+        503,
+    ],
+)
+def test_trip_evaluation_endpoint_maps_temporary_google_failure_to_service_unavailable(
     monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
 ) -> None:
     request_count = 0
 
@@ -341,7 +351,7 @@ def test_trip_evaluation_endpoint_maps_google_server_failure_to_service_unavaila
         request_count += 1
 
         return httpx.Response(
-            status_code=503,
+            status_code=status_code,
             json={},
         )
 
@@ -371,5 +381,75 @@ def test_trip_evaluation_endpoint_maps_google_server_failure_to_service_unavaila
     assert request_count == 3
     assert response.status_code == 503
     assert response.json() == {
-        "detail": "routing provider unavailable",
+        "code": "routing_service_unavailable",
+        "detail": "Routes are temporarily unavailable. Please try again.",
+    }
+
+
+def test_trip_evaluation_endpoint_maps_google_transport_failure_to_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+
+        raise httpx.ConnectError(
+            "connection failed",
+            request=request,
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with httpx.Client(transport=transport) as google_client:
+
+        def override_google_routes_http_client() -> Generator[httpx.Client]:
+            yield google_client
+
+        monkeypatch.setenv(
+            "GOOGLE_ROUTES_API_KEY",
+            "integration-test-key",
+        )
+
+        app.dependency_overrides[get_google_routes_http_client] = override_google_routes_http_client
+
+        try:
+            with TestClient(app) as client:
+                response = client.post(
+                    "/trip-evaluations",
+                    json=_trip_payload(),
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+    assert request_count == 3
+    assert response.status_code == 503
+    assert response.json() == {
+        "code": "routing_service_unavailable",
+        "detail": "Routes are temporarily unavailable. Please try again.",
+    }
+
+
+def test_trip_evaluation_endpoint_maps_missing_server_configuration_to_safe_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(
+        "GOOGLE_ROUTES_API_KEY",
+        raising=False,
+    )
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/trip-evaluations",
+                json=_trip_payload(),
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "code": "service_configuration_error",
+        "detail": "RouteValue is temporarily unavailable. Please try again later.",
     }

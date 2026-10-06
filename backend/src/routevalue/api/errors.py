@@ -3,12 +3,34 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from routevalue.api.schemas import ApiErrorCode
 from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesError,
     GoogleRoutesHTTPError,
     GoogleRoutesResponseError,
     GoogleRoutesTransportError,
 )
+
+
+class ServiceConfigurationError(RuntimeError):
+    """Raised when required server-side RouteValue configuration is unavailable."""
+
+
+def _api_error_response(
+    *,
+    status_code: int,
+    code: ApiErrorCode,
+    detail: str,
+) -> JSONResponse:
+    """Build one stable RouteValue API error response."""
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "code": code.value,
+            "detail": detail,
+        },
+    )
 
 
 def google_routes_error_handler(
@@ -23,40 +45,53 @@ def google_routes_error_handler(
         raise TypeError("expected GoogleRoutesError")
 
     if isinstance(exc, GoogleRoutesTransportError):
-        return JSONResponse(
+        return _api_error_response(
             status_code=503,
-            content={
-                "detail": "routing provider unavailable",
-            },
+            code=ApiErrorCode.ROUTING_SERVICE_UNAVAILABLE,
+            detail="Routes are temporarily unavailable. Please try again.",
         )
 
     if isinstance(exc, GoogleRoutesHTTPError):
         if exc.status_code == 429 or 500 <= exc.status_code <= 599:
-            return JSONResponse(
+            return _api_error_response(
                 status_code=503,
-                content={
-                    "detail": "routing provider unavailable",
-                },
+                code=ApiErrorCode.ROUTING_SERVICE_UNAVAILABLE,
+                detail="Routes are temporarily unavailable. Please try again.",
             )
 
-        return JSONResponse(
+        return _api_error_response(
             status_code=502,
-            content={
-                "detail": "routing provider request failed",
-            },
+            code=ApiErrorCode.ROUTING_SERVICE_ERROR,
+            detail="The routing service could not complete this request.",
         )
 
     if isinstance(exc, GoogleRoutesResponseError):
-        return JSONResponse(
+        return _api_error_response(
             status_code=502,
-            content={
-                "detail": "routing provider returned an invalid response",
-            },
+            code=ApiErrorCode.ROUTING_RESPONSE_INVALID,
+            detail="The routing service returned an invalid response. Please try again.",
         )
 
-    return JSONResponse(
+    return _api_error_response(
         status_code=502,
-        content={
-            "detail": "routing provider failed",
-        },
+        code=ApiErrorCode.ROUTING_SERVICE_ERROR,
+        detail="The routing service could not complete this request.",
+    )
+
+
+def service_configuration_error_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Translate known server configuration failures into a safe public response."""
+
+    del request
+
+    if not isinstance(exc, ServiceConfigurationError):
+        raise TypeError("expected ServiceConfigurationError")
+
+    return _api_error_response(
+        status_code=500,
+        code=ApiErrorCode.SERVICE_CONFIGURATION_ERROR,
+        detail="RouteValue is temporarily unavailable. Please try again later.",
     )

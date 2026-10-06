@@ -7,6 +7,7 @@ from typing import Annotated
 import httpx
 from fastapi import Depends
 
+from routevalue.api.errors import ServiceConfigurationError
 from routevalue.api.mappers import (
     to_gasoline_vehicle_profile,
     to_user_override_fuel_price_quote,
@@ -30,7 +31,7 @@ def get_google_routes_api_key() -> str:
     api_key = os.getenv(_GOOGLE_ROUTES_API_KEY_ENV_VAR)
 
     if api_key is None or not api_key.strip():
-        raise RuntimeError(f"{_GOOGLE_ROUTES_API_KEY_ENV_VAR} must be configured")
+        raise ServiceConfigurationError(f"{_GOOGLE_ROUTES_API_KEY_ENV_VAR} must be configured")
 
     return api_key
 

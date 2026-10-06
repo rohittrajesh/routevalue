@@ -1,6 +1,32 @@
 {
   "components": {
     "schemas": {
+      "ApiErrorCode": {
+        "description": "Stable machine-readable error codes exposed by the public API.",
+        "enum": [
+          "routing_service_unavailable",
+          "routing_service_error",
+          "routing_response_invalid",
+          "service_configuration_error"
+        ],
+        "title": "ApiErrorCode",
+        "type": "string"
+      },
+      "ApiErrorResponse": {
+        "description": "Stable public representation of a RouteValue request failure.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ApiErrorCode"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": ["code", "detail"],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
       "CostBreakdownResponse": {
         "description": "Public representation of a route's personalized cost breakdown.",
         "properties": {
@@ -481,6 +507,36 @@
               }
             },
             "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "RouteValue server configuration is unavailable."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The routing service returned an unusable response."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The routing service is temporarily unavailable."
           }
         },
         "summary": "Evaluate Trip"

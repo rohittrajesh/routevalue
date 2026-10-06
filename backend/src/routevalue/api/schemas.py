@@ -15,6 +15,22 @@ class GasolineGradeInput(StrEnum):
     PREMIUM = "premium"
 
 
+class ApiErrorCode(StrEnum):
+    """Stable machine-readable error codes exposed by the public API."""
+
+    ROUTING_SERVICE_UNAVAILABLE = "routing_service_unavailable"
+    ROUTING_SERVICE_ERROR = "routing_service_error"
+    ROUTING_RESPONSE_INVALID = "routing_response_invalid"
+    SERVICE_CONFIGURATION_ERROR = "service_configuration_error"
+
+
+class ApiErrorResponse(BaseModel):
+    """Stable public representation of a RouteValue request failure."""
+
+    code: ApiErrorCode
+    detail: str
+
+
 class GasolineInputs(BaseModel):
     """Gasoline-specific personalization inputs for one trip evaluation."""
 

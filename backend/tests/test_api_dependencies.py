@@ -8,6 +8,7 @@ from routevalue.api.dependencies import (
     get_google_routes_http_client,
     get_trip_evaluation_orchestrator,
 )
+from routevalue.api.errors import ServiceConfigurationError
 from routevalue.api.schemas import (
     GasolineGradeInput,
     GasolineInputs,
@@ -125,7 +126,7 @@ def test_google_routes_api_key_is_required(
     )
 
     with pytest.raises(
-        RuntimeError,
+        ServiceConfigurationError,
         match="GOOGLE_ROUTES_API_KEY must be configured",
     ):
         get_google_routes_api_key()
@@ -140,7 +141,7 @@ def test_google_routes_api_key_cannot_be_blank(
     )
 
     with pytest.raises(
-        RuntimeError,
+        ServiceConfigurationError,
         match="GOOGLE_ROUTES_API_KEY must be configured",
     ):
         get_google_routes_api_key()

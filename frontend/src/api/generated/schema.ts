@@ -49,6 +49,25 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     /**
+     * ApiErrorCode
+     * @description Stable machine-readable error codes exposed by the public API.
+     * @enum {string}
+     */
+    ApiErrorCode:
+      | "routing_service_unavailable"
+      | "routing_service_error"
+      | "routing_response_invalid"
+      | "service_configuration_error";
+    /**
+     * ApiErrorResponse
+     * @description Stable public representation of a RouteValue request failure.
+     */
+    ApiErrorResponse: {
+      code: components["schemas"]["ApiErrorCode"];
+      /** Detail */
+      detail: string;
+    };
+    /**
      * CostBreakdownResponse
      * @description Public representation of a route's personalized cost breakdown.
      */
@@ -267,6 +286,33 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description RouteValue server configuration is unavailable. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description The routing service returned an unusable response. */
+      502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description The routing service is temporarily unavailable. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
     };

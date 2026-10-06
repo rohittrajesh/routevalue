@@ -11,6 +11,7 @@ from routevalue.api.mappers import (
     to_trip_evaluation_response,
 )
 from routevalue.api.schemas import (
+    ApiErrorResponse,
     TripEvaluationRequest,
     TripEvaluationResponse,
 )
@@ -22,6 +23,20 @@ router = APIRouter()
 @router.post(
     "/trip-evaluations",
     response_model=TripEvaluationResponse,
+    responses={
+        500: {
+            "model": ApiErrorResponse,
+            "description": "RouteValue server configuration is unavailable.",
+        },
+        502: {
+            "model": ApiErrorResponse,
+            "description": "The routing service returned an unusable response.",
+        },
+        503: {
+            "model": ApiErrorResponse,
+            "description": "The routing service is temporarily unavailable.",
+        },
+    },
 )
 def evaluate_trip(
     request: TripEvaluationRequest,
