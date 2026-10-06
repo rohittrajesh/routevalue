@@ -267,7 +267,7 @@ describe("RouteMap", () => {
 
     expect(circleInstances[0].options.radius).toBe(55);
     expect(circleInstances[1].options.radius).toBe(55);
-    
+
     expect(screen.getByText("Origin")).toBeInTheDocument();
     expect(screen.getByText("Destination")).toBeInTheDocument();
 
