@@ -48,11 +48,14 @@ describe("evaluateTrip", () => {
       },
     };
 
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => responseBody,
-    } as Response);
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(responseBody), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -66,33 +69,47 @@ describe("evaluateTrip", () => {
     );
   });
 
-  it("surfaces a stable API error message", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      json: async () => ({
-        detail: "routing provider unavailable",
-      }),
-    } as Response);
+  it("preserves a structured RouteValue API failure", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "routing_service_unavailable",
+          detail: "Routes are temporarily unavailable. Please try again.",
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(evaluateTrip(request)).rejects.toEqual(
-      expect.objectContaining({
-        message: "routing provider unavailable",
-        status: 503,
-      }),
+      new ApiRequestError(
+        "Routes are temporarily unavailable. Please try again.",
+        503,
+        "routing_service_unavailable",
+      ),
     );
   });
 
-  it("uses a friendly message for validation failures", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: async () => ({
-        detail: [],
-      }),
-    } as Response);
+  it("uses a friendly validation failure", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: [],
+        }),
+        {
+          status: 422,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -100,6 +117,91 @@ describe("evaluateTrip", () => {
       new ApiRequestError(
         "Some trip information is invalid. Please check your inputs.",
         422,
+        "validation_error",
+      ),
+    );
+  });
+
+  it("normalizes a browser network failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(evaluateTrip(request)).rejects.toEqual(
+      new ApiRequestError(
+        "RouteValue could not reach the server. Check your connection and try again.",
+        null,
+        "network_error",
+      ),
+    );
+  });
+
+  it("uses a safe fallback for an unstructured HTTP failure", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          unexpected: "server details",
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(evaluateTrip(request)).rejects.toEqual(
+      new ApiRequestError(
+        "RouteValue could not evaluate this trip. Please try again.",
+        500,
+        "unknown_error",
+      ),
+    );
+  });
+
+  it("uses a safe fallback when an error response is not JSON", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("not-json", {
+        status: 502,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(evaluateTrip(request)).rejects.toEqual(
+      new ApiRequestError(
+        "RouteValue could not evaluate this trip. Please try again.",
+        502,
+        "unknown_error",
+      ),
+    );
+  });
+
+  it("normalizes an invalid successful response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("not-json", {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(evaluateTrip(request)).rejects.toEqual(
+      new ApiRequestError(
+        "RouteValue received an unexpected response. Please try again.",
+        200,
+        "unexpected_response",
       ),
     );
   });

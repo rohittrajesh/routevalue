@@ -2,6 +2,10 @@ import type { components } from "../api/generated/schema";
 
 type ApiSchemas = components["schemas"];
 
+export type ApiErrorCode = ApiSchemas["ApiErrorCode"];
+
+export type ApiErrorResponse = ApiSchemas["ApiErrorResponse"];
+
 export type ResolvedLocationInput = ApiSchemas["ResolvedLocationInput"];
 
 export type GasolineGrade = ApiSchemas["GasolineGradeInput"];

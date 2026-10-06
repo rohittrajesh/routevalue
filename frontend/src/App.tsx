@@ -2,7 +2,11 @@ import { useState } from "react";
 
 import "./App.css";
 
-import { evaluateTrip } from "./api/tripEvaluations";
+import {
+  ApiRequestError,
+  evaluateTrip,
+  type ApiRequestErrorCode,
+} from "./api/tripEvaluations";
 import TripForm from "./components/TripForm";
 import TripResults from "./components/TripResults";
 import type {
@@ -16,11 +20,26 @@ interface EvaluatedLocations {
   destination: ResolvedLocationInput;
 }
 
+function getTripErrorHeading(code: ApiRequestErrorCode): string {
+  switch (code) {
+    case "validation_error":
+      return "Check your trip information.";
+
+    case "network_error":
+    case "routing_service_unavailable":
+    case "service_configuration_error":
+      return "RouteValue is temporarily unavailable.";
+
+    default:
+      return "We couldn't evaluate this trip.";
+  }
+}
+
 function App() {
   const [result, setResult] = useState<TripEvaluationResponse | null>(null);
   const [evaluatedLocations, setEvaluatedLocations] =
     useState<EvaluatedLocations | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiRequestError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleTripSubmit(request: TripEvaluationRequest) {
@@ -39,10 +58,16 @@ function App() {
 
       setResult(tripResult);
     } catch (caughtError) {
-      if (caughtError instanceof Error) {
-        setError(caughtError.message);
+      if (caughtError instanceof ApiRequestError) {
+        setError(caughtError);
       } else {
-        setError("RouteValue could not evaluate this trip.");
+        setError(
+          new ApiRequestError(
+            "RouteValue could not evaluate this trip. Please try again.",
+            null,
+            "unknown_error",
+          ),
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -83,8 +108,8 @@ function App() {
 
           {error !== null && (
             <div className="status-message error-message" role="alert">
-              <strong>We couldn't evaluate this trip.</strong>
-              <span>{error}</span>
+              <strong>{getTripErrorHeading(error.code)}</strong>
+              <span>{error.message}</span>
             </div>
           )}
         </div>
