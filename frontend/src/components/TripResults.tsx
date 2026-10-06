@@ -1,4 +1,10 @@
-import type { RouteResponse, TripEvaluationResponse } from "../types/api";
+import { useState } from "react";
+
+import type {
+  ResolvedLocationInput,
+  RouteResponse,
+  TripEvaluationResponse,
+} from "../types/api";
 
 import {
   formatDecisionReason,
@@ -8,8 +14,12 @@ import {
   formatMoney,
 } from "../utils/format";
 
+import RouteMap from "./RouteMap";
+
 interface TripResultsProps {
   result: TripEvaluationResponse;
+  origin: ResolvedLocationInput;
+  destination: ResolvedLocationInput;
 }
 
 function routesMatch(first: RouteResponse, second: RouteResponse): boolean {
@@ -20,7 +30,11 @@ function routesMatch(first: RouteResponse, second: RouteResponse): boolean {
   );
 }
 
-function TripResults({ result }: TripResultsProps) {
+function TripResults({ result, origin, destination }: TripResultsProps) {
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(
+    null,
+  );
+
   const recommendedRoute = result.decision.recommended_route;
 
   const recommendedIndex =
@@ -94,17 +108,33 @@ function TripResults({ result }: TripResultsProps) {
         </div>
       )}
 
+      <RouteMap
+        routeEvaluations={result.route_evaluations}
+        recommendedRouteIndex={recommendedIndex}
+        selectedRouteIndex={selectedRouteIndex}
+        origin={origin}
+        destination={destination}
+      />
+
       <div className="route-grid">
         {result.route_evaluations.map((evaluation, index) => {
           const recommended =
             recommendedRoute !== null &&
             routesMatch(evaluation.route, recommendedRoute);
 
+          const selected = selectedRouteIndex === index;
+
           return (
             <article
-              className={`route-card ${recommended ? "recommended-route" : ""}`}
-              aria-label={`Route ${index + 1}${
-                recommended ? ", recommended" : ""
+              className={[
+                "route-card",
+                recommended ? "recommended-route" : "",
+                selected ? "selected-route" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-label={`Route ${index + 1}${recommended ? ", recommended" : ""}${
+                selected ? ", selected for map inspection" : ""
               }`}
               key={index}
             >
@@ -175,6 +205,24 @@ function TripResults({ result }: TripResultsProps) {
                   </span>
                 </div>
               )}
+
+              {evaluation.geometry !== null &&
+                evaluation.geometry !== undefined && (
+                  <button
+                    type="button"
+                    className={`route-inspect-button ${
+                      selected ? "route-inspect-button-selected" : ""
+                    }`}
+                    aria-pressed={selected}
+                    onClick={() => {
+                      setSelectedRouteIndex((currentIndex) =>
+                        currentIndex === index ? null : index,
+                      );
+                    }}
+                  >
+                    {selected ? "Viewing on map" : "View on map"}
+                  </button>
+                )}
             </article>
           );
         })}

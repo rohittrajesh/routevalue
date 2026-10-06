@@ -6,12 +6,20 @@ import { evaluateTrip } from "./api/tripEvaluations";
 import TripForm from "./components/TripForm";
 import TripResults from "./components/TripResults";
 import type {
+  ResolvedLocationInput,
   TripEvaluationRequest,
   TripEvaluationResponse,
 } from "./types/api";
 
+interface EvaluatedLocations {
+  origin: ResolvedLocationInput;
+  destination: ResolvedLocationInput;
+}
+
 function App() {
   const [result, setResult] = useState<TripEvaluationResponse | null>(null);
+  const [evaluatedLocations, setEvaluatedLocations] =
+    useState<EvaluatedLocations | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -19,9 +27,16 @@ function App() {
     setIsSubmitting(true);
     setError(null);
     setResult(null);
+    setEvaluatedLocations(null);
 
     try {
       const tripResult = await evaluateTrip(request);
+
+      setEvaluatedLocations({
+        origin: request.origin,
+        destination: request.destination,
+      });
+
       setResult(tripResult);
     } catch (caughtError) {
       if (caughtError instanceof Error) {
@@ -96,7 +111,13 @@ function App() {
         </aside>
       </section>
 
-      {result !== null && <TripResults result={result} />}
+      {result !== null && evaluatedLocations !== null && (
+        <TripResults
+          result={result}
+          origin={evaluatedLocations.origin}
+          destination={evaluatedLocations.destination}
+        />
+      )}
     </main>
   );
 }
