@@ -36,10 +36,20 @@ function PlaceAutocompleteInput({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasCompletedSuggestionRequest, setHasCompletedSuggestionRequest] =
+    useState(false);
 
   function getSession(): Promise<PlacesAutocompleteSession> {
     if (sessionPromiseRef.current === null) {
-      sessionPromiseRef.current = createPlacesAutocompleteSession();
+      const sessionPromise = createPlacesAutocompleteSession();
+
+      sessionPromiseRef.current = sessionPromise;
+
+      void sessionPromise.catch(() => {
+        if (sessionPromiseRef.current === sessionPromise) {
+          sessionPromiseRef.current = null;
+        }
+      });
     }
 
     return sessionPromiseRef.current;
@@ -62,6 +72,7 @@ function PlaceAutocompleteInput({
       void (async () => {
         setIsLoading(true);
         setErrorMessage(null);
+        setHasCompletedSuggestionRequest(false);
 
         try {
           const session = await getSession();
@@ -75,6 +86,7 @@ function PlaceAutocompleteInput({
 
           setSuggestions(nextSuggestions);
           setActiveIndex(nextSuggestions.length > 0 ? 0 : -1);
+          setHasCompletedSuggestionRequest(true);
         } catch {
           if (requestId !== suggestionRequestIdRef.current) {
             return;
@@ -82,7 +94,10 @@ function PlaceAutocompleteInput({
 
           setSuggestions([]);
           setActiveIndex(-1);
-          setErrorMessage("Unable to load place suggestions.");
+          setErrorMessage(
+            "Unable to load place suggestions. Please try again.",
+          );
+          setHasCompletedSuggestionRequest(false);
         } finally {
           if (requestId === suggestionRequestIdRef.current) {
             setIsLoading(false);
@@ -117,6 +132,7 @@ function PlaceAutocompleteInput({
       setInputValue(location.display_name);
       setSuggestions([]);
       setActiveIndex(-1);
+      setHasCompletedSuggestionRequest(false);
 
       onLocationChange(location);
     } catch {
@@ -124,7 +140,9 @@ function PlaceAutocompleteInput({
         return;
       }
 
-      setErrorMessage("Unable to resolve the selected place.");
+      setErrorMessage(
+        "Unable to resolve the selected place. Please try again.",
+      );
     } finally {
       if (requestId === selectionRequestIdRef.current) {
         setIsLoading(false);
@@ -148,6 +166,7 @@ function PlaceAutocompleteInput({
     setActiveIndex(-1);
     setIsLoading(false);
     setErrorMessage(null);
+    setHasCompletedSuggestionRequest(false);
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -190,10 +209,19 @@ function PlaceAutocompleteInput({
     if (event.key === "Escape") {
       setSuggestions([]);
       setActiveIndex(-1);
+      setHasCompletedSuggestionRequest(false);
     }
   }
 
   const listboxId = `${inputId}-suggestions`;
+
+  const noSuggestionsFound =
+    hasCompletedSuggestionRequest &&
+    !isLoading &&
+    errorMessage === null &&
+    selectedLocation === null &&
+    inputValue.trim().length > 0 &&
+    suggestions.length === 0;
 
   return (
     <div className="field place-autocomplete">
@@ -271,6 +299,12 @@ function PlaceAutocompleteInput({
       {isLoading && (
         <span className="place-autocomplete-status" role="status">
           Finding places...
+        </span>
+      )}
+
+      {noSuggestionsFound && (
+        <span className="place-autocomplete-status" role="status">
+          No matching places found.
         </span>
       )}
 

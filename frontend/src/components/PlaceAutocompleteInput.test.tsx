@@ -25,6 +25,14 @@ const resolvedLocation = {
   source_id: "place-id",
 };
 
+const suggestions = [
+  {
+    id: "place-id",
+    primaryText: "UC San Diego",
+    secondaryText: "La Jolla, CA",
+  },
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
 
@@ -33,14 +41,7 @@ beforeEach(() => {
     resolveSuggestion: resolveSuggestionMock,
   });
 
-  fetchSuggestionsMock.mockResolvedValue([
-    {
-      id: "place-id",
-      primaryText: "UC San Diego",
-      secondaryText: "La Jolla, CA",
-    },
-  ]);
-
+  fetchSuggestionsMock.mockResolvedValue(suggestions);
   resolveSuggestionMock.mockResolvedValue(resolvedLocation);
 });
 
@@ -154,5 +155,170 @@ describe("PlaceAutocompleteInput", () => {
     });
 
     expect(onLocationChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("shows a clear empty state when no places match", async () => {
+    fetchSuggestionsMock.mockResolvedValueOnce([]);
+
+    render(
+      <PlaceAutocompleteInput
+        label="Origin"
+        placeholder="Search origin"
+        onLocationChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("combobox", {
+        name: "Origin",
+      }),
+      {
+        target: {
+          value: "No matching place",
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText("No matching places found."),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("retries session creation after the Google Places session initially fails", async () => {
+    createPlacesAutocompleteSessionMock
+      .mockRejectedValueOnce(new Error("Google Places failed to load"))
+      .mockResolvedValueOnce({
+        fetchSuggestions: fetchSuggestionsMock,
+        resolveSuggestion: resolveSuggestionMock,
+      });
+
+    render(
+      <PlaceAutocompleteInput
+        label="Origin"
+        placeholder="Search origin"
+        onLocationChange={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole("combobox", {
+      name: "Origin",
+    });
+
+    fireEvent.change(input, {
+      target: {
+        value: "UC San",
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Unable to load place suggestions. Please try again.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.change(input, {
+      target: {
+        value: "UC San D",
+      },
+    });
+
+    expect(await screen.findByText("UC San Diego")).toBeInTheDocument();
+
+    expect(createPlacesAutocompleteSessionMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a failed suggestion request without recreating the session", async () => {
+    fetchSuggestionsMock
+      .mockRejectedValueOnce(new Error("temporary suggestion failure"))
+      .mockResolvedValueOnce(suggestions);
+
+    render(
+      <PlaceAutocompleteInput
+        label="Origin"
+        placeholder="Search origin"
+        onLocationChange={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole("combobox", {
+      name: "Origin",
+    });
+
+    fireEvent.change(input, {
+      target: {
+        value: "UC San",
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Unable to load place suggestions. Please try again.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.change(input, {
+      target: {
+        value: "UC San D",
+      },
+    });
+
+    expect(await screen.findByText("UC San Diego")).toBeInTheDocument();
+
+    expect(createPlacesAutocompleteSessionMock).toHaveBeenCalledTimes(1);
+    expect(fetchSuggestionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows the user to retry after place resolution fails", async () => {
+    const onLocationChange = vi.fn();
+
+    resolveSuggestionMock
+      .mockRejectedValueOnce(new Error("temporary resolution failure"))
+      .mockResolvedValueOnce(resolvedLocation);
+
+    render(
+      <PlaceAutocompleteInput
+        label="Origin"
+        placeholder="Search origin"
+        onLocationChange={onLocationChange}
+      />,
+    );
+
+    const input = screen.getByRole("combobox", {
+      name: "Origin",
+    });
+
+    fireEvent.change(input, {
+      target: {
+        value: "UC San",
+      },
+    });
+
+    await screen.findByText("UC San Diego");
+
+    const suggestionButton = screen.getByRole("button", {
+      name: /UC San Diego/i,
+    });
+
+    fireEvent.click(suggestionButton);
+
+    expect(
+      await screen.findByText(
+        "Unable to resolve the selected place. Please try again.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(onLocationChange).not.toHaveBeenCalled();
+
+    fireEvent.click(suggestionButton);
+
+    await waitFor(() => {
+      expect(onLocationChange).toHaveBeenCalledWith(resolvedLocation);
+    });
+
+    expect(resolveSuggestionMock).toHaveBeenCalledTimes(2);
+    expect(input).toHaveValue(resolvedLocation.display_name);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
