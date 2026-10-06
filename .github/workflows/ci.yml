@@ -141,3 +141,49 @@ jobs:
 
       - name: Run Playwright E2E
         run: npm run test:e2e
+
+  backend-container:
+    name: Backend container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build backend image
+        run: docker build -t routevalue-backend:ci ./backend
+
+      - name: Start backend container
+        run: |
+          docker run -d \
+            --name routevalue-backend-ci \
+            -p 8001:8000 \
+            routevalue-backend:ci
+
+      - name: Smoke test health endpoint
+        run: |
+          for attempt in {1..30}; do
+            if response="$(curl -fsS http://127.0.0.1:8001/health 2>/dev/null)"; then
+              printf '%s\n' "$response"
+
+              if [ "$response" = '{"status":"ok"}' ]; then
+                exit 0
+              fi
+
+              echo "Unexpected health response."
+              docker logs routevalue-backend-ci
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          echo "Backend container did not become healthy in time."
+          docker logs routevalue-backend-ci
+          exit 1
+
+      - name: Clean up backend container
+        if: always()
+        run: docker rm -f routevalue-backend-ci 2>/dev/null || true
