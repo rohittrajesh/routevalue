@@ -4,6 +4,7 @@ import type {
   TripEvaluationRequest,
   TripEvaluationResponse,
 } from "../types/api";
+import { getApiBaseUrl } from "./config";
 
 export type ApiRequestErrorCode =
   | ApiErrorCode
@@ -58,7 +59,7 @@ export async function evaluateTrip(
   let response: Response;
 
   try {
-    response = await fetch("/api/trip-evaluations", {
+    response = await fetch(`${getApiBaseUrl()}/trip-evaluations`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

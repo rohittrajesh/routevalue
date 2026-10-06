@@ -188,15 +188,62 @@ The CI workflow independently verifies:
 
 Ordinary CI does not require Google API credentials.
 
-## Secrets
+## Environment configuration
 
-Do not commit API keys or local `.env` files.
+RouteValue uses separate environment variables for local development and production deployment.
 
-Local development credentials are supplied through environment variables:
+### Backend
+
+Live Google Routes requests require:
 
 ```text
 GOOGLE_ROUTES_API_KEY
+```
+
+This is a server-side secret and must never be exposed to the frontend or committed to the repository.
+
+When the production frontend and backend use different origins, configure the allowed frontend origin with:
+
+```text
+ROUTEVALUE_CORS_ORIGINS
+```
+
+For example:
+
+```text
+ROUTEVALUE_CORS_ORIGINS=https://example.pages.dev
+```
+
+Multiple explicit origins may be provided as a comma-separated list.
+
+When `ROUTEVALUE_CORS_ORIGINS` is unset, RouteValue does not enable CORS middleware. This is the normal local-development behavior because Vite proxies frontend `/api` requests to the local backend.
+
+### Frontend
+
+The browser-side Google Maps / Places integration uses:
+
+```text
 VITE_GOOGLE_MAPS_API_KEY
 ```
 
-Production secret management and hosting configuration are intentionally deferred to the deployment milestone.
+This value is compiled into the frontend bundle and should therefore be treated as browser-visible. Production Google Cloud restrictions should limit it to the appropriate APIs and frontend origins.
+
+The production backend URL is configured with:
+
+```text
+VITE_API_BASE_URL
+```
+
+When it is unset, the frontend uses:
+
+```text
+/api
+```
+
+which preserves the existing local Vite proxy workflow.
+
+In production, `VITE_API_BASE_URL` should contain the HTTPS origin of the deployed RouteValue backend.
+
+Do not commit API keys, secrets, or local `.env` files.
+
+Production credentials should be configured through the selected hosting providers' environment-variable and secret-management systems.
