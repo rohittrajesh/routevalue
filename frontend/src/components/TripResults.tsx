@@ -47,6 +47,8 @@ function TripResults({ result, origin, destination }: TripResultsProps) {
   const recommendedEvaluation =
     recommendedIndex >= 0 ? result.route_evaluations[recommendedIndex] : null;
 
+  const noRoutesFound = result.decision.candidate_count === 0;
+
   return (
     <section
       className="results-section"
@@ -70,7 +72,19 @@ function TripResults({ result, origin, destination }: TripResultsProps) {
         </span>
       </div>
 
-      {recommendedEvaluation !== null ? (
+      {noRoutesFound ? (
+        <div className="recommendation-summary recommendation-unavailable">
+          <div className="recommendation-copy">
+            <span className="recommendation-label">No routes found</span>
+
+            <strong>
+              RouteValue couldn't find a route between these locations.
+            </strong>
+
+            <p>Try a different origin or destination.</p>
+          </div>
+        </div>
+      ) : recommendedEvaluation !== null ? (
         <div className="recommendation-summary">
           <div className="recommendation-copy">
             <span className="recommendation-label">
@@ -102,136 +116,151 @@ function TripResults({ result, origin, destination }: TripResultsProps) {
             </span>
 
             <strong>
-              RouteValue does not have enough data to score these routes.
+              RouteValue found routes, but does not have enough data to score
+              them.
             </strong>
+
+            <p>
+              Review the route details below to see which data is unavailable.
+            </p>
           </div>
         </div>
       )}
 
-      <RouteMap
-        routeEvaluations={result.route_evaluations}
-        recommendedRouteIndex={recommendedIndex}
-        selectedRouteIndex={selectedRouteIndex}
-        origin={origin}
-        destination={destination}
-      />
+      {!noRoutesFound && (
+        <>
+          <RouteMap
+            routeEvaluations={result.route_evaluations}
+            recommendedRouteIndex={recommendedIndex}
+            selectedRouteIndex={selectedRouteIndex}
+            origin={origin}
+            destination={destination}
+          />
 
-      <div className="route-grid">
-        {result.route_evaluations.map((evaluation, index) => {
-          const recommended =
-            recommendedRoute !== null &&
-            routesMatch(evaluation.route, recommendedRoute);
+          <div className="route-grid">
+            {result.route_evaluations.map((evaluation, index) => {
+              const recommended =
+                recommendedRoute !== null &&
+                routesMatch(evaluation.route, recommendedRoute);
 
-          const selected = selectedRouteIndex === index;
+              const selected = selectedRouteIndex === index;
 
-          return (
-            <article
-              className={[
-                "route-card",
-                recommended ? "recommended-route" : "",
-                selected ? "selected-route" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-label={`Route ${index + 1}${recommended ? ", recommended" : ""}${
-                selected ? ", selected for map inspection" : ""
-              }`}
-              key={index}
-            >
-              <div className="route-card-header">
-                <div>
-                  <p className="route-number">Route {index + 1}</p>
+              return (
+                <article
+                  className={[
+                    "route-card",
+                    recommended ? "recommended-route" : "",
+                    selected ? "selected-route" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-label={`Route ${index + 1}${recommended ? ", recommended" : ""}${
+                    selected ? ", selected for map inspection" : ""
+                  }`}
+                  key={index}
+                >
+                  <div className="route-card-header">
+                    <div>
+                      <p className="route-number">Route {index + 1}</p>
 
-                  <h3>{formatDuration(evaluation.route.duration_seconds)}</h3>
+                      <h3>
+                        {formatDuration(evaluation.route.duration_seconds)}
+                      </h3>
 
-                  <p className="route-distance">
-                    {formatDistance(evaluation.route.distance_meters)}
-                  </p>
-                </div>
+                      <p className="route-distance">
+                        {formatDistance(evaluation.route.distance_meters)}
+                      </p>
+                    </div>
 
-                {recommended && (
-                  <span className="recommended-badge">Best match</span>
-                )}
-              </div>
-
-              {evaluation.cost_breakdown !== null ? (
-                <>
-                  <div className="personalized-cost-hero">
-                    <span>Personalized route cost</span>
-
-                    <strong>
-                      {formatMoney(evaluation.cost_breakdown.generalized_cost)}
-                    </strong>
-
-                    <small>Fuel + tolls + value of your travel time</small>
+                    {recommended && (
+                      <span className="recommended-badge">Best match</span>
+                    )}
                   </div>
 
-                  <dl className="cost-details">
-                    <div>
-                      <dt>Fuel</dt>
-                      <dd>
-                        {evaluation.energy_estimate === null
-                          ? "Unavailable"
-                          : formatMoney(evaluation.energy_estimate.cost)}
-                      </dd>
+                  {evaluation.cost_breakdown !== null ? (
+                    <>
+                      <div className="personalized-cost-hero">
+                        <span>Personalized route cost</span>
+
+                        <strong>
+                          {formatMoney(
+                            evaluation.cost_breakdown.generalized_cost,
+                          )}
+                        </strong>
+
+                        <small>Fuel + tolls + value of your travel time</small>
+                      </div>
+
+                      <dl className="cost-details">
+                        <div>
+                          <dt>Fuel</dt>
+                          <dd>
+                            {evaluation.energy_estimate === null
+                              ? "Unavailable"
+                              : formatMoney(evaluation.energy_estimate.cost)}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Tolls</dt>
+                          <dd>{formatMoney(evaluation.route.toll_cost)}</dd>
+                        </div>
+
+                        <div className="cost-subtotal">
+                          <dt>Direct monetary cost</dt>
+                          <dd>
+                            {formatMoney(
+                              evaluation.cost_breakdown.monetary_cost,
+                            )}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Value of travel time</dt>
+                          <dd>
+                            {formatMoney(evaluation.cost_breakdown.time_cost)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </>
+                  ) : (
+                    <div className="route-unavailable">
+                      <strong>Unable to score this route</strong>
+
+                      <span>
+                        {formatEligibilityReason(evaluation.eligibility.reason)}
+                      </span>
                     </div>
+                  )}
 
-                    <div>
-                      <dt>Tolls</dt>
-                      <dd>{formatMoney(evaluation.route.toll_cost)}</dd>
-                    </div>
+                  {evaluation.geometry !== null &&
+                    evaluation.geometry !== undefined && (
+                      <button
+                        type="button"
+                        className={`route-inspect-button ${
+                          selected ? "route-inspect-button-selected" : ""
+                        }`}
+                        aria-pressed={selected}
+                        onClick={() => {
+                          setSelectedRouteIndex((currentIndex) =>
+                            currentIndex === index ? null : index,
+                          );
+                        }}
+                      >
+                        {selected ? "Viewing on map" : "View on map"}
+                      </button>
+                    )}
+                </article>
+              );
+            })}
+          </div>
 
-                    <div className="cost-subtotal">
-                      <dt>Direct monetary cost</dt>
-                      <dd>
-                        {formatMoney(evaluation.cost_breakdown.monetary_cost)}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Value of travel time</dt>
-                      <dd>
-                        {formatMoney(evaluation.cost_breakdown.time_cost)}
-                      </dd>
-                    </div>
-                  </dl>
-                </>
-              ) : (
-                <div className="route-unavailable">
-                  <strong>Unable to score this route</strong>
-
-                  <span>
-                    {formatEligibilityReason(evaluation.eligibility.reason)}
-                  </span>
-                </div>
-              )}
-
-              {evaluation.geometry !== null &&
-                evaluation.geometry !== undefined && (
-                  <button
-                    type="button"
-                    className={`route-inspect-button ${
-                      selected ? "route-inspect-button-selected" : ""
-                    }`}
-                    aria-pressed={selected}
-                    onClick={() => {
-                      setSelectedRouteIndex((currentIndex) =>
-                        currentIndex === index ? null : index,
-                      );
-                    }}
-                  >
-                    {selected ? "Viewing on map" : "View on map"}
-                  </button>
-                )}
-            </article>
-          );
-        })}
-      </div>
-
-      <p className="rounding-note">
-        Cost components are displayed to the nearest cent. RouteValue uses
-        full-precision values when calculating the personalized total.
-      </p>
+          <p className="rounding-note">
+            Cost components are displayed to the nearest cent. RouteValue uses
+            full-precision values when calculating the personalized total.
+          </p>
+        </>
+      )}
     </section>
   );
 }

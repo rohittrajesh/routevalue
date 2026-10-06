@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import "./App.css";
 
@@ -41,8 +41,15 @@ function App() {
     useState<EvaluatedLocations | null>(null);
   const [error, setError] = useState<ApiRequestError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInFlightRef = useRef(false);
 
   async function handleTripSubmit(request: TripEvaluationRequest) {
+    if (submissionInFlightRef.current) {
+      return;
+    }
+
+    submissionInFlightRef.current = true;
+
     setIsSubmitting(true);
     setError(null);
     setResult(null);
@@ -70,6 +77,7 @@ function App() {
         );
       }
     } finally {
+      submissionInFlightRef.current = false;
       setIsSubmitting(false);
     }
   }

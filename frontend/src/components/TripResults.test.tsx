@@ -231,6 +231,16 @@ describe("TripResults", () => {
     expect(
       screen.getByText(/toll information is unavailable/i),
     ).toBeInTheDocument();
+
+    expect(screen.getByText("No recommendation available")).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /RouteValue found routes, but does not have enough data to score them/i,
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId("route-map")).toBeInTheDocument();
   });
 
   it("lets the user inspect a different route without changing the recommendation", async () => {
@@ -267,6 +277,48 @@ describe("TripResults", () => {
         name: /route 1, recommended/i,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("renders a dedicated empty state when no routes are found", () => {
+    const emptyResult: TripEvaluationResponse = {
+      route_evaluations: [],
+      decision: {
+        recommended_route: null,
+        reason: null,
+        numerical_tie: false,
+        missing_data_present: false,
+        candidate_count: 0,
+        eligible_count: 0,
+      },
+    };
+
+    render(
+      <TripResults
+        result={emptyResult}
+        origin={origin}
+        destination={destination}
+      />,
+    );
+
+    expect(screen.getByText("No routes found")).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /RouteValue couldn't find a route between these locations/i,
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/Try a different origin or destination/i),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByTestId("route-map")).not.toBeInTheDocument();
+
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText(/does not have enough data to score/i),
+    ).not.toBeInTheDocument();
   });
 
   it("can clear the currently inspected route", async () => {
