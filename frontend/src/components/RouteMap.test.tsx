@@ -427,6 +427,56 @@ describe("RouteMap", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a localized error when the Maps library cannot be loaded", async () => {
+    googleMapsMocks.loadMapsLibrary.mockRejectedValueOnce(
+      new Error("temporary Maps failure"),
+    );
+
+    render(
+      <RouteMap
+        routeEvaluations={result.route_evaluations}
+        recommendedRouteIndex={0}
+        origin={origin}
+        destination={destination}
+      />,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The route comparison is available, but the map could not be loaded.",
+    );
+
+    expect(screen.getByText("Route map")).toBeInTheDocument();
+
+    expect(mapInstances).toHaveLength(0);
+    expect(polylineInstances).toHaveLength(0);
+    expect(circleInstances).toHaveLength(0);
+  });
+
+  it("shows a localized error when the Core library cannot be loaded", async () => {
+    googleMapsMocks.loadCoreLibrary.mockRejectedValueOnce(
+      new Error("temporary Core failure"),
+    );
+
+    render(
+      <RouteMap
+        routeEvaluations={result.route_evaluations}
+        recommendedRouteIndex={0}
+        origin={origin}
+        destination={destination}
+      />,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The route comparison is available, but the map could not be loaded.",
+    );
+
+    expect(screen.getByText("Route map")).toBeInTheDocument();
+
+    expect(mapInstances).toHaveLength(0);
+    expect(polylineInstances).toHaveLength(0);
+    expect(circleInstances).toHaveLength(0);
+  });
+
   it("keeps the recommended route black when that route is inspected", async () => {
     const { rerender } = render(
       <RouteMap

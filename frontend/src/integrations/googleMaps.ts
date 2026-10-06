@@ -28,32 +28,46 @@ function configureGoogleMaps(): void {
   googleMapsConfigured = true;
 }
 
+function loadRetryableLibrary<T>(
+  libraryName: "places" | "maps" | "core",
+  currentPromise: Promise<T> | null,
+  setCurrentPromise: (promise: Promise<T> | null) => void,
+): Promise<T> {
+  if (currentPromise !== null) {
+    return currentPromise;
+  }
+
+  const libraryPromise = importLibrary(libraryName) as Promise<T>;
+
+  setCurrentPromise(libraryPromise);
+
+  void libraryPromise.catch(() => {
+    setCurrentPromise(null);
+  });
+
+  return libraryPromise;
+}
+
 export async function loadPlacesLibrary(): Promise<google.maps.PlacesLibrary> {
   configureGoogleMaps();
 
-  if (placesLibraryPromise === null) {
-    placesLibraryPromise = importLibrary("places");
-  }
-
-  return placesLibraryPromise;
+  return loadRetryableLibrary("places", placesLibraryPromise, (promise) => {
+    placesLibraryPromise = promise;
+  });
 }
 
 export async function loadMapsLibrary(): Promise<google.maps.MapsLibrary> {
   configureGoogleMaps();
 
-  if (mapsLibraryPromise === null) {
-    mapsLibraryPromise = importLibrary("maps");
-  }
-
-  return mapsLibraryPromise;
+  return loadRetryableLibrary("maps", mapsLibraryPromise, (promise) => {
+    mapsLibraryPromise = promise;
+  });
 }
 
 export async function loadCoreLibrary(): Promise<google.maps.CoreLibrary> {
   configureGoogleMaps();
 
-  if (coreLibraryPromise === null) {
-    coreLibraryPromise = importLibrary("core");
-  }
-
-  return coreLibraryPromise;
+  return loadRetryableLibrary("core", coreLibraryPromise, (promise) => {
+    coreLibraryPromise = promise;
+  });
 }
