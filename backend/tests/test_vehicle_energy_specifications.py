@@ -9,7 +9,7 @@ from routevalue.domain.models import (
 )
 
 
-def test_gasoline_vehicle_specification_accepts_valid_values() -> None:
+def test_gasoline_vehicle_specification_accepts_combined_only_values() -> None:
     specification = GasolineVehicleSpecification(
         combined_mpg=Decimal("31.5"),
         fuel_grade=GasolineGrade.REGULAR,
@@ -17,6 +17,22 @@ def test_gasoline_vehicle_specification_accepts_valid_values() -> None:
 
     assert specification.combined_mpg == Decimal("31.5")
     assert specification.fuel_grade is GasolineGrade.REGULAR
+    assert specification.city_mpg is None
+    assert specification.highway_mpg is None
+
+
+def test_gasoline_vehicle_specification_accepts_city_highway_and_combined_values() -> None:
+    specification = GasolineVehicleSpecification(
+        city_mpg=Decimal(28),
+        highway_mpg=Decimal(39),
+        combined_mpg=Decimal(32),
+        fuel_grade=GasolineGrade.PREMIUM,
+    )
+
+    assert specification.city_mpg == Decimal(28)
+    assert specification.highway_mpg == Decimal(39)
+    assert specification.combined_mpg == Decimal(32)
+    assert specification.fuel_grade is GasolineGrade.PREMIUM
 
 
 def test_gasoline_vehicle_specification_rejects_zero_combined_mpg() -> None:
@@ -37,6 +53,50 @@ def test_gasoline_vehicle_specification_rejects_negative_combined_mpg() -> None:
     ):
         GasolineVehicleSpecification(
             combined_mpg=Decimal(-1),
+            fuel_grade=GasolineGrade.REGULAR,
+        )
+
+
+@pytest.mark.parametrize(
+    "city_mpg",
+    [
+        Decimal(0),
+        Decimal(-1),
+    ],
+)
+def test_gasoline_vehicle_specification_rejects_nonpositive_city_mpg(
+    city_mpg: Decimal,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="city_mpg must be greater than zero when provided",
+    ):
+        GasolineVehicleSpecification(
+            city_mpg=city_mpg,
+            highway_mpg=Decimal(39),
+            combined_mpg=Decimal(32),
+            fuel_grade=GasolineGrade.REGULAR,
+        )
+
+
+@pytest.mark.parametrize(
+    "highway_mpg",
+    [
+        Decimal(0),
+        Decimal(-1),
+    ],
+)
+def test_gasoline_vehicle_specification_rejects_nonpositive_highway_mpg(
+    highway_mpg: Decimal,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="highway_mpg must be greater than zero when provided",
+    ):
+        GasolineVehicleSpecification(
+            city_mpg=Decimal(28),
+            highway_mpg=highway_mpg,
+            combined_mpg=Decimal(32),
             fuel_grade=GasolineGrade.REGULAR,
         )
 

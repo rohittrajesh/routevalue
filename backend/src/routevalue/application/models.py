@@ -1,6 +1,7 @@
 """Application-layer models for RouteValue use cases."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from routevalue.domain.models import (
     CostBreakdown,
@@ -8,6 +9,7 @@ from routevalue.domain.models import (
     EligibilityResult,
     EnergyEstimate,
     RouteCandidate,
+    VehicleEnergySpecification,
 )
 
 
@@ -81,6 +83,60 @@ class RouteSearchRequest:
 
     origin: ResolvedLocation
     destination: ResolvedLocation
+
+
+@dataclass(frozen=True, slots=True)
+class VehicleCatalogConfiguration:
+    """One provider-neutral selectable vehicle configuration."""
+
+    year: int
+    make: str
+    model: str
+    configuration: str
+    source: str
+    source_id: str
+
+    def __post_init__(self) -> None:
+        if self.year <= 0:
+            raise ValueError("year must be greater than zero")
+
+        if not self.make.strip():
+            raise ValueError("make cannot be blank")
+
+        if not self.model.strip():
+            raise ValueError("model cannot be blank")
+
+        if not self.configuration.strip():
+            raise ValueError("configuration cannot be blank")
+
+        if not self.source.strip():
+            raise ValueError("source cannot be blank")
+
+        if not self.source_id.strip():
+            raise ValueError("source_id cannot be blank")
+
+
+class VehicleSpecificationUnavailableReason(StrEnum):
+    """Structured reason a catalog configuration cannot yield a supported specification."""
+
+    UNSUPPORTED_POWERTRAIN = "unsupported_powertrain"
+    MISSING_REQUIRED_DATA = "missing_required_data"
+    NOT_FOUND = "not_found"
+
+
+@dataclass(frozen=True, slots=True)
+class VehicleSpecificationLookupResult:
+    """Provider-neutral result of resolving one catalog configuration."""
+
+    specification: VehicleEnergySpecification | None
+    unavailable_reason: VehicleSpecificationUnavailableReason | None
+
+    def __post_init__(self) -> None:
+        if (self.specification is None) == (self.unavailable_reason is None):
+            raise ValueError(
+                "vehicle specification lookup result requires exactly one of "
+                "specification or unavailable_reason"
+            )
 
 
 @dataclass(frozen=True, slots=True)

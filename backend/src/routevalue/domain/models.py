@@ -62,10 +62,18 @@ class GasolineVehicleSpecification:
 
     combined_mpg: MilesPerGallon
     fuel_grade: GasolineGrade
+    city_mpg: MilesPerGallon | None = None
+    highway_mpg: MilesPerGallon | None = None
 
     def __post_init__(self) -> None:
         if self.combined_mpg <= 0:
             raise ValueError("combined_mpg must be greater than zero")
+
+        if self.city_mpg is not None and self.city_mpg <= 0:
+            raise ValueError("city_mpg must be greater than zero when provided")
+
+        if self.highway_mpg is not None and self.highway_mpg <= 0:
+            raise ValueError("highway_mpg must be greater than zero when provided")
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,10 +81,18 @@ class ElectricVehicleSpecification:
     """Provider-neutral battery-electric efficiency inputs for energy modeling."""
 
     combined_kwh_per_mile: KilowattHoursPerMile
+    city_kwh_per_mile: KilowattHoursPerMile | None = None
+    highway_kwh_per_mile: KilowattHoursPerMile | None = None
 
     def __post_init__(self) -> None:
         if self.combined_kwh_per_mile <= 0:
             raise ValueError("combined_kwh_per_mile must be greater than zero")
+
+        if self.city_kwh_per_mile is not None and self.city_kwh_per_mile <= 0:
+            raise ValueError("city_kwh_per_mile must be greater than zero when provided")
+
+        if self.highway_kwh_per_mile is not None and self.highway_kwh_per_mile <= 0:
+            raise ValueError("highway_kwh_per_mile must be greater than zero when provided")
 
 
 type VehicleEnergySpecification = GasolineVehicleSpecification | ElectricVehicleSpecification

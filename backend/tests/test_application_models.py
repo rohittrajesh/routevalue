@@ -9,13 +9,19 @@ from routevalue.application.models import (
     RouteGeometry,
     RoutePoint,
     TripEvaluationResult,
+    VehicleCatalogConfiguration,
+    VehicleSpecificationLookupResult,
+    VehicleSpecificationUnavailableReason,
 )
 from routevalue.domain.models import (
     CostBreakdown,
     DecisionReason,
     DecisionResult,
+    ElectricVehicleSpecification,
     EligibilityResult,
     EnergyEstimate,
+    GasolineGrade,
+    GasolineVehicleSpecification,
     IneligibilityReason,
     RouteCandidate,
 )
@@ -250,6 +256,188 @@ def test_geometry_does_not_change_route_candidate_equality() -> None:
 
     assert first_provided_route.route == second_provided_route.route
     assert first_provided_route.geometry != second_provided_route.geometry
+
+
+def test_vehicle_catalog_configuration_preserves_catalog_identity() -> None:
+    configuration = VehicleCatalogConfiguration(
+        year=2026,
+        make="Toyota",
+        model="Camry",
+        configuration="2.5L 4cyl CVT (FWD)",
+        source="fueleconomy_gov",
+        source_id="12345",
+    )
+
+    assert configuration.year == 2026
+    assert configuration.make == "Toyota"
+    assert configuration.model == "Camry"
+    assert configuration.configuration == "2.5L 4cyl CVT (FWD)"
+    assert configuration.source == "fueleconomy_gov"
+    assert configuration.source_id == "12345"
+
+
+@pytest.mark.parametrize("year", [0, -1])
+def test_vehicle_catalog_configuration_rejects_nonpositive_year(year: int) -> None:
+    with pytest.raises(ValueError, match="year must be greater than zero"):
+        VehicleCatalogConfiguration(
+            year=year,
+            make="Toyota",
+            model="Camry",
+            configuration="2.5L 4cyl CVT (FWD)",
+            source="fueleconomy_gov",
+            source_id="12345",
+        )
+
+
+@pytest.mark.parametrize(
+    (
+        "make",
+        "model",
+        "configuration",
+        "source",
+        "source_id",
+        "message",
+    ),
+    [
+        (
+            "   ",
+            "Camry",
+            "2.5L 4cyl CVT (FWD)",
+            "fueleconomy_gov",
+            "12345",
+            "make cannot be blank",
+        ),
+        (
+            "Toyota",
+            "   ",
+            "2.5L 4cyl CVT (FWD)",
+            "fueleconomy_gov",
+            "12345",
+            "model cannot be blank",
+        ),
+        (
+            "Toyota",
+            "Camry",
+            "   ",
+            "fueleconomy_gov",
+            "12345",
+            "configuration cannot be blank",
+        ),
+        (
+            "Toyota",
+            "Camry",
+            "2.5L 4cyl CVT (FWD)",
+            "   ",
+            "12345",
+            "source cannot be blank",
+        ),
+        (
+            "Toyota",
+            "Camry",
+            "2.5L 4cyl CVT (FWD)",
+            "fueleconomy_gov",
+            "   ",
+            "source_id cannot be blank",
+        ),
+    ],
+)
+def test_vehicle_catalog_configuration_rejects_blank_required_text(
+    make: str,
+    model: str,
+    configuration: str,
+    source: str,
+    source_id: str,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        VehicleCatalogConfiguration(
+            year=2026,
+            make=make,
+            model=model,
+            configuration=configuration,
+            source=source,
+            source_id=source_id,
+        )
+
+
+def test_vehicle_specification_unavailable_reasons_are_stable() -> None:
+    assert tuple(reason.value for reason in VehicleSpecificationUnavailableReason) == (
+        "unsupported_powertrain",
+        "missing_required_data",
+        "not_found",
+    )
+
+
+def test_vehicle_specification_lookup_result_accepts_gasoline_specification() -> None:
+    specification = GasolineVehicleSpecification(
+        combined_mpg=Decimal("31.5"),
+        fuel_grade=GasolineGrade.REGULAR,
+    )
+
+    result = VehicleSpecificationLookupResult(
+        specification=specification,
+        unavailable_reason=None,
+    )
+
+    assert result.specification == specification
+    assert result.unavailable_reason is None
+
+
+def test_vehicle_specification_lookup_result_accepts_electric_specification() -> None:
+    specification = ElectricVehicleSpecification(
+        combined_kwh_per_mile=Decimal("0.285"),
+    )
+
+    result = VehicleSpecificationLookupResult(
+        specification=specification,
+        unavailable_reason=None,
+    )
+
+    assert result.specification == specification
+    assert result.unavailable_reason is None
+
+
+@pytest.mark.parametrize(
+    "reason",
+    list(VehicleSpecificationUnavailableReason),
+)
+def test_vehicle_specification_lookup_result_accepts_unavailable_reason(
+    reason: VehicleSpecificationUnavailableReason,
+) -> None:
+    result = VehicleSpecificationLookupResult(
+        specification=None,
+        unavailable_reason=reason,
+    )
+
+    assert result.specification is None
+    assert result.unavailable_reason is reason
+
+
+def test_vehicle_specification_lookup_result_rejects_missing_outcome() -> None:
+    with pytest.raises(
+        ValueError,
+        match="requires exactly one of specification or unavailable_reason",
+    ):
+        VehicleSpecificationLookupResult(
+            specification=None,
+            unavailable_reason=None,
+        )
+
+
+def test_vehicle_specification_lookup_result_rejects_conflicting_outcomes() -> None:
+    specification = GasolineVehicleSpecification(
+        combined_mpg=Decimal("31.5"),
+        fuel_grade=GasolineGrade.REGULAR,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="requires exactly one of specification or unavailable_reason",
+    ):
+        VehicleSpecificationLookupResult(
+            specification=specification,
+            unavailable_reason=VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN,
+        )
 
 
 def test_trip_evaluation_result_preserves_route_evaluations_and_decision() -> None:
