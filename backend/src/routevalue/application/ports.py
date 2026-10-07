@@ -3,12 +3,15 @@
 from collections.abc import Sequence
 from typing import Protocol
 
+from routevalue.application.identity import VerifiedExternalIdentity
 from routevalue.application.models import (
     ProvidedRoute,
     RouteSearchRequest,
     VehicleCatalogConfiguration,
     VehicleSpecificationLookupResult,
 )
+from routevalue.application.preferences import UserPreferences
+from routevalue.domain.identity import UserId
 from routevalue.domain.models import EnergyEstimate, RouteCandidate
 
 
@@ -73,4 +76,45 @@ class VehicleSpecificationProvider(Protocol):
         configuration: VehicleCatalogConfiguration,
     ) -> VehicleSpecificationLookupResult:
         """Resolve one catalog configuration to a normalized specification outcome."""
+        ...
+
+
+class AuthenticationVerifier(Protocol):
+    """Verifies credentials without exposing authentication-provider details."""
+
+    def verify_token(
+        self,
+        token: str,
+    ) -> VerifiedExternalIdentity:
+        """Return a verified identity or raise an authentication error."""
+        ...
+
+
+class UserIdentityRepository(Protocol):
+    """Maps verified external identities to permanent RouteValue users."""
+
+    def get_or_create_user_id(
+        self,
+        identity: VerifiedExternalIdentity,
+    ) -> UserId:
+        """Atomically return the stable internal user for an external identity."""
+        ...
+
+
+class UserPreferencesRepository(Protocol):
+    """Persists personalization settings for internal RouteValue users."""
+
+    def get_preferences(
+        self,
+        user_id: UserId,
+    ) -> UserPreferences:
+        """Return persisted preferences, using unset values when no row exists."""
+        ...
+
+    def save_preferences(
+        self,
+        user_id: UserId,
+        preferences: UserPreferences,
+    ) -> UserPreferences:
+        """Persist and return the complete preference state."""
         ...

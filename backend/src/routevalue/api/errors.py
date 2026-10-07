@@ -16,6 +16,14 @@ class ServiceConfigurationError(RuntimeError):
     """Raised when required server-side RouteValue configuration is unavailable."""
 
 
+class AuthenticationRequiredError(RuntimeError):
+    """Raised when an API request lacks acceptable authentication."""
+
+
+class AuthenticationServiceUnavailableError(RuntimeError):
+    """Raised when authentication cannot be verified due to provider availability."""
+
+
 def _api_error_response(
     *,
     status_code: int,
@@ -30,6 +38,46 @@ def _api_error_response(
             "code": code.value,
             "detail": detail,
         },
+    )
+
+
+def authentication_required_error_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Return the stable response for missing or invalid authentication."""
+
+    del request
+
+    if not isinstance(exc, AuthenticationRequiredError):
+        raise TypeError("expected AuthenticationRequiredError")
+
+    response = _api_error_response(
+        status_code=401,
+        code=ApiErrorCode.AUTHENTICATION_REQUIRED,
+        detail="Authentication is required.",
+    )
+
+    response.headers["WWW-Authenticate"] = "Bearer"
+
+    return response
+
+
+def authentication_service_unavailable_error_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Return the stable response when authentication verification is unavailable."""
+
+    del request
+
+    if not isinstance(exc, AuthenticationServiceUnavailableError):
+        raise TypeError("expected AuthenticationServiceUnavailableError")
+
+    return _api_error_response(
+        status_code=503,
+        code=ApiErrorCode.AUTHENTICATION_SERVICE_UNAVAILABLE,
+        detail="Authentication is temporarily unavailable. Please try again.",
     )
 
 

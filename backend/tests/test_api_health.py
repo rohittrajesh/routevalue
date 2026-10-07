@@ -58,6 +58,47 @@ def test_cors_allows_configured_frontend_origin(
     assert response.headers["access-control-allow-origin"] == frontend_origin
 
 
+def test_cors_allows_authenticated_v2_request_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frontend_origin = "https://routevalue.example.com"
+
+    monkeypatch.setenv(
+        "ROUTEVALUE_CORS_ORIGINS",
+        frontend_origin,
+    )
+
+    client = TestClient(create_app())
+
+    response = client.options(
+        "/api/v2/preferences",
+        headers={
+            "Origin": frontend_origin,
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": ("Authorization, Content-Type"),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == frontend_origin
+
+    allowed_methods = {
+        method.strip() for method in response.headers["access-control-allow-methods"].split(",")
+    }
+
+    assert {
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE",
+    } <= allowed_methods
+
+    allowed_headers = response.headers["access-control-allow-headers"].lower()
+
+    assert "authorization" in allowed_headers
+    assert "content-type" in allowed_headers
+
+
 def test_cors_rejects_unconfigured_origin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1,85 +1,20 @@
 """Integration tests against an isolated local PostgreSQL database."""
 
-import os
-from collections.abc import Iterator
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import delete, insert, select, text, update
-from sqlalchemy.engine import Connection, Engine, make_url
+from sqlalchemy import delete, insert, select, update
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import IntegrityError
 
-from routevalue.infrastructure.persistence.connection import (
-    create_application_engine,
-)
 from routevalue.infrastructure.persistence.schema import (
     auth_identities,
     saved_vehicles,
     user_preferences,
     users,
 )
-
-_TEST_DATABASE_ENV = "ROUTEVALUE_TEST_DATABASE_URL"
-_EXPECTED_REVISION = "7b3c2a91d0ef"
-
-
-@pytest.fixture(scope="module")
-def postgres_engine() -> Iterator[Engine]:
-    """Connect only to the explicitly approved disposable local database."""
-
-    raw_url = os.environ.get(_TEST_DATABASE_ENV)
-
-    if not raw_url:
-        pytest.skip("Local PostgreSQL integration tests require ROUTEVALUE_TEST_DATABASE_URL")
-
-    url = make_url(raw_url)
-
-    if (
-        url.drivername != "postgresql+psycopg"
-        or url.host != "127.0.0.1"
-        or url.port != 55432
-        or url.database != "routevalue_m3b4"
-        or url.username != "routevalue_local"
-    ):
-        pytest.fail(
-            "Integration tests may only use the designated local RouteValue PostgreSQL database"
-        )
-
-    engine = create_application_engine(url=url)
-
-    try:
-        with engine.connect() as connection:
-            revision = connection.execute(
-                text("SELECT version_num FROM public.alembic_version")
-            ).scalar_one()
-
-            if revision != _EXPECTED_REVISION:
-                pytest.fail(
-                    "Local test database must be migrated to the expected RouteValue revision"
-                )
-
-        yield engine
-
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def db_connection(
-    postgres_engine: Engine,
-) -> Iterator[Connection]:
-    """Provide a transaction that always rolls back after the test."""
-
-    with postgres_engine.connect() as connection:
-        transaction = connection.begin()
-
-        try:
-            yield connection
-        finally:
-            if transaction.is_active:
-                transaction.rollback()
 
 
 def _insert_user(connection: Connection) -> UUID:
@@ -157,6 +92,7 @@ def test_bev_snapshot_preserves_electricity_efficiency(
     db_connection: Connection,
 ) -> None:
     user_id = _insert_user(db_connection)
+
     vehicle_id = uuid4()
 
     db_connection.execute(
@@ -321,6 +257,7 @@ def test_default_vehicle_must_be_cleared_before_deletion(
     db_connection: Connection,
 ) -> None:
     user_id = _insert_user(db_connection)
+
     vehicle_id = _insert_gasoline_vehicle(
         db_connection,
         user_id,
@@ -365,6 +302,7 @@ def test_transaction_rollback_discards_user(
 
         try:
             connection.execute(insert(users).values(id=user_id))
+
         finally:
             transaction.rollback()
 

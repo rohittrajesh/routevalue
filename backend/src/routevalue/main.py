@@ -1,23 +1,63 @@
 """FastAPI entry point for RouteValue."""
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from routevalue.api.authentication import (
+    get_authentication_verifier,
+)
 from routevalue.api.errors import (
+    AuthenticationRequiredError,
+    AuthenticationServiceUnavailableError,
     ServiceConfigurationError,
+    authentication_required_error_handler,
+    authentication_service_unavailable_error_handler,
     google_routes_error_handler,
     service_configuration_error_handler,
 )
+from routevalue.api.preferences import (
+    close_user_preferences_resources,
+)
+from routevalue.api.preferences import (
+    router as preferences_router,
+)
 from routevalue.api.routes import router
-from routevalue.infrastructure.routing.google_routes import GoogleRoutesError
+from routevalue.api.user_identity import (
+    close_user_identity_resources,
+)
+from routevalue.infrastructure.routing.google_routes import (
+    GoogleRoutesError,
+)
 
 
 def _get_cors_origins() -> tuple[str, ...]:
-    raw_origins = os.environ.get("ROUTEVALUE_CORS_ORIGINS", "")
+    raw_origins = os.environ.get(
+        "ROUTEVALUE_CORS_ORIGINS",
+        "",
+    )
 
     return tuple(origin.strip() for origin in raw_origins.split(",") if origin.strip())
+
+
+@asynccontextmanager
+async def _lifespan(
+    app: FastAPI,
+) -> AsyncIterator[None]:
+    """Release cached external resources when the API shuts down."""
+
+    del app
+
+    try:
+        yield
+
+    finally:
+        close_user_preferences_resources()
+        close_user_identity_resources()
+        get_authentication_verifier.cache_clear()
 
 
 def create_app() -> FastAPI:
@@ -25,6 +65,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="RouteValue API",
+        lifespan=_lifespan,
     )
 
     cors_origins = _get_cors_origins()
@@ -33,9 +74,27 @@ def create_app() -> FastAPI:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=list(cors_origins),
-            allow_methods=["POST"],
-            allow_headers=["Content-Type"],
+            allow_methods=[
+                "GET",
+                "POST",
+                "PATCH",
+                "DELETE",
+            ],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+            ],
         )
+
+    app.add_exception_handler(
+        AuthenticationRequiredError,
+        authentication_required_error_handler,
+    )
+
+    app.add_exception_handler(
+        AuthenticationServiceUnavailableError,
+        authentication_service_unavailable_error_handler,
+    )
 
     app.add_exception_handler(
         GoogleRoutesError,
@@ -49,11 +108,15 @@ def create_app() -> FastAPI:
 
     app.include_router(router)
 
+    app.include_router(preferences_router)
+
     @app.get("/health")
     def health_check() -> dict[str, str]:
         """Report whether the RouteValue API process is available."""
 
-        return {"status": "ok"}
+        return {
+            "status": "ok",
+        }
 
     return app
 

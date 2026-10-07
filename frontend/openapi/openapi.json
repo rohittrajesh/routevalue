@@ -4,6 +4,8 @@
       "ApiErrorCode": {
         "description": "Stable machine-readable error codes exposed by the public API.",
         "enum": [
+          "authentication_required",
+          "authentication_service_unavailable",
           "routing_service_unavailable",
           "routing_service_error",
           "routing_response_invalid",
@@ -406,6 +408,50 @@
         "title": "TripEvaluationResponse",
         "type": "object"
       },
+      "UserPreferencesResponse": {
+        "description": "Public V2 representation of persisted user preferences.",
+        "properties": {
+          "value_of_time_per_hour": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Of Time Per Hour"
+          }
+        },
+        "required": ["value_of_time_per_hour"],
+        "title": "UserPreferencesResponse",
+        "type": "object"
+      },
+      "UserPreferencesUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Authenticated V2 request to update persisted preferences.",
+        "properties": {
+          "value_of_time_per_hour": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Of Time Per Hour"
+          }
+        },
+        "required": ["value_of_time_per_hour"],
+        "title": "UserPreferencesUpdateRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -442,6 +488,12 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -450,6 +502,134 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v2/preferences": {
+      "get": {
+        "description": "Return the authenticated user's persisted preferences.",
+        "operationId": "get_preferences_api_v2_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferencesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "RouteValue server configuration is unavailable."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is temporarily unavailable."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Preferences",
+        "tags": ["V2 Preferences"]
+      },
+      "patch": {
+        "description": "Update the authenticated user's persisted value of time.",
+        "operationId": "update_preferences_api_v2_preferences_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferencesUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferencesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "RouteValue server configuration is unavailable."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is temporarily unavailable."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Preferences",
+        "tags": ["V2 Preferences"]
+      }
+    },
     "/health": {
       "get": {
         "description": "Report whether the RouteValue API process is available.",

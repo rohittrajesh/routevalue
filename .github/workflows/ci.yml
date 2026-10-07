@@ -75,7 +75,14 @@ jobs:
         run: uv run alembic check
 
       - name: Run PostgreSQL integration tests
-        run: uv run pytest -q tests/test_postgres_integration.py
+        run: |
+          uv run pytest -q \
+            tests/test_postgres_integration.py \
+            tests/test_postgres_user_identity_repository.py \
+            tests/test_api_user_identity_postgres.py
+            tests/test_postgres_user_preferences_repository.py
+            tests/test_api_preferences_postgres.py
+            tests/test_api_preferences_authenticated_postgres.py
 
       - name: Run complete backend tests
         run: uv run pytest -q

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -17,6 +18,7 @@ from routevalue.api.schemas import (
     RouteResponse,
     TripEvaluationRequest,
     TripEvaluationResponse,
+    UserPreferencesUpdateRequest,
 )
 
 
@@ -343,3 +345,35 @@ def test_route_evaluation_response_allows_missing_geometry() -> None:
     )
 
     assert response.geometry is None
+
+
+def test_preferences_update_preserves_exact_decimal() -> None:
+    request = UserPreferencesUpdateRequest(value_of_time_per_hour=Decimal("27.123456789"))
+
+    assert request.value_of_time_per_hour == Decimal("27.123456789")
+
+
+def test_preferences_update_allows_explicit_null() -> None:
+    request = UserPreferencesUpdateRequest(value_of_time_per_hour=None)
+
+    assert request.value_of_time_per_hour is None
+
+
+def test_preferences_update_rejects_negative_value() -> None:
+    with pytest.raises(ValidationError):
+        UserPreferencesUpdateRequest(value_of_time_per_hour=Decimal("-0.01"))
+
+
+def test_preferences_update_requires_field() -> None:
+    with pytest.raises(ValidationError):
+        UserPreferencesUpdateRequest.model_validate({})
+
+
+def test_preferences_update_rejects_client_user_id() -> None:
+    with pytest.raises(ValidationError):
+        UserPreferencesUpdateRequest.model_validate(
+            {
+                "user_id": str(uuid4()),
+                "value_of_time_per_hour": "25",
+            }
+        )

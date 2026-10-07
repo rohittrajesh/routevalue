@@ -4,6 +4,30 @@
  */
 
 export interface paths {
+  "/api/v2/preferences": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Preferences
+     * @description Return the authenticated user's persisted preferences.
+     */
+    get: operations["get_preferences_api_v2_preferences_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Preferences
+     * @description Update the authenticated user's persisted value of time.
+     */
+    patch: operations["update_preferences_api_v2_preferences_patch"];
+    trace?: never;
+  };
   "/health": {
     parameters: {
       query?: never;
@@ -54,6 +78,8 @@ export interface components {
      * @enum {string}
      */
     ApiErrorCode:
+      | "authentication_required"
+      | "authentication_service_unavailable"
       | "routing_service_unavailable"
       | "routing_service_error"
       | "routing_response_invalid"
@@ -213,6 +239,22 @@ export interface components {
       /** Route Evaluations */
       route_evaluations: components["schemas"]["RouteEvaluationResponse"][];
     };
+    /**
+     * UserPreferencesResponse
+     * @description Public V2 representation of persisted user preferences.
+     */
+    UserPreferencesResponse: {
+      /** Value Of Time Per Hour */
+      value_of_time_per_hour: string | null;
+    };
+    /**
+     * UserPreferencesUpdateRequest
+     * @description Authenticated V2 request to update persisted preferences.
+     */
+    UserPreferencesUpdateRequest: {
+      /** Value Of Time Per Hour */
+      value_of_time_per_hour: number | string | null;
+    };
     /** ValidationError */
     ValidationError: {
       /** Context */
@@ -235,6 +277,113 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  get_preferences_api_v2_preferences_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserPreferencesResponse"];
+        };
+      };
+      /** @description Authentication is required. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description RouteValue server configuration is unavailable. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Authentication is temporarily unavailable. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  update_preferences_api_v2_preferences_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UserPreferencesUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserPreferencesResponse"];
+        };
+      };
+      /** @description Authentication is required. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description RouteValue server configuration is unavailable. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Authentication is temporarily unavailable. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
   health_check_health_get: {
     parameters: {
       query?: never;

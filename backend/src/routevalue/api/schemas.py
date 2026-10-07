@@ -18,6 +18,8 @@ class GasolineGradeInput(StrEnum):
 class ApiErrorCode(StrEnum):
     """Stable machine-readable error codes exposed by the public API."""
 
+    AUTHENTICATION_REQUIRED = "authentication_required"
+    AUTHENTICATION_SERVICE_UNAVAILABLE = "authentication_service_unavailable"
     ROUTING_SERVICE_UNAVAILABLE = "routing_service_unavailable"
     ROUTING_SERVICE_ERROR = "routing_service_error"
     ROUTING_RESPONSE_INVALID = "routing_response_invalid"
@@ -182,3 +184,32 @@ class TripEvaluationResponse(BaseModel):
 
     route_evaluations: list[RouteEvaluationResponse]
     decision: DecisionResponse
+
+
+class UserPreferencesResponse(BaseModel):
+    """Public V2 representation of persisted user preferences."""
+
+    value_of_time_per_hour: Decimal | None
+
+
+class UserPreferencesUpdateRequest(BaseModel):
+    """Authenticated V2 request to update persisted preferences."""
+
+    model_config = {
+        "extra": "forbid",
+    }
+
+    value_of_time_per_hour: Decimal | None
+
+    @field_validator("value_of_time_per_hour")
+    @classmethod
+    def value_of_time_cannot_be_negative(
+        cls,
+        value: Decimal | None,
+    ) -> Decimal | None:
+        """Reject negative persisted values of travel time."""
+
+        if value is not None and value < 0:
+            raise ValueError("value_of_time_per_hour cannot be negative")
+
+        return value
