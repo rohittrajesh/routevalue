@@ -4,10 +4,17 @@ from decimal import Decimal
 
 type Meters = int
 type Seconds = int
+
 type Money = Decimal
 type MoneyPerHour = Decimal
+
+type Gallons = Decimal
 type MilesPerGallon = Decimal
 type MoneyPerGallon = Decimal
+
+type KilowattHours = Decimal
+type KilowattHoursPerMile = Decimal
+type MoneyPerKilowattHour = Decimal
 
 SECONDS_PER_HOUR = Decimal(3600)
 METERS_PER_MILE = Decimal("1609.344")

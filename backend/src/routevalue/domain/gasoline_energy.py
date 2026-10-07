@@ -1,39 +1,53 @@
 """Pure gasoline energy estimation for RouteValue."""
 
+from routevalue.domain.energy_consumption import (
+    estimate_baseline_gasoline_consumption,
+)
 from routevalue.domain.models import (
     EnergyEstimate,
-    FuelPriceQuote,
+    GasolinePriceQuote,
     GasolineVehicleProfile,
+    GasolineVehicleSpecification,
     RouteCandidate,
 )
-from routevalue.domain.units import meters_to_miles
 
 
 def estimate_gasoline_energy(
     route: RouteCandidate,
     *,
     vehicle: GasolineVehicleProfile,
-    fuel_price_quote: FuelPriceQuote,
+    fuel_price_quote: GasolinePriceQuote,
 ) -> EnergyEstimate:
-    """Estimate route gasoline cost using distance, MPG, and resolved fuel price."""
+    """Estimate route gasoline consumption and cost using the baseline model."""
 
     if fuel_price_quote.fuel_grade is not vehicle.fuel_grade:
         raise ValueError("fuel price grade must match vehicle fuel grade")
 
-    distance_miles = meters_to_miles(route.distance_meters)
-    gallons_used = distance_miles / vehicle.fuel_efficiency_mpg
-    fuel_cost = gallons_used * fuel_price_quote.price_per_gallon
+    specification = GasolineVehicleSpecification(
+        combined_mpg=vehicle.fuel_efficiency_mpg,
+        fuel_grade=vehicle.fuel_grade,
+    )
 
-    return EnergyEstimate(cost=fuel_cost)
+    consumption = estimate_baseline_gasoline_consumption(
+        route,
+        vehicle=specification,
+    )
+
+    fuel_cost = consumption.gallons * fuel_price_quote.price_per_gallon
+
+    return EnergyEstimate(
+        cost=fuel_cost,
+        consumption=consumption,
+    )
 
 
 def estimate_gasoline_energy_if_available(
     route: RouteCandidate,
     *,
     vehicle: GasolineVehicleProfile,
-    fuel_price_quote: FuelPriceQuote | None,
+    fuel_price_quote: GasolinePriceQuote | None,
 ) -> EnergyEstimate | None:
-    """Estimate gasoline cost when the required fuel price is available."""
+    """Estimate gasoline energy when the required fuel price is available."""
 
     if fuel_price_quote is None:
         return None

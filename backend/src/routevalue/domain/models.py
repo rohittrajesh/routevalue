@@ -5,10 +5,14 @@ from datetime import datetime
 from enum import StrEnum
 
 from routevalue.domain.units import (
+    Gallons,
+    KilowattHours,
+    KilowattHoursPerMile,
     Meters,
     MilesPerGallon,
     Money,
     MoneyPerGallon,
+    MoneyPerKilowattHour,
     Seconds,
 )
 
@@ -52,7 +56,58 @@ class GasolineVehicleProfile:
             raise ValueError("fuel_efficiency_mpg must be greater than zero")
 
 
-class FuelPriceSource(StrEnum):
+@dataclass(frozen=True, slots=True)
+class GasolineVehicleSpecification:
+    """Provider-neutral gasoline efficiency inputs for energy modeling."""
+
+    combined_mpg: MilesPerGallon
+    fuel_grade: GasolineGrade
+
+    def __post_init__(self) -> None:
+        if self.combined_mpg <= 0:
+            raise ValueError("combined_mpg must be greater than zero")
+
+
+@dataclass(frozen=True, slots=True)
+class ElectricVehicleSpecification:
+    """Provider-neutral battery-electric efficiency inputs for energy modeling."""
+
+    combined_kwh_per_mile: KilowattHoursPerMile
+
+    def __post_init__(self) -> None:
+        if self.combined_kwh_per_mile <= 0:
+            raise ValueError("combined_kwh_per_mile must be greater than zero")
+
+
+type VehicleEnergySpecification = GasolineVehicleSpecification | ElectricVehicleSpecification
+
+
+@dataclass(frozen=True, slots=True)
+class GasolineConsumption:
+    """Physical gasoline consumed by a route."""
+
+    gallons: Gallons
+
+    def __post_init__(self) -> None:
+        if self.gallons < 0:
+            raise ValueError("gallons cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
+class ElectricConsumption:
+    """Physical electrical energy consumed by a route."""
+
+    kilowatt_hours: KilowattHours
+
+    def __post_init__(self) -> None:
+        if self.kilowatt_hours < 0:
+            raise ValueError("kilowatt_hours cannot be negative")
+
+
+type EnergyConsumption = GasolineConsumption | ElectricConsumption
+
+
+class GasolinePriceSource(StrEnum):
     """Source category for a gasoline price."""
 
     USER_OVERRIDE = "user_override"
@@ -60,20 +115,23 @@ class FuelPriceSource(StrEnum):
     REGIONAL_MARKET = "regional_market"
 
 
+FuelPriceSource = GasolinePriceSource
+
+
 @dataclass(frozen=True, slots=True)
-class FuelPriceQuote:
+class GasolinePriceQuote:
     """A grade-specific gasoline price available to the domain."""
 
     price_per_gallon: MoneyPerGallon
     fuel_grade: GasolineGrade
-    source: FuelPriceSource
+    source: GasolinePriceSource
     observed_at: datetime | None
 
     def __post_init__(self) -> None:
         if self.price_per_gallon < 0:
             raise ValueError("price_per_gallon cannot be negative")
 
-        if self.source is not FuelPriceSource.USER_OVERRIDE and self.observed_at is None:
+        if self.source is not GasolinePriceSource.USER_OVERRIDE and self.observed_at is None:
             raise ValueError("market fuel price requires an observation timestamp")
 
         if self.observed_at is not None and (
@@ -82,11 +140,29 @@ class FuelPriceQuote:
             raise ValueError("observed_at must be timezone-aware")
 
 
+FuelPriceQuote = GasolinePriceQuote
+
+
+@dataclass(frozen=True, slots=True)
+class ElectricityPriceQuote:
+    """Electricity price available to the domain."""
+
+    price_per_kilowatt_hour: MoneyPerKilowattHour
+
+    def __post_init__(self) -> None:
+        if self.price_per_kilowatt_hour < 0:
+            raise ValueError("price_per_kilowatt_hour cannot be negative")
+
+
+type EnergyPriceQuote = GasolinePriceQuote | ElectricityPriceQuote
+
+
 @dataclass(frozen=True, slots=True)
 class EnergyEstimate:
-    """Estimated monetary energy cost for a route."""
+    """Physical energy consumption and monetary energy cost for a route."""
 
     cost: Money
+    consumption: EnergyConsumption | None = None
 
     def __post_init__(self) -> None:
         if self.cost < 0:
@@ -125,7 +201,7 @@ class CostBreakdown:
 
 
 class IneligibilityReason(StrEnum):
-    """Structured reason explaining why a route cannot enter optimization."""
+    """Structured reason explaining why a route cannot enter normal optimization."""
 
     MISSING_TOLL_COST = "missing_toll_cost"
     MISSING_ENERGY_ESTIMATE = "missing_energy_estimate"
