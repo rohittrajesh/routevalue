@@ -94,3 +94,47 @@ def test_fastapi_shutdown_clears_preferences_repository(
     assert get_user_preferences_repository.cache_info().currsize == 0
 
     assert get_application_database_engine.cache_info().currsize == 0
+
+
+def test_fastapi_shutdown_clears_saved_vehicle_resources(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from routevalue.api.saved_vehicles import (
+        close_saved_vehicle_resources,
+        get_saved_vehicle_repository,
+        get_vehicle_http_client,
+        get_vehicle_specification_provider,
+    )
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        ("postgresql+psycopg://routevalue:placeholder@localhost/routevalue"),
+    )
+
+    close_saved_vehicle_resources()
+    close_user_identity_resources()
+
+    _ = get_saved_vehicle_repository()
+    client = get_vehicle_http_client()
+    _ = get_vehicle_specification_provider()
+
+    assert get_saved_vehicle_repository.cache_info().currsize == 1
+
+    assert get_vehicle_http_client.cache_info().currsize == 1
+
+    assert get_vehicle_specification_provider.cache_info().currsize == 1
+
+    with TestClient(create_app()) as test_client:
+        response = test_client.get("/health")
+
+        assert response.status_code == 200
+
+    assert client.is_closed
+
+    assert get_saved_vehicle_repository.cache_info().currsize == 0
+
+    assert get_vehicle_http_client.cache_info().currsize == 0
+
+    assert get_vehicle_specification_provider.cache_info().currsize == 0
+
+    assert get_application_database_engine.cache_info().currsize == 0

@@ -82,7 +82,9 @@ jobs:
             tests/test_api_user_identity_postgres.py \
             tests/test_postgres_user_preferences_repository.py \
             tests/test_api_preferences_postgres.py \
-            tests/test_api_preferences_authenticated_postgres.py
+            tests/test_api_preferences_authenticated_postgres.py \
+            tests/test_postgres_saved_vehicle_repository.py \
+            tests/test_api_saved_vehicles_authenticated_postgres.py
 
       - name: Run complete backend tests
         run: uv run pytest -q

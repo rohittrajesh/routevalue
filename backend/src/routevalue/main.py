@@ -13,11 +13,18 @@ from routevalue.api.authentication import (
 from routevalue.api.errors import (
     AuthenticationRequiredError,
     AuthenticationServiceUnavailableError,
+    SavedVehicleNotFoundError,
     ServiceConfigurationError,
+    VehicleConfigurationNotFoundError,
+    VehicleSpecificationUnavailableError,
     authentication_required_error_handler,
     authentication_service_unavailable_error_handler,
+    fuel_economy_error_handler,
     google_routes_error_handler,
+    saved_vehicle_not_found_error_handler,
     service_configuration_error_handler,
+    vehicle_configuration_not_found_error_handler,
+    vehicle_specification_unavailable_error_handler,
 )
 from routevalue.api.preferences import (
     close_user_preferences_resources,
@@ -26,11 +33,20 @@ from routevalue.api.preferences import (
     router as preferences_router,
 )
 from routevalue.api.routes import router
+from routevalue.api.saved_vehicles import (
+    close_saved_vehicle_resources,
+)
+from routevalue.api.saved_vehicles import (
+    router as saved_vehicles_router,
+)
 from routevalue.api.user_identity import (
     close_user_identity_resources,
 )
 from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesError,
+)
+from routevalue.infrastructure.vehicles.fueleconomy_gov import (
+    FuelEconomyGovError,
 )
 
 
@@ -55,6 +71,7 @@ async def _lifespan(
         yield
 
     finally:
+        close_saved_vehicle_resources()
         close_user_preferences_resources()
         close_user_identity_resources()
         get_authentication_verifier.cache_clear()
@@ -97,6 +114,26 @@ def create_app() -> FastAPI:
     )
 
     app.add_exception_handler(
+        SavedVehicleNotFoundError,
+        saved_vehicle_not_found_error_handler,
+    )
+
+    app.add_exception_handler(
+        VehicleConfigurationNotFoundError,
+        vehicle_configuration_not_found_error_handler,
+    )
+
+    app.add_exception_handler(
+        VehicleSpecificationUnavailableError,
+        vehicle_specification_unavailable_error_handler,
+    )
+
+    app.add_exception_handler(
+        FuelEconomyGovError,
+        fuel_economy_error_handler,
+    )
+
+    app.add_exception_handler(
         GoogleRoutesError,
         google_routes_error_handler,
     )
@@ -109,6 +146,8 @@ def create_app() -> FastAPI:
     app.include_router(router)
 
     app.include_router(preferences_router)
+
+    app.include_router(saved_vehicles_router)
 
     @app.get("/health")
     def health_check() -> dict[str, str]:

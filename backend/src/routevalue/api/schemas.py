@@ -23,7 +23,13 @@ class ApiErrorCode(StrEnum):
     ROUTING_SERVICE_UNAVAILABLE = "routing_service_unavailable"
     ROUTING_SERVICE_ERROR = "routing_service_error"
     ROUTING_RESPONSE_INVALID = "routing_response_invalid"
+    SAVED_VEHICLE_NOT_FOUND = "saved_vehicle_not_found"
     SERVICE_CONFIGURATION_ERROR = "service_configuration_error"
+    VEHICLE_CATALOG_RESPONSE_INVALID = "vehicle_catalog_response_invalid"
+    VEHICLE_CATALOG_SERVICE_ERROR = "vehicle_catalog_service_error"
+    VEHICLE_CATALOG_SERVICE_UNAVAILABLE = "vehicle_catalog_service_unavailable"
+    VEHICLE_CONFIGURATION_NOT_FOUND = "vehicle_configuration_not_found"
+    VEHICLE_SPECIFICATION_UNAVAILABLE = "vehicle_specification_unavailable"
 
 
 class ApiErrorResponse(BaseModel):

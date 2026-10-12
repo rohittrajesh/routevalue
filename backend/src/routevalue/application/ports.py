@@ -11,8 +11,18 @@ from routevalue.application.models import (
     VehicleSpecificationLookupResult,
 )
 from routevalue.application.preferences import UserPreferences
-from routevalue.domain.identity import UserId
-from routevalue.domain.models import EnergyEstimate, RouteCandidate
+from routevalue.application.saved_vehicles import (
+    SavedVehicle,
+    SavedVehicleSnapshot,
+)
+from routevalue.domain.identity import (
+    SavedVehicleId,
+    UserId,
+)
+from routevalue.domain.models import (
+    EnergyEstimate,
+    RouteCandidate,
+)
 
 
 class RouteProvider(Protocol):
@@ -117,4 +127,39 @@ class UserPreferencesRepository(Protocol):
         preferences: UserPreferences,
     ) -> UserPreferences:
         """Persist and return the complete preference state."""
+        ...
+
+
+class SavedVehicleRepository(Protocol):
+    """Persists normalized vehicle snapshots owned by internal users."""
+
+    def list_vehicles(
+        self,
+        user_id: UserId,
+    ) -> Sequence[SavedVehicle]:
+        """Return the user's saved vehicles in deterministic order."""
+        ...
+
+    def get_vehicle(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId,
+    ) -> SavedVehicle | None:
+        """Return one owned saved vehicle or None when unavailable."""
+        ...
+
+    def create_vehicle(
+        self,
+        user_id: UserId,
+        snapshot: SavedVehicleSnapshot,
+    ) -> SavedVehicle:
+        """Persist and return one user-owned vehicle snapshot."""
+        ...
+
+    def delete_vehicle(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId,
+    ) -> bool:
+        """Delete one owned vehicle and report whether it existed."""
         ...

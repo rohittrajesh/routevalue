@@ -28,6 +28,54 @@ export interface paths {
     patch: operations["update_preferences_api_v2_preferences_patch"];
     trace?: never;
   };
+  "/api/v2/vehicles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Saved Vehicles
+     * @description Return the authenticated user's saved vehicles.
+     */
+    get: operations["list_saved_vehicles_api_v2_vehicles_get"];
+    put?: never;
+    /**
+     * Create Saved Vehicle
+     * @description Revalidate and save one selected catalog configuration.
+     */
+    post: operations["create_saved_vehicle_api_v2_vehicles_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/vehicles/{vehicle_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Saved Vehicle
+     * @description Return one saved vehicle inside the caller's ownership scope.
+     */
+    get: operations["get_saved_vehicle_api_v2_vehicles__vehicle_id__get"];
+    put?: never;
+    post?: never;
+    /**
+     * Delete Saved Vehicle
+     * @description Delete one saved vehicle inside the caller's ownership scope.
+     */
+    delete: operations["delete_saved_vehicle_api_v2_vehicles__vehicle_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/health": {
     parameters: {
       query?: never;
@@ -83,7 +131,13 @@ export interface components {
       | "routing_service_unavailable"
       | "routing_service_error"
       | "routing_response_invalid"
-      | "service_configuration_error";
+      | "saved_vehicle_not_found"
+      | "service_configuration_error"
+      | "vehicle_catalog_response_invalid"
+      | "vehicle_catalog_service_error"
+      | "vehicle_catalog_service_unavailable"
+      | "vehicle_configuration_not_found"
+      | "vehicle_specification_unavailable";
     /**
      * ApiErrorResponse
      * @description Stable public representation of a RouteValue request failure.
@@ -123,6 +177,24 @@ export interface components {
       recommended_route: components["schemas"]["RouteResponse"] | null;
     };
     /**
+     * ElectricSavedVehicleSpecificationResponse
+     * @description Persisted battery-electric energy specification.
+     */
+    ElectricSavedVehicleSpecificationResponse: {
+      /** City Kwh Per Mile */
+      city_kwh_per_mile: string | null;
+      /** Combined Kwh Per Mile */
+      combined_kwh_per_mile: string;
+      /** Highway Kwh Per Mile */
+      highway_kwh_per_mile: string | null;
+      /**
+       * Powertrain
+       * @default bev
+       * @constant
+       */
+      powertrain: "bev";
+    };
+    /**
      * EligibilityResponse
      * @description Public representation of route eligibility.
      */
@@ -156,6 +228,29 @@ export interface components {
       fuel_grade: components["schemas"]["GasolineGradeInput"];
       /** Fuel Price Per Gallon */
       fuel_price_per_gallon: number | string;
+    };
+    /**
+     * GasolineSavedVehicleSpecificationResponse
+     * @description Persisted gasoline energy specification.
+     */
+    GasolineSavedVehicleSpecificationResponse: {
+      /** City Mpg */
+      city_mpg: string | null;
+      /** Combined Mpg */
+      combined_mpg: string;
+      /**
+       * Fuel Grade
+       * @enum {string}
+       */
+      fuel_grade: "regular" | "midgrade" | "premium";
+      /** Highway Mpg */
+      highway_mpg: string | null;
+      /**
+       * Powertrain
+       * @default gasoline
+       * @constant
+       */
+      powertrain: "gasoline";
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -218,6 +313,69 @@ export interface components {
       duration_seconds: number;
       /** Toll Cost */
       toll_cost: string | null;
+    };
+    /**
+     * SavedVehicleCreateRequest
+     * @description Catalog identity selected by an authenticated user.
+     */
+    SavedVehicleCreateRequest: {
+      /** Configuration */
+      configuration: string;
+      /** Make */
+      make: string;
+      /** Model */
+      model: string;
+      /** Source */
+      source: string;
+      /** Source Id */
+      source_id: string;
+      /** Year */
+      year: number;
+    };
+    /**
+     * SavedVehicleListResponse
+     * @description Authenticated user's saved vehicle collection.
+     */
+    SavedVehicleListResponse: {
+      /** Vehicles */
+      vehicles: components["schemas"]["SavedVehicleResponse"][];
+    };
+    /**
+     * SavedVehicleResponse
+     * @description Public representation of one user-owned vehicle snapshot.
+     */
+    SavedVehicleResponse: {
+      /** Configuration */
+      configuration: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Make */
+      make: string;
+      /** Model */
+      model: string;
+      /**
+       * Saved At
+       * Format: date-time
+       */
+      saved_at: string;
+      /** Source */
+      source: string;
+      /** Source Id */
+      source_id: string;
+      /** Specification */
+      specification:
+        | components["schemas"]["GasolineSavedVehicleSpecificationResponse"]
+        | components["schemas"]["ElectricSavedVehicleSpecificationResponse"];
+      /**
+       * Specification Retrieved At
+       * Format: date-time
+       */
+      specification_retrieved_at: string;
+      /** Year */
+      year: number;
     };
     /**
      * TripEvaluationRequest
@@ -374,6 +532,272 @@ export interface operations {
         };
       };
       /** @description Authentication is temporarily unavailable. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  list_saved_vehicles_api_v2_vehicles_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SavedVehicleListResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  create_saved_vehicle_api_v2_vehicles_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SavedVehicleCreateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SavedVehicleResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Bad Gateway */
+      502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  get_saved_vehicle_api_v2_vehicles__vehicle_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        vehicle_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SavedVehicleResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  delete_saved_vehicle_api_v2_vehicles__vehicle_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        vehicle_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Service Unavailable */
       503: {
         headers: {
           [name: string]: unknown;

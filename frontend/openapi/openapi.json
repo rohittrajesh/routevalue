@@ -9,7 +9,13 @@
           "routing_service_unavailable",
           "routing_service_error",
           "routing_response_invalid",
-          "service_configuration_error"
+          "saved_vehicle_not_found",
+          "service_configuration_error",
+          "vehicle_catalog_response_invalid",
+          "vehicle_catalog_service_error",
+          "vehicle_catalog_service_unavailable",
+          "vehicle_configuration_not_found",
+          "vehicle_specification_unavailable"
         ],
         "title": "ApiErrorCode",
         "type": "string"
@@ -104,6 +110,53 @@
         "title": "DecisionResponse",
         "type": "object"
       },
+      "ElectricSavedVehicleSpecificationResponse": {
+        "description": "Persisted battery-electric energy specification.",
+        "properties": {
+          "city_kwh_per_mile": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Kwh Per Mile"
+          },
+          "combined_kwh_per_mile": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Combined Kwh Per Mile",
+            "type": "string"
+          },
+          "highway_kwh_per_mile": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highway Kwh Per Mile"
+          },
+          "powertrain": {
+            "const": "bev",
+            "default": "bev",
+            "title": "Powertrain",
+            "type": "string"
+          }
+        },
+        "required": [
+          "combined_kwh_per_mile",
+          "city_kwh_per_mile",
+          "highway_kwh_per_mile"
+        ],
+        "title": "ElectricSavedVehicleSpecificationResponse",
+        "type": "object"
+      },
       "EligibilityResponse": {
         "description": "Public representation of route eligibility.",
         "properties": {
@@ -183,6 +236,54 @@
           "fuel_price_per_gallon"
         ],
         "title": "GasolineInputs",
+        "type": "object"
+      },
+      "GasolineSavedVehicleSpecificationResponse": {
+        "description": "Persisted gasoline energy specification.",
+        "properties": {
+          "city_mpg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Mpg"
+          },
+          "combined_mpg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Combined Mpg",
+            "type": "string"
+          },
+          "fuel_grade": {
+            "enum": ["regular", "midgrade", "premium"],
+            "title": "Fuel Grade",
+            "type": "string"
+          },
+          "highway_mpg": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highway Mpg"
+          },
+          "powertrain": {
+            "const": "gasoline",
+            "default": "gasoline",
+            "title": "Powertrain",
+            "type": "string"
+          }
+        },
+        "required": ["fuel_grade", "combined_mpg", "city_mpg", "highway_mpg"],
+        "title": "GasolineSavedVehicleSpecificationResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -354,6 +455,131 @@
         },
         "required": ["distance_meters", "duration_seconds", "toll_cost"],
         "title": "RouteResponse",
+        "type": "object"
+      },
+      "SavedVehicleCreateRequest": {
+        "additionalProperties": false,
+        "description": "Catalog identity selected by an authenticated user.",
+        "properties": {
+          "configuration": {
+            "title": "Configuration",
+            "type": "string"
+          },
+          "make": {
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "year": {
+            "minimum": 1.0,
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "make",
+          "model",
+          "configuration",
+          "source",
+          "source_id"
+        ],
+        "title": "SavedVehicleCreateRequest",
+        "type": "object"
+      },
+      "SavedVehicleListResponse": {
+        "description": "Authenticated user's saved vehicle collection.",
+        "properties": {
+          "vehicles": {
+            "items": {
+              "$ref": "#/components/schemas/SavedVehicleResponse"
+            },
+            "title": "Vehicles",
+            "type": "array"
+          }
+        },
+        "required": ["vehicles"],
+        "title": "SavedVehicleListResponse",
+        "type": "object"
+      },
+      "SavedVehicleResponse": {
+        "description": "Public representation of one user-owned vehicle snapshot.",
+        "properties": {
+          "configuration": {
+            "title": "Configuration",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "make": {
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "saved_at": {
+            "format": "date-time",
+            "title": "Saved At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "specification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GasolineSavedVehicleSpecificationResponse"
+              },
+              {
+                "$ref": "#/components/schemas/ElectricSavedVehicleSpecificationResponse"
+              }
+            ],
+            "title": "Specification"
+          },
+          "specification_retrieved_at": {
+            "format": "date-time",
+            "title": "Specification Retrieved At",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "year",
+          "make",
+          "model",
+          "configuration",
+          "source",
+          "source_id",
+          "specification_retrieved_at",
+          "saved_at",
+          "specification"
+        ],
+        "title": "SavedVehicleResponse",
         "type": "object"
       },
       "TripEvaluationRequest": {
@@ -628,6 +854,329 @@
         ],
         "summary": "Update Preferences",
         "tags": ["V2 Preferences"]
+      }
+    },
+    "/api/v2/vehicles": {
+      "get": {
+        "description": "Return the authenticated user's saved vehicles.",
+        "operationId": "list_saved_vehicles_api_v2_vehicles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedVehicleListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Saved Vehicles",
+        "tags": ["V2 Saved Vehicles"]
+      },
+      "post": {
+        "description": "Revalidate and save one selected catalog configuration.",
+        "operationId": "create_saved_vehicle_api_v2_vehicles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedVehicleCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedVehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Saved Vehicle",
+        "tags": ["V2 Saved Vehicles"]
+      }
+    },
+    "/api/v2/vehicles/{vehicle_id}": {
+      "delete": {
+        "description": "Delete one saved vehicle inside the caller's ownership scope.",
+        "operationId": "delete_saved_vehicle_api_v2_vehicles__vehicle_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Saved Vehicle",
+        "tags": ["V2 Saved Vehicles"]
+      },
+      "get": {
+        "description": "Return one saved vehicle inside the caller's ownership scope.",
+        "operationId": "get_saved_vehicle_api_v2_vehicles__vehicle_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedVehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Saved Vehicle",
+        "tags": ["V2 Saved Vehicles"]
       }
     },
     "/health": {
