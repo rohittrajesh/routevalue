@@ -3,6 +3,7 @@
 from decimal import Decimal
 from enum import StrEnum
 from typing import Self
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -58,7 +59,10 @@ class GasolineInputs(BaseModel):
 
     @field_validator("fuel_price_per_gallon")
     @classmethod
-    def fuel_price_cannot_be_negative(cls, value: Decimal) -> Decimal:
+    def fuel_price_cannot_be_negative(
+        cls,
+        value: Decimal,
+    ) -> Decimal:
         """Reject negative user-supplied gasoline prices."""
 
         if value < 0:
@@ -78,13 +82,19 @@ class ResolvedLocationInput(BaseModel):
 
     @field_validator("display_name")
     @classmethod
-    def display_name_cannot_be_blank(cls, value: str) -> str:
+    def display_name_cannot_be_blank(
+        cls,
+        value: str,
+    ) -> str:
         if not value.strip():
             raise ValueError("display_name cannot be blank")
 
         return value
 
-    @field_validator("source", "source_id")
+    @field_validator(
+        "source",
+        "source_id",
+    )
     @classmethod
     def external_reference_value_cannot_be_blank(
         cls,
@@ -96,7 +106,9 @@ class ResolvedLocationInput(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def external_reference_must_be_complete(self) -> Self:
+    def external_reference_must_be_complete(
+        self,
+    ) -> Self:
         if (self.source is None) != (self.source_id is None):
             raise ValueError("source and source_id must be provided together")
 
@@ -113,7 +125,10 @@ class TripEvaluationRequest(BaseModel):
 
     @field_validator("value_of_time_per_hour")
     @classmethod
-    def value_of_time_cannot_be_negative(cls, value: Decimal) -> Decimal:
+    def value_of_time_cannot_be_negative(
+        cls,
+        value: Decimal,
+    ) -> Decimal:
         """Reject negative values of travel time."""
 
         if value < 0:
@@ -196,16 +211,18 @@ class UserPreferencesResponse(BaseModel):
     """Public V2 representation of persisted user preferences."""
 
     value_of_time_per_hour: Decimal | None
+    default_vehicle_id: UUID | None
 
 
 class UserPreferencesUpdateRequest(BaseModel):
-    """Authenticated V2 request to update persisted preferences."""
+    """Authenticated partial update to persisted V2 preferences."""
 
     model_config = {
         "extra": "forbid",
     }
 
-    value_of_time_per_hour: Decimal | None
+    value_of_time_per_hour: Decimal | None = None
+    default_vehicle_id: UUID | None = None
 
     @field_validator("value_of_time_per_hour")
     @classmethod
@@ -219,3 +236,22 @@ class UserPreferencesUpdateRequest(BaseModel):
             raise ValueError("value_of_time_per_hour cannot be negative")
 
         return value
+
+    @model_validator(mode="after")
+    def update_must_contain_preference(
+        self,
+    ) -> Self:
+        """Require PATCH requests to explicitly update at least one field."""
+
+        if not self.model_fields_set:
+            raise ValueError("at least one preference field must be provided")
+
+        return self
+
+
+class UserProfileResponse(BaseModel):
+    """Public RouteValue-owned identity and profile summary."""
+
+    user_id: UUID
+    preferences_configured: bool
+    default_vehicle_id: UUID | None

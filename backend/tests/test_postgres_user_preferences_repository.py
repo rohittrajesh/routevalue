@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import delete, func, insert, select
@@ -11,7 +11,10 @@ from sqlalchemy.exc import IntegrityError
 
 from routevalue.application.ports import UserPreferencesRepository
 from routevalue.application.preferences import UserPreferences
-from routevalue.domain.identity import UserId
+from routevalue.domain.identity import (
+    SavedVehicleId,
+    UserId,
+)
 from routevalue.infrastructure.persistence.schema import (
     saved_vehicles,
     user_preferences,
@@ -52,7 +55,7 @@ def _delete_user(
 def _create_gasoline_vehicle(
     engine: Engine,
     user_id: UserId,
-) -> object:
+) -> UUID:
     vehicle_id = uuid4()
 
     with engine.begin() as connection:
@@ -245,28 +248,29 @@ def test_value_of_time_update_preserves_default_vehicle(
     )
 
     try:
-        with postgres_engine.begin() as connection:
-            connection.execute(
-                insert(user_preferences).values(
-                    user_id=user_id.value,
-                    value_of_time_per_hour=Decimal(10),
-                    default_vehicle_id=vehicle_id,
-                )
-            )
+        default_vehicle_id = SavedVehicleId(value=vehicle_id)
 
         _ = repository.save_preferences(
             user_id,
-            UserPreferences(value_of_time_per_hour=Decimal(30)),
+            UserPreferences(
+                value_of_time_per_hour=Decimal(10),
+                default_vehicle_id=(default_vehicle_id),
+            ),
         )
 
-        with postgres_engine.connect() as connection:
-            stored_default = connection.execute(
-                select(user_preferences.c.default_vehicle_id).where(
-                    user_preferences.c.user_id == user_id.value
-                )
-            ).scalar_one()
+        updated = repository.save_preferences(
+            user_id,
+            UserPreferences(
+                value_of_time_per_hour=Decimal(30),
+                default_vehicle_id=(default_vehicle_id),
+            ),
+        )
 
-        assert stored_default == vehicle_id
+        assert updated.value_of_time_per_hour == Decimal(30)
+
+        assert updated.default_vehicle_id == default_vehicle_id
+
+        assert repository.get_preferences(user_id) == updated
 
     finally:
         _delete_user(

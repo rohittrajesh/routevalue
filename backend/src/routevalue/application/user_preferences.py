@@ -1,11 +1,21 @@
-"""Application service for persistent RouteValue user preferences."""
+"""Application services for persistent RouteValue user preferences."""
 
 from dataclasses import dataclass
 
-from routevalue.application.ports import UserPreferencesRepository
+from routevalue.application.ports import (
+    SavedVehicleRepository,
+    UserPreferencesRepository,
+)
 from routevalue.application.preferences import UserPreferences
-from routevalue.domain.identity import UserId
+from routevalue.domain.identity import (
+    SavedVehicleId,
+    UserId,
+)
 from routevalue.domain.units import MoneyPerHour
+
+
+class DefaultVehicleUnavailableError(ValueError):
+    """Raised when a requested default vehicle is outside the user's ownership scope."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,23 +32,97 @@ class UserPreferencesService:
 
         return self.repository.get_preferences(user_id)
 
+    def save_preferences(
+        self,
+        user_id: UserId,
+        preferences: UserPreferences,
+    ) -> UserPreferences:
+        """Persist one complete preference state only when it changed."""
+
+        current = self.repository.get_preferences(user_id)
+
+        if preferences == current:
+            return current
+
+        return self.repository.save_preferences(
+            user_id,
+            preferences,
+        )
+
     def set_value_of_time(
         self,
         user_id: UserId,
         value_of_time_per_hour: MoneyPerHour | None,
     ) -> UserPreferences:
-        """Persist a new value of time, or clear the existing value."""
+        """Persist a new value of time while preserving other preferences."""
 
         current = self.repository.get_preferences(user_id)
 
         updated = UserPreferences(
             value_of_time_per_hour=value_of_time_per_hour,
+            default_vehicle_id=current.default_vehicle_id,
         )
 
         if updated == current:
             return current
 
         return self.repository.save_preferences(
+            user_id,
+            updated,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class UserDefaultVehicleService:
+    """Manage the user's default vehicle with ownership validation."""
+
+    preferences_repository: UserPreferencesRepository
+    saved_vehicle_repository: SavedVehicleRepository
+
+    def validate_default_vehicle(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId | None,
+    ) -> None:
+        """Require a non-null default vehicle to belong to the user."""
+
+        if vehicle_id is None:
+            return
+
+        if (
+            self.saved_vehicle_repository.get_vehicle(
+                user_id,
+                vehicle_id,
+            )
+            is None
+        ):
+            raise DefaultVehicleUnavailableError(
+                "default vehicle is not available inside the user's ownership scope"
+            )
+
+    def set_default_vehicle(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId | None,
+    ) -> UserPreferences:
+        """Set or clear the user's default saved vehicle."""
+
+        self.validate_default_vehicle(
+            user_id,
+            vehicle_id,
+        )
+
+        current = self.preferences_repository.get_preferences(user_id)
+
+        updated = UserPreferences(
+            value_of_time_per_hour=(current.value_of_time_per_hour),
+            default_vehicle_id=vehicle_id,
+        )
+
+        if updated == current:
+            return current
+
+        return self.preferences_repository.save_preferences(
             user_id,
             updated,
         )

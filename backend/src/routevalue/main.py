@@ -32,6 +32,9 @@ from routevalue.api.preferences import (
 from routevalue.api.preferences import (
     router as preferences_router,
 )
+from routevalue.api.profile import (
+    router as profile_router,
+)
 from routevalue.api.routes import router
 from routevalue.api.saved_vehicles import (
     close_saved_vehicle_resources,
@@ -144,6 +147,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+
+    app.include_router(profile_router)
 
     app.include_router(preferences_router)
 

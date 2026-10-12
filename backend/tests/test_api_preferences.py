@@ -1,21 +1,40 @@
 """Tests for authenticated V2 preference resources."""
 
 from decimal import Decimal
+from typing import cast
 from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from routevalue.api.errors import (
+    SavedVehicleNotFoundError,
+    saved_vehicle_not_found_error_handler,
+)
 from routevalue.api.preferences import (
     get_user_preferences_repository,
     router,
 )
+from routevalue.api.saved_vehicles import (
+    get_saved_vehicle_repository,
+)
 from routevalue.api.user_identity import (
     get_authenticated_user,
 )
-from routevalue.application.identity import AuthenticatedUser
-from routevalue.application.preferences import UserPreferences
-from routevalue.domain.identity import UserId
+from routevalue.application.identity import (
+    AuthenticatedUser,
+)
+from routevalue.application.preferences import (
+    UserPreferences,
+)
+from routevalue.application.saved_vehicles import (
+    SavedVehicle,
+    SavedVehicleSnapshot,
+)
+from routevalue.domain.identity import (
+    SavedVehicleId,
+    UserId,
+)
 
 
 class RecordingPreferencesRepository:
@@ -29,7 +48,12 @@ class RecordingPreferencesRepository:
 
         self.get_requests: list[UserId] = []
 
-        self.save_requests: list[tuple[UserId, UserPreferences]] = []
+        self.save_requests: list[
+            tuple[
+                UserId,
+                UserPreferences,
+            ]
+        ] = []
 
     def get_preferences(
         self,
@@ -59,18 +83,82 @@ class RecordingPreferencesRepository:
         return preferences
 
 
+class RecordingSavedVehicleRepository:
+    """Minimal ownership-aware saved-vehicle repository."""
+
+    def __init__(self) -> None:
+        self.owned_ids: dict[
+            UserId,
+            set[SavedVehicleId],
+        ] = {}
+
+    def list_vehicles(
+        self,
+        user_id: UserId,
+    ) -> tuple[SavedVehicle, ...]:
+        del user_id
+
+        return ()
+
+    def get_vehicle(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId,
+    ) -> SavedVehicle | None:
+        if vehicle_id not in self.owned_ids.get(
+            user_id,
+            set(),
+        ):
+            return None
+
+        return cast(
+            SavedVehicle,
+            object(),
+        )
+
+    def create_vehicle(
+        self,
+        user_id: UserId,
+        snapshot: SavedVehicleSnapshot,
+    ) -> SavedVehicle:
+        del user_id
+        del snapshot
+
+        raise AssertionError("create_vehicle should not be called")
+
+    def delete_vehicle(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId,
+    ) -> bool:
+        del user_id
+        del vehicle_id
+
+        return False
+
+
 def _test_client(
     *,
     user_id: UserId,
     repository: RecordingPreferencesRepository,
+    saved_vehicle_repository: (RecordingSavedVehicleRepository | None) = None,
 ) -> TestClient:
     app = FastAPI()
 
     app.include_router(router)
 
+    app.add_exception_handler(
+        SavedVehicleNotFoundError,
+        saved_vehicle_not_found_error_handler,
+    )
+
+    vehicle_repository = saved_vehicle_repository or RecordingSavedVehicleRepository()
+
     app.dependency_overrides[get_authenticated_user] = lambda: AuthenticatedUser(user_id=user_id)
 
     app.dependency_overrides[get_user_preferences_repository] = lambda: repository
+
+    app.dependency_overrides[get_saved_vehicle_repository] = lambda: vehicle_repository
 
     return TestClient(app)
 
@@ -86,8 +174,10 @@ def test_get_preferences_returns_unset_state_for_new_user() -> None:
     ).get("/api/v2/preferences")
 
     assert response.status_code == 200
+
     assert response.json() == {
         "value_of_time_per_hour": None,
+        "default_vehicle_id": None,
     }
 
     assert repository.get_requests == [user_id]
@@ -104,7 +194,7 @@ def test_patch_preferences_persists_exact_decimal() -> None:
     ).patch(
         "/api/v2/preferences",
         json={
-            "value_of_time_per_hour": "37.125",
+            "value_of_time_per_hour": ("37.125"),
         },
     )
 
@@ -112,12 +202,13 @@ def test_patch_preferences_persists_exact_decimal() -> None:
 
     assert response.json() == {
         "value_of_time_per_hour": "37.125",
+        "default_vehicle_id": None,
     }
 
     assert repository.save_requests == [
         (
             user_id,
-            UserPreferences(value_of_time_per_hour=Decimal("37.125")),
+            UserPreferences(value_of_time_per_hour=(Decimal("37.125"))),
         )
     ]
 
@@ -127,7 +218,7 @@ def test_patch_preferences_can_clear_value() -> None:
 
     repository = RecordingPreferencesRepository()
 
-    repository.preferences[user_id] = UserPreferences(value_of_time_per_hour=Decimal(42))
+    repository.preferences[user_id] = UserPreferences(value_of_time_per_hour=(Decimal(42)))
 
     response = _test_client(
         user_id=user_id,
@@ -143,7 +234,108 @@ def test_patch_preferences_can_clear_value() -> None:
 
     assert response.json() == {
         "value_of_time_per_hour": None,
+        "default_vehicle_id": None,
     }
+
+
+def test_patch_preferences_can_set_owned_default_vehicle() -> None:
+    user_id = UserId(value=uuid4())
+
+    vehicle_id = SavedVehicleId(value=uuid4())
+
+    repository = RecordingPreferencesRepository()
+
+    vehicle_repository = RecordingSavedVehicleRepository()
+
+    vehicle_repository.owned_ids[user_id] = {
+        vehicle_id,
+    }
+
+    response = _test_client(
+        user_id=user_id,
+        repository=repository,
+        saved_vehicle_repository=(vehicle_repository),
+    ).patch(
+        "/api/v2/preferences",
+        json={
+            "default_vehicle_id": (str(vehicle_id.value)),
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "value_of_time_per_hour": None,
+        "default_vehicle_id": (str(vehicle_id.value)),
+    }
+
+    assert repository.preferences[user_id].default_vehicle_id == vehicle_id
+
+
+def test_patch_preferences_can_clear_default_vehicle() -> None:
+    user_id = UserId(value=uuid4())
+
+    vehicle_id = SavedVehicleId(value=uuid4())
+
+    repository = RecordingPreferencesRepository()
+
+    repository.preferences[user_id] = UserPreferences(
+        value_of_time_per_hour=(Decimal(25)),
+        default_vehicle_id=vehicle_id,
+    )
+
+    response = _test_client(
+        user_id=user_id,
+        repository=repository,
+    ).patch(
+        "/api/v2/preferences",
+        json={
+            "default_vehicle_id": None,
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "value_of_time_per_hour": "25",
+        "default_vehicle_id": None,
+    }
+
+
+def test_patch_preferences_hides_foreign_default_vehicle() -> None:
+    authenticated_user = UserId(value=uuid4())
+
+    other_user = UserId(value=uuid4())
+
+    vehicle_id = SavedVehicleId(value=uuid4())
+
+    repository = RecordingPreferencesRepository()
+
+    vehicle_repository = RecordingSavedVehicleRepository()
+
+    vehicle_repository.owned_ids[other_user] = {
+        vehicle_id,
+    }
+
+    response = _test_client(
+        user_id=authenticated_user,
+        repository=repository,
+        saved_vehicle_repository=(vehicle_repository),
+    ).patch(
+        "/api/v2/preferences",
+        json={
+            "default_vehicle_id": (str(vehicle_id.value)),
+        },
+    )
+
+    assert response.status_code == 404
+
+    assert response.json() == {
+        "code": "saved_vehicle_not_found",
+        "detail": ("Saved vehicle was not found."),
+    }
+
+    assert repository.save_requests == []
 
 
 def test_patch_preferences_rejects_negative_value() -> None:
@@ -162,6 +354,25 @@ def test_patch_preferences_rejects_negative_value() -> None:
     )
 
     assert response.status_code == 422
+
+    assert repository.save_requests == []
+
+
+def test_patch_preferences_rejects_empty_update() -> None:
+    user_id = UserId(value=uuid4())
+
+    repository = RecordingPreferencesRepository()
+
+    response = _test_client(
+        user_id=user_id,
+        repository=repository,
+    ).patch(
+        "/api/v2/preferences",
+        json={},
+    )
+
+    assert response.status_code == 422
+
     assert repository.save_requests == []
 
 
@@ -182,6 +393,7 @@ def test_patch_preferences_rejects_client_supplied_user_id() -> None:
     )
 
     assert response.status_code == 422
+
     assert repository.save_requests == []
 
 

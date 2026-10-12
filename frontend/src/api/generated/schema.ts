@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+  "/api/v2/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Current User Profile
+     * @description Return RouteValue-owned state for the authenticated user.
+     */
+    get: operations["get_current_user_profile_api_v2_me_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/preferences": {
     parameters: {
       query?: never;
@@ -23,7 +43,7 @@ export interface paths {
     head?: never;
     /**
      * Update Preferences
-     * @description Update the authenticated user's persisted value of time.
+     * @description Atomically apply explicit authenticated preference updates.
      */
     patch: operations["update_preferences_api_v2_preferences_patch"];
     trace?: never;
@@ -402,16 +422,35 @@ export interface components {
      * @description Public V2 representation of persisted user preferences.
      */
     UserPreferencesResponse: {
+      /** Default Vehicle Id */
+      default_vehicle_id: string | null;
       /** Value Of Time Per Hour */
       value_of_time_per_hour: string | null;
     };
     /**
      * UserPreferencesUpdateRequest
-     * @description Authenticated V2 request to update persisted preferences.
+     * @description Authenticated partial update to persisted V2 preferences.
      */
     UserPreferencesUpdateRequest: {
+      /** Default Vehicle Id */
+      default_vehicle_id?: string | null;
       /** Value Of Time Per Hour */
-      value_of_time_per_hour: number | string | null;
+      value_of_time_per_hour?: number | string | null;
+    };
+    /**
+     * UserProfileResponse
+     * @description Public RouteValue-owned identity and profile summary.
+     */
+    UserProfileResponse: {
+      /** Default Vehicle Id */
+      default_vehicle_id: string | null;
+      /** Preferences Configured */
+      preferences_configured: boolean;
+      /**
+       * User Id
+       * Format: uuid
+       */
+      user_id: string;
     };
     /** ValidationError */
     ValidationError: {
@@ -435,6 +474,53 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  get_current_user_profile_api_v2_me_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserProfileResponse"];
+        };
+      };
+      /** @description Authentication is required. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description RouteValue server configuration is unavailable. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Authentication is temporarily unavailable. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
   get_preferences_api_v2_preferences_get: {
     parameters: {
       query?: never;
@@ -506,6 +592,15 @@ export interface operations {
       };
       /** @description Authentication is required. */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description The requested default saved vehicle is unavailable to this user. */
+      404: {
         headers: {
           [name: string]: unknown;
         };

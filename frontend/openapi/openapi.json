@@ -637,6 +637,18 @@
       "UserPreferencesResponse": {
         "description": "Public V2 representation of persisted user preferences.",
         "properties": {
+          "default_vehicle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Vehicle Id"
+          },
           "value_of_time_per_hour": {
             "anyOf": [
               {
@@ -650,14 +662,26 @@
             "title": "Value Of Time Per Hour"
           }
         },
-        "required": ["value_of_time_per_hour"],
+        "required": ["value_of_time_per_hour", "default_vehicle_id"],
         "title": "UserPreferencesResponse",
         "type": "object"
       },
       "UserPreferencesUpdateRequest": {
         "additionalProperties": false,
-        "description": "Authenticated V2 request to update persisted preferences.",
+        "description": "Authenticated partial update to persisted V2 preferences.",
         "properties": {
+          "default_vehicle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Vehicle Id"
+          },
           "value_of_time_per_hour": {
             "anyOf": [
               {
@@ -674,8 +698,36 @@
             "title": "Value Of Time Per Hour"
           }
         },
-        "required": ["value_of_time_per_hour"],
         "title": "UserPreferencesUpdateRequest",
+        "type": "object"
+      },
+      "UserProfileResponse": {
+        "description": "Public RouteValue-owned identity and profile summary.",
+        "properties": {
+          "default_vehicle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Vehicle Id"
+          },
+          "preferences_configured": {
+            "title": "Preferences Configured",
+            "type": "boolean"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": ["user_id", "preferences_configured", "default_vehicle_id"],
+        "title": "UserProfileResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -728,6 +780,61 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v2/me": {
+      "get": {
+        "description": "Return RouteValue-owned state for the authenticated user.",
+        "operationId": "get_current_user_profile_api_v2_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "RouteValue server configuration is unavailable."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is temporarily unavailable."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Current User Profile",
+        "tags": ["V2 Profile"]
+      }
+    },
     "/api/v2/preferences": {
       "get": {
         "description": "Return the authenticated user's persisted preferences.",
@@ -783,7 +890,7 @@
         "tags": ["V2 Preferences"]
       },
       "patch": {
-        "description": "Update the authenticated user's persisted value of time.",
+        "description": "Atomically apply explicit authenticated preference updates.",
         "operationId": "update_preferences_api_v2_preferences_patch",
         "requestBody": {
           "content": {
@@ -815,6 +922,16 @@
               }
             },
             "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The requested default saved vehicle is unavailable to this user."
           },
           "422": {
             "content": {

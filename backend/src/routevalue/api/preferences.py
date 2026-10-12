@@ -5,6 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
+from routevalue.api.errors import (
+    SavedVehicleNotFoundError,
+)
+from routevalue.api.saved_vehicles import (
+    get_saved_vehicle_repository,
+)
 from routevalue.api.schemas import (
     ApiErrorResponse,
     UserPreferencesResponse,
@@ -14,11 +20,23 @@ from routevalue.api.user_identity import (
     get_application_database_engine,
     get_authenticated_user,
 )
-from routevalue.application.identity import AuthenticatedUser
-from routevalue.application.ports import UserPreferencesRepository
-from routevalue.application.preferences import UserPreferences
+from routevalue.application.identity import (
+    AuthenticatedUser,
+)
+from routevalue.application.ports import (
+    SavedVehicleRepository,
+    UserPreferencesRepository,
+)
+from routevalue.application.preferences import (
+    UserPreferences,
+)
 from routevalue.application.user_preferences import (
+    DefaultVehicleUnavailableError,
+    UserDefaultVehicleService,
     UserPreferencesService,
+)
+from routevalue.domain.identity import (
+    SavedVehicleId,
 )
 from routevalue.infrastructure.persistence.user_preferences import (
     PostgresUserPreferencesRepository,
@@ -52,6 +70,24 @@ def get_user_preferences_service(
     )
 
 
+def get_user_default_vehicle_service(
+    preferences_repository: Annotated[
+        UserPreferencesRepository,
+        Depends(get_user_preferences_repository),
+    ],
+    saved_vehicle_repository: Annotated[
+        SavedVehicleRepository,
+        Depends(get_saved_vehicle_repository),
+    ],
+) -> UserDefaultVehicleService:
+    """Compose ownership-safe default-vehicle preference behavior."""
+
+    return UserDefaultVehicleService(
+        preferences_repository=preferences_repository,
+        saved_vehicle_repository=saved_vehicle_repository,
+    )
+
+
 def _to_response(
     preferences: UserPreferences,
 ) -> UserPreferencesResponse:
@@ -59,6 +95,11 @@ def _to_response(
 
     return UserPreferencesResponse(
         value_of_time_per_hour=(preferences.value_of_time_per_hour),
+        default_vehicle_id=(
+            preferences.default_vehicle_id.value
+            if preferences.default_vehicle_id is not None
+            else None
+        ),
     )
 
 
@@ -72,11 +113,11 @@ def _to_response(
         },
         500: {
             "model": ApiErrorResponse,
-            "description": "RouteValue server configuration is unavailable.",
+            "description": ("RouteValue server configuration is unavailable."),
         },
         503: {
             "model": ApiErrorResponse,
-            "description": "Authentication is temporarily unavailable.",
+            "description": ("Authentication is temporarily unavailable."),
         },
     },
 )
@@ -105,13 +146,17 @@ def get_preferences(
             "model": ApiErrorResponse,
             "description": "Authentication is required.",
         },
+        404: {
+            "model": ApiErrorResponse,
+            "description": ("The requested default saved vehicle is unavailable to this user."),
+        },
         500: {
             "model": ApiErrorResponse,
-            "description": "RouteValue server configuration is unavailable.",
+            "description": ("RouteValue server configuration is unavailable."),
         },
         503: {
             "model": ApiErrorResponse,
-            "description": "Authentication is temporarily unavailable.",
+            "description": ("Authentication is temporarily unavailable."),
         },
     },
 )
@@ -121,16 +166,53 @@ def update_preferences(
         AuthenticatedUser,
         Depends(get_authenticated_user),
     ],
-    service: Annotated[
+    preferences_service: Annotated[
         UserPreferencesService,
         Depends(get_user_preferences_service),
     ],
+    default_vehicle_service: Annotated[
+        UserDefaultVehicleService,
+        Depends(get_user_default_vehicle_service),
+    ],
 ) -> UserPreferencesResponse:
-    """Update the authenticated user's persisted value of time."""
+    """Atomically apply explicit authenticated preference updates."""
 
-    preferences = service.set_value_of_time(
+    current = preferences_service.get_preferences(user.user_id)
+
+    value_of_time_per_hour = (
+        request.value_of_time_per_hour
+        if "value_of_time_per_hour" in request.model_fields_set
+        else current.value_of_time_per_hour
+    )
+
+    default_vehicle_id = current.default_vehicle_id
+
+    if "default_vehicle_id" in request.model_fields_set:
+        requested_default = (
+            SavedVehicleId(value=request.default_vehicle_id)
+            if request.default_vehicle_id is not None
+            else None
+        )
+
+        try:
+            default_vehicle_service.validate_default_vehicle(
+                user.user_id,
+                requested_default,
+            )
+
+        except DefaultVehicleUnavailableError as exc:
+            raise SavedVehicleNotFoundError from exc
+
+        default_vehicle_id = requested_default
+
+    updated = UserPreferences(
+        value_of_time_per_hour=(value_of_time_per_hour),
+        default_vehicle_id=(default_vehicle_id),
+    )
+
+    preferences = preferences_service.save_preferences(
         user.user_id,
-        request.value_of_time_per_hour,
+        updated,
     )
 
     return _to_response(preferences)
