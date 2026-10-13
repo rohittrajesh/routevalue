@@ -19,12 +19,19 @@ from routevalue.api.schemas import (
     ResolvedLocationInput,
     V2TripEvaluationRequest,
 )
+from routevalue.api.terrain_v2_composition import (
+    build_terrain_v2_evaluation_service,
+)
+from routevalue.api.terrain_v2_service import TerrainV2EvaluationService
 from routevalue.api.user_identity import get_authenticated_user
 from routevalue.api.v2_evaluation_mappers import (
     to_v2_trip_evaluation_response,
 )
 from routevalue.api.v2_evaluation_schemas import (
     V2TripEvaluationResponse,
+)
+from routevalue.application.authenticated_terrain_trip import (
+    NoRoutesAvailableError,
 )
 from routevalue.application.electric_evaluation import (
     ElectricEvaluationContext,
@@ -47,7 +54,6 @@ from routevalue.application.ports import (
 from routevalue.application.profile_resolution import (
     ProfileResolutionError,
     ProfileResolutionFailureReason,
-    ProfileResolutionService,
 )
 from routevalue.application.profile_trip_evaluation import (
     EnergyInputMismatchError,
@@ -76,10 +82,12 @@ router = APIRouter(
 )
 
 
+# Preserve the legacy estimator helpers for existing imports and tests.
+# The new default composition does not need these factories.
 def _build_gasoline_estimator(
     context: GasolineEvaluationContext,
 ) -> EnergyCostEstimator:
-    """Compose the existing gasoline estimator from resolved context."""
+    """Compose the existing baseline gasoline estimator."""
 
     return GasolineEnergyCostEstimator(
         vehicle=context.vehicle,
@@ -90,12 +98,15 @@ def _build_gasoline_estimator(
 def _build_electric_estimator(
     context: ElectricEvaluationContext,
 ) -> EnergyCostEstimator:
-    """Compose the baseline BEV estimator from resolved context."""
+    """Compose the existing baseline BEV estimator."""
 
     return ElectricEnergyCostEstimator(
         vehicle=context.vehicle,
         electricity_price_quote=context.electricity_price_quote,
     )
+
+
+type V2TripEvaluationService = ProfileDrivenTripEvaluationService | TerrainV2EvaluationService
 
 
 def get_profile_driven_trip_evaluation_service(
@@ -115,24 +126,26 @@ def get_profile_driven_trip_evaluation_service(
         httpx.Client,
         Depends(get_google_routes_http_client),
     ],
-) -> ProfileDrivenTripEvaluationService:
-    """Compose authenticated V2 evaluation with both energy models."""
+) -> V2TripEvaluationService:
+    """Compose the V2 evaluator with terrain acquisition disabled.
 
-    profile_resolution_service = ProfileResolutionService(
-        preferences_repository=preferences_repository,
-        saved_vehicle_repository=saved_vehicle_repository,
-    )
+    Preserve this dependency function's identity for existing FastAPI
+    dependency overrides.
+
+    No elevation provider or acquisition service is constructed here.
+    The current Google routing geometry remains an OVERVIEW polyline.
+    """
 
     route_provider: RouteProvider = GoogleRoutesRouteProvider(
         api_key=api_key,
         client=client,
     )
 
-    return ProfileDrivenTripEvaluationService(
-        profile_resolution_service=profile_resolution_service,
+    return build_terrain_v2_evaluation_service(
+        preferences_repository=preferences_repository,
+        saved_vehicle_repository=saved_vehicle_repository,
         route_provider=route_provider,
-        gasoline_estimator_factory=_build_gasoline_estimator,
-        electric_estimator_factory=_build_electric_estimator,
+        terrain_acquisition_service=None,
     )
 
 
@@ -252,7 +265,7 @@ def evaluate_profile_driven_trip(
         Depends(get_authenticated_user),
     ],
     service: Annotated[
-        ProfileDrivenTripEvaluationService,
+        V2TripEvaluationService,
         Depends(get_profile_driven_trip_evaluation_service),
     ],
 ) -> V2TripEvaluationResponse | JSONResponse:
@@ -296,6 +309,13 @@ def evaluate_profile_driven_trip(
             status_code=409,
             code=ApiErrorCode.UNSUPPORTED_VEHICLE_ENERGY_TYPE,
             detail="The selected vehicle has an unsupported energy type.",
+        )
+
+    except NoRoutesAvailableError:
+        return _error_response(
+            status_code=502,
+            code=ApiErrorCode.ROUTING_RESPONSE_INVALID,
+            detail="The routing service returned no usable routes.",
         )
 
     except (

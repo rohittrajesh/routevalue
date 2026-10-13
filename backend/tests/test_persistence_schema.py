@@ -205,11 +205,19 @@ def test_generated_ddl_stays_in_public_schema() -> None:
         engine.dispose()
 
 
-def test_alembic_recognizes_exactly_one_initial_revision() -> None:
+def test_alembic_recognizes_exactly_one_current_head() -> None:
     backend_root = Path(__file__).resolve().parents[1]
 
     config = Config(str(backend_root / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
 
-    assert scripts.get_heads() == ["7b3c2a91d0ef"]
-    assert scripts.get_revision("7b3c2a91d0ef") is not None
+    assert scripts.get_heads() == ["c8e4b72a91d3"]
+
+    initial = scripts.get_revision("7b3c2a91d0ef")
+    mass_migration = scripts.get_revision("c8e4b72a91d3")
+
+    assert initial is not None
+    assert initial.down_revision is None
+
+    assert mass_migration is not None
+    assert mass_migration.down_revision == "7b3c2a91d0ef"

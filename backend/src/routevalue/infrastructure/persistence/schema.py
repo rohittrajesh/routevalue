@@ -96,6 +96,9 @@ saved_vehicles = Table(
     Column("combined_kwh_per_mile", Numeric(), nullable=True),
     Column("city_kwh_per_mile", Numeric(), nullable=True),
     Column("highway_kwh_per_mile", Numeric(), nullable=True),
+    Column("vehicle_mass_kg", Numeric(), nullable=True),
+    Column("vehicle_mass_source", String(64), nullable=True),
+    Column("vehicle_mass_reference", Text(), nullable=True),
     Column(
         "saved_at",
         DateTime(timezone=True),
@@ -130,6 +133,25 @@ saved_vehicles = Table(
         "AND gasoline_grade IS NULL AND combined_mpg IS NULL "
         "AND city_mpg IS NULL AND highway_mpg IS NULL)",
         name="ck_saved_vehicles_powertrain_shape",
+    ),
+    CheckConstraint(
+        "vehicle_mass_kg IS NULL OR vehicle_mass_kg > 0",
+        name="ck_saved_vehicles_positive_mass",
+    ),
+    CheckConstraint(
+        "(vehicle_mass_kg IS NULL AND vehicle_mass_source IS NULL "
+        "AND vehicle_mass_reference IS NULL) "
+        "OR (vehicle_mass_kg IS NOT NULL AND vehicle_mass_source IS NOT NULL)",
+        name="ck_saved_vehicles_mass_presence",
+    ),
+    CheckConstraint(
+        "vehicle_mass_source IS NULL OR vehicle_mass_source IN "
+        "('manufacturer_curb_weight', 'epa_test_weight', 'user_provided')",
+        name="ck_saved_vehicles_mass_source",
+    ),
+    CheckConstraint(
+        "vehicle_mass_reference IS NULL OR length(btrim(vehicle_mass_reference)) > 0",
+        name="ck_saved_vehicles_mass_reference",
     ),
     *(
         CheckConstraint(

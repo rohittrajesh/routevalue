@@ -7,23 +7,19 @@ from uuid import UUID, uuid4
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.engine import Engine, RowMapping
 
-from routevalue.application.models import (
-    VehicleCatalogConfiguration,
-)
+from routevalue.application.models import VehicleCatalogConfiguration
 from routevalue.application.saved_vehicles import (
     SavedVehicle,
     SavedVehicleSnapshot,
 )
-from routevalue.domain.identity import (
-    SavedVehicleId,
-    UserId,
-)
+from routevalue.domain.identity import SavedVehicleId, UserId
 from routevalue.domain.models import (
     ElectricVehicleSpecification,
     GasolineGrade,
     GasolineVehicleSpecification,
     VehicleEnergySpecification,
 )
+from routevalue.domain.vehicle_mass import VehicleMass, VehicleMassSource
 from routevalue.infrastructure.persistence.schema import (
     saved_vehicles,
     user_preferences,
@@ -37,11 +33,7 @@ class SavedVehiclePersistenceError(RuntimeError):
 class PostgresSavedVehicleRepository:
     """Persist normalized user-owned vehicle snapshots in PostgreSQL."""
 
-    def __init__(
-        self,
-        *,
-        engine: Engine,
-    ) -> None:
+    def __init__(self, *, engine: Engine) -> None:
         self._engine = engine
 
     def list_vehicles(
@@ -145,6 +137,25 @@ class PostgresSavedVehicleRepository:
         return deleted_id is not None
 
 
+def _mass_values(
+    mass: VehicleMass | None,
+) -> dict[str, object]:
+    """Return persisted mass fields without guessing missing values."""
+
+    if mass is None:
+        return {
+            "vehicle_mass_kg": None,
+            "vehicle_mass_source": None,
+            "vehicle_mass_reference": None,
+        }
+
+    return {
+        "vehicle_mass_kg": mass.kilograms,
+        "vehicle_mass_source": mass.source.value,
+        "vehicle_mass_reference": mass.source_reference,
+    }
+
+
 def _snapshot_values(
     *,
     user_id: UserId,
@@ -158,37 +169,31 @@ def _snapshot_values(
         "year": snapshot.configuration.year,
         "make": snapshot.configuration.make,
         "model": snapshot.configuration.model,
-        "configuration": (snapshot.configuration.configuration),
+        "configuration": snapshot.configuration.configuration,
         "source": snapshot.configuration.source,
         "source_id": snapshot.configuration.source_id,
-        "specification_retrieved_at": (snapshot.specification_retrieved_at),
+        "specification_retrieved_at": snapshot.specification_retrieved_at,
     }
 
     specification = snapshot.specification
 
-    if isinstance(
-        specification,
-        GasolineVehicleSpecification,
-    ):
+    if isinstance(specification, GasolineVehicleSpecification):
         values.update(
             {
                 "powertrain": "gasoline",
-                "gasoline_grade": (specification.fuel_grade.value),
-                "combined_mpg": (specification.combined_mpg),
+                "gasoline_grade": specification.fuel_grade.value,
+                "combined_mpg": specification.combined_mpg,
                 "city_mpg": specification.city_mpg,
-                "highway_mpg": (specification.highway_mpg),
+                "highway_mpg": specification.highway_mpg,
                 "combined_kwh_per_mile": None,
                 "city_kwh_per_mile": None,
                 "highway_kwh_per_mile": None,
             }
         )
-
+        values.update(_mass_values(specification.vehicle_mass))
         return values
 
-    if isinstance(
-        specification,
-        ElectricVehicleSpecification,
-    ):
+    if isinstance(specification, ElectricVehicleSpecification):
         values.update(
             {
                 "powertrain": "bev",
@@ -196,12 +201,12 @@ def _snapshot_values(
                 "combined_mpg": None,
                 "city_mpg": None,
                 "highway_mpg": None,
-                "combined_kwh_per_mile": (specification.combined_kwh_per_mile),
-                "city_kwh_per_mile": (specification.city_kwh_per_mile),
-                "highway_kwh_per_mile": (specification.highway_kwh_per_mile),
+                "combined_kwh_per_mile": specification.combined_kwh_per_mile,
+                "city_kwh_per_mile": specification.city_kwh_per_mile,
+                "highway_kwh_per_mile": specification.highway_kwh_per_mile,
             }
         )
-
+        values.update(_mass_values(specification.vehicle_mass))
         return values
 
     raise SavedVehiclePersistenceError("unsupported saved vehicle specification type")
@@ -220,26 +225,14 @@ def _row_to_saved_vehicle(
     )
 
     configuration = VehicleCatalogConfiguration(
-        year=_require_int(
-            row["year"],
-            field_name="year",
-        ),
-        make=_require_str(
-            row["make"],
-            field_name="make",
-        ),
-        model=_require_str(
-            row["model"],
-            field_name="model",
-        ),
+        year=_require_int(row["year"], field_name="year"),
+        make=_require_str(row["make"], field_name="make"),
+        model=_require_str(row["model"], field_name="model"),
         configuration=_require_str(
             row["configuration"],
             field_name="configuration",
         ),
-        source=_require_str(
-            row["source"],
-            field_name="source",
-        ),
+        source=_require_str(row["source"], field_name="source"),
         source_id=_require_str(
             row["source_id"],
             field_name="source_id",
@@ -252,17 +245,62 @@ def _row_to_saved_vehicle(
         id=vehicle_id,
         configuration=configuration,
         specification=specification,
-        specification_retrieved_at=(
-            _require_datetime(
-                row["specification_retrieved_at"],
-                field_name=("specification_retrieved_at"),
-            )
+        specification_retrieved_at=_require_datetime(
+            row["specification_retrieved_at"],
+            field_name="specification_retrieved_at",
         ),
         saved_at=_require_datetime(
             row["saved_at"],
             field_name="saved_at",
         ),
     )
+
+
+def _row_to_mass(
+    row: RowMapping,
+) -> VehicleMass | None:
+    """Restore optional mass, rejecting inconsistent persisted records."""
+
+    kilograms = _optional_decimal(
+        row["vehicle_mass_kg"],
+        field_name="vehicle_mass_kg",
+    )
+    raw_source = row["vehicle_mass_source"]
+    raw_reference = row["vehicle_mass_reference"]
+
+    if kilograms is None:
+        if raw_source is not None or raw_reference is not None:
+            raise SavedVehiclePersistenceError("stored vehicle mass provenance exists without mass")
+        return None
+
+    if raw_source is None:
+        raise SavedVehiclePersistenceError("stored vehicle mass is missing its source")
+
+    source_value = _require_str(
+        raw_source,
+        field_name="vehicle_mass_source",
+    )
+
+    try:
+        source = VehicleMassSource(source_value)
+    except ValueError as exc:
+        raise SavedVehiclePersistenceError("stored vehicle mass source is invalid") from exc
+
+    reference = None
+    if raw_reference is not None:
+        reference = _require_str(
+            raw_reference,
+            field_name="vehicle_mass_reference",
+        )
+
+    try:
+        return VehicleMass(
+            kilograms=kilograms,
+            source=source,
+            source_reference=reference,
+        )
+    except (TypeError, ValueError) as exc:
+        raise SavedVehiclePersistenceError("stored vehicle mass is invalid") from exc
 
 
 def _row_to_specification(
@@ -274,6 +312,7 @@ def _row_to_specification(
         row["powertrain"],
         field_name="powertrain",
     )
+    vehicle_mass = _row_to_mass(row)
 
     if powertrain == "gasoline":
         grade_value = _require_str(
@@ -300,28 +339,24 @@ def _row_to_specification(
                 field_name="highway_mpg",
             ),
             fuel_grade=grade,
+            vehicle_mass=vehicle_mass,
         )
 
     if powertrain == "bev":
         return ElectricVehicleSpecification(
-            combined_kwh_per_mile=(
-                _require_decimal(
-                    row["combined_kwh_per_mile"],
-                    field_name=("combined_kwh_per_mile"),
-                )
+            combined_kwh_per_mile=_require_decimal(
+                row["combined_kwh_per_mile"],
+                field_name="combined_kwh_per_mile",
             ),
-            city_kwh_per_mile=(
-                _optional_decimal(
-                    row["city_kwh_per_mile"],
-                    field_name=("city_kwh_per_mile"),
-                )
+            city_kwh_per_mile=_optional_decimal(
+                row["city_kwh_per_mile"],
+                field_name="city_kwh_per_mile",
             ),
-            highway_kwh_per_mile=(
-                _optional_decimal(
-                    row["highway_kwh_per_mile"],
-                    field_name=("highway_kwh_per_mile"),
-                )
+            highway_kwh_per_mile=_optional_decimal(
+                row["highway_kwh_per_mile"],
+                field_name="highway_kwh_per_mile",
             ),
+            vehicle_mass=vehicle_mass,
         )
 
     raise SavedVehiclePersistenceError("stored powertrain is unsupported")
@@ -332,10 +367,7 @@ def _require_uuid(
     *,
     field_name: str,
 ) -> UUID:
-    if not isinstance(
-        value,
-        UUID,
-    ):
+    if not isinstance(value, UUID):
         raise SavedVehiclePersistenceError(f"stored {field_name} is not a UUID")
 
     return value
@@ -346,13 +378,7 @@ def _require_int(
     *,
     field_name: str,
 ) -> int:
-    if not isinstance(
-        value,
-        int,
-    ) or isinstance(
-        value,
-        bool,
-    ):
+    if not isinstance(value, int) or isinstance(value, bool):
         raise SavedVehiclePersistenceError(f"stored {field_name} is not an integer")
 
     return value
@@ -363,10 +389,7 @@ def _require_str(
     *,
     field_name: str,
 ) -> str:
-    if not isinstance(
-        value,
-        str,
-    ):
+    if not isinstance(value, str):
         raise SavedVehiclePersistenceError(f"stored {field_name} is not a string")
 
     return value
@@ -377,10 +400,7 @@ def _require_decimal(
     *,
     field_name: str,
 ) -> Decimal:
-    if not isinstance(
-        value,
-        Decimal,
-    ):
+    if not isinstance(value, Decimal):
         raise SavedVehiclePersistenceError(f"stored {field_name} is not a Decimal")
 
     return value
@@ -405,10 +425,7 @@ def _require_datetime(
     *,
     field_name: str,
 ) -> datetime:
-    if not isinstance(
-        value,
-        datetime,
-    ):
+    if not isinstance(value, datetime):
         raise SavedVehiclePersistenceError(f"stored {field_name} is not a datetime")
 
     if value.tzinfo is None or value.utcoffset() is None:
