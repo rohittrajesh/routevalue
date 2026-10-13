@@ -236,16 +236,20 @@ def test_v2_request_rejects_invalid_vehicle_uuid() -> None:
         _v2_request_model().model_validate(body)
 
 
-def test_v2_endpoint_uses_existing_evaluation_response() -> None:
-    """V2 must preserve the authoritative V1 decision representation."""
+def test_v2_endpoint_uses_versioned_evaluation_response() -> None:
+    """V2 exposes consumption without modifying the V1 response."""
 
     openapi = create_app().openapi()
 
-    operation = openapi["paths"][_V2_PATH]["post"]
+    v1_operation = openapi["paths"][_V1_PATH]["post"]
+    v2_operation = openapi["paths"][_V2_PATH]["post"]
 
-    response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    v1_schema = v1_operation["responses"]["200"]["content"]["application/json"]["schema"]
 
-    assert response_schema["$ref"] == ("#/components/schemas/TripEvaluationResponse")
+    v2_schema = v2_operation["responses"]["200"]["content"]["application/json"]["schema"]
+
+    assert v1_schema["$ref"] == ("#/components/schemas/TripEvaluationResponse")
+    assert v2_schema["$ref"] == ("#/components/schemas/V2TripEvaluationResponse")
 
 
 def test_v2_endpoint_requires_authentication() -> None:

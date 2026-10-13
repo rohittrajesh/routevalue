@@ -59,7 +59,7 @@ export interface paths {
     put?: never;
     /**
      * Evaluate Profile Driven Trip
-     * @description Evaluate a trip using the authenticated user's persisted profile.
+     * @description Evaluate an owned gasoline vehicle or BEV using saved preferences.
      */
     post: operations["evaluate_profile_driven_trip_api_v2_trip_evaluations_post"];
     delete?: never;
@@ -182,6 +182,7 @@ export interface components {
       | "default_vehicle_not_configured"
       | "default_vehicle_unavailable"
       | "unsupported_vehicle_energy_type"
+      | "energy_input_mismatch"
       | "profile_service_unavailable"
       | "profile_state_invalid";
     /**
@@ -479,6 +480,55 @@ export interface components {
       user_id: string;
     };
     /**
+     * V2ElectricConsumptionResponse
+     * @description Physical electrical energy consumed by a route.
+     */
+    V2ElectricConsumptionResponse: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      energy_type: "electricity";
+      /** Kilowatt Hours */
+      kilowatt_hours: string;
+    };
+    /**
+     * V2ElectricityInputs
+     * @description Current electricity price for profile-driven BEV evaluation.
+     */
+    V2ElectricityInputs: {
+      /** Price Per Kilowatt Hour */
+      price_per_kilowatt_hour: number | string;
+    };
+    /**
+     * V2EnergyEstimateResponse
+     * @description Route energy cost and optional typed physical consumption.
+     */
+    V2EnergyEstimateResponse: {
+      /** Consumption */
+      consumption?:
+        | (
+            | components["schemas"]["V2GasolineConsumptionResponse"]
+            | components["schemas"]["V2ElectricConsumptionResponse"]
+          )
+        | null;
+      /** Cost */
+      cost: string;
+    };
+    /**
+     * V2GasolineConsumptionResponse
+     * @description Physical gasoline consumed by a route.
+     */
+    V2GasolineConsumptionResponse: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      energy_type: "gasoline";
+      /** Gallons */
+      gallons: string;
+    };
+    /**
      * V2GasolineInputs
      * @description Current gasoline price input for profile-driven trip evaluation.
      */
@@ -487,15 +537,39 @@ export interface components {
       fuel_price_per_gallon: number | string;
     };
     /**
+     * V2RouteEvaluationResponse
+     * @description V2 route evaluation including typed physical energy.
+     */
+    V2RouteEvaluationResponse: {
+      cost_breakdown: components["schemas"]["CostBreakdownResponse"] | null;
+      eligibility: components["schemas"]["EligibilityResponse"];
+      energy_estimate: components["schemas"]["V2EnergyEstimateResponse"] | null;
+      geometry?: components["schemas"]["RouteGeometryResponse"] | null;
+      route: components["schemas"]["RouteResponse"];
+    };
+    /**
      * V2TripEvaluationRequest
-     * @description Authenticated V2 trip request using stored user personalization.
+     * @description Authenticated V2 trip using stored user personalization.
+     *
+     *     Exactly one energy-price object is required. The selected owned
+     *     vehicle determines which energy type is valid.
      */
     V2TripEvaluationRequest: {
       destination: components["schemas"]["ResolvedLocationInput"];
-      gasoline: components["schemas"]["V2GasolineInputs"];
+      electricity?: components["schemas"]["V2ElectricityInputs"] | null;
+      gasoline?: components["schemas"]["V2GasolineInputs"] | null;
       origin: components["schemas"]["ResolvedLocationInput"];
       /** Saved Vehicle Id */
       saved_vehicle_id?: string | null;
+    };
+    /**
+     * V2TripEvaluationResponse
+     * @description Authenticated V2 trip response with typed energy information.
+     */
+    V2TripEvaluationResponse: {
+      decision: components["schemas"]["DecisionResponse"];
+      /** Route Evaluations */
+      route_evaluations: components["schemas"]["V2RouteEvaluationResponse"][];
     };
     /** ValidationError */
     ValidationError: {
@@ -701,7 +775,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["TripEvaluationResponse"];
+          "application/json": components["schemas"]["V2TripEvaluationResponse"];
         };
       };
       /** @description Authentication is required. */
@@ -722,7 +796,7 @@ export interface operations {
           "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
-      /** @description Required profile data is missing or unsupported. */
+      /** @description Required profile data or energy input is incompatible. */
       409: {
         headers: {
           [name: string]: unknown;

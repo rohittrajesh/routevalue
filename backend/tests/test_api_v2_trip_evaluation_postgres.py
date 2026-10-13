@@ -567,7 +567,7 @@ def test_deleting_default_clears_selection_but_explicit_vehicle_works(
 def test_persisted_bev_is_rejected_before_google_routing(
     postgres_evaluation: PostgresEvaluationHarness,
 ) -> None:
-    """M4 must not silently evaluate an electric car as gasoline."""
+    """A persisted BEV must reject gasoline pricing before routing."""
 
     harness = postgres_evaluation
 
@@ -596,6 +596,5 @@ def test_persisted_bev_is_rejected_before_google_routing(
     )
 
     assert response.status_code == 409
-    assert response.json()["code"] == ("unsupported_vehicle_energy_type")
-
+    assert response.json()["code"] == "energy_input_mismatch"
     assert harness.google_requests == []

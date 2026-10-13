@@ -23,7 +23,6 @@ def test_v2_endpoint_uses_its_own_request_schema() -> None:
     schema = _schema()
 
     operation = schema["paths"]["/api/v2/trip-evaluations"]["post"]
-
     body = operation["requestBody"]["content"]["application/json"]
 
     assert body["schema"]["$ref"] == ("#/components/schemas/V2TripEvaluationRequest")
@@ -33,7 +32,6 @@ def test_v2_endpoint_uses_its_own_request_schema() -> None:
     assert set(request_schema["required"]) == {
         "origin",
         "destination",
-        "gasoline",
     }
 
     assert request_schema["additionalProperties"] is False
@@ -41,6 +39,9 @@ def test_v2_endpoint_uses_its_own_request_schema() -> None:
     fields = request_schema["properties"]
 
     assert "saved_vehicle_id" in fields
+    assert "gasoline" in fields
+    assert "electricity" in fields
+
     assert "value_of_time_per_hour" not in fields
     assert "user_id" not in fields
     assert "fuel_efficiency_mpg" not in fields
@@ -51,17 +52,21 @@ def test_v2_gasoline_contract_allows_only_price() -> None:
     schema = _schema()["components"]["schemas"]["V2GasolineInputs"]
 
     assert schema["additionalProperties"] is False
-
-    assert set(schema["required"]) == {
-        "fuel_price_per_gallon",
-    }
-
-    assert set(schema["properties"]) == {
-        "fuel_price_per_gallon",
-    }
+    assert set(schema["required"]) == {"fuel_price_per_gallon"}
+    assert set(schema["properties"]) == {"fuel_price_per_gallon"}
 
 
-def test_v2_reuses_the_existing_evaluation_response() -> None:
+def test_v2_electricity_contract_allows_only_price() -> None:
+    schema = _schema()["components"]["schemas"]["V2ElectricityInputs"]
+
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {"price_per_kilowatt_hour"}
+    assert set(schema["properties"]) == {"price_per_kilowatt_hour"}
+
+    assert "combined_kwh_per_mile" not in schema["properties"]
+
+
+def test_v1_response_is_preserved_and_v2_has_own_response() -> None:
     schema = _schema()
 
     v1 = schema["paths"]["/trip-evaluations"]["post"]
@@ -74,10 +79,24 @@ def test_v2_reuses_the_existing_evaluation_response() -> None:
 
         return reference
 
-    expected = "#/components/schemas/TripEvaluationResponse"
+    assert response_reference(v1) == ("#/components/schemas/TripEvaluationResponse")
+    assert response_reference(v2) == ("#/components/schemas/V2TripEvaluationResponse")
 
-    assert response_reference(v1) == expected
-    assert response_reference(v2) == expected
+
+def test_v2_energy_response_documents_typed_consumption() -> None:
+    schemas = _schema()["components"]["schemas"]
+
+    assert "V2EnergyEstimateResponse" in schemas
+    assert "V2GasolineConsumptionResponse" in schemas
+    assert "V2ElectricConsumptionResponse" in schemas
+
+    gasoline = schemas["V2GasolineConsumptionResponse"]
+    electric = schemas["V2ElectricConsumptionResponse"]
+
+    assert "gallons" in gasoline["properties"]
+    assert "kilowatt_hours" in electric["properties"]
+
+    assert "consumption" in schemas["V2EnergyEstimateResponse"]["properties"]
 
 
 def test_v2_endpoint_documents_authentication_and_failures() -> None:
@@ -110,6 +129,7 @@ def test_v1_request_fields_remain_unchanged() -> None:
     }
 
     assert "saved_vehicle_id" not in v1_request["properties"]
+    assert "electricity" not in v1_request["properties"]
 
     v1_gasoline = schemas["GasolineInputs"]
 
@@ -129,6 +149,7 @@ def test_v2_profile_error_codes_are_documented() -> None:
         "default_vehicle_unavailable",
         "saved_vehicle_not_found",
         "unsupported_vehicle_energy_type",
+        "energy_input_mismatch",
         "profile_service_unavailable",
         "profile_state_invalid",
     }.issubset(codes)

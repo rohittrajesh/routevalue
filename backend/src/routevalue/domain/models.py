@@ -166,6 +166,9 @@ class ElectricityPriceQuote:
     price_per_kilowatt_hour: MoneyPerKilowattHour
 
     def __post_init__(self) -> None:
+        if not self.price_per_kilowatt_hour.is_finite():
+            raise ValueError("price_per_kilowatt_hour must be finite")
+
         if self.price_per_kilowatt_hour < 0:
             raise ValueError("price_per_kilowatt_hour cannot be negative")
 

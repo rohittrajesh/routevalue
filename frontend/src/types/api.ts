@@ -32,7 +32,7 @@ export type TripEvaluationRequest = Omit<
   gasoline: GasolineInputs;
 };
 
-// V2-M4: Authenticated profile-driven evaluation request contracts.
+// V2 authenticated profile-driven evaluation request contracts.
 
 type GeneratedV2GasolineInputs = ApiSchemas["V2GasolineInputs"];
 
@@ -43,16 +43,34 @@ export type V2GasolineInputs = Omit<
   fuel_price_per_gallon: string;
 };
 
+type GeneratedV2ElectricityInputs = ApiSchemas["V2ElectricityInputs"];
+
+export type V2ElectricityInputs = Omit<
+  GeneratedV2ElectricityInputs,
+  "price_per_kilowatt_hour"
+> & {
+  price_per_kilowatt_hour: string;
+};
+
 type GeneratedV2TripEvaluationRequest = ApiSchemas["V2TripEvaluationRequest"];
+
+type V2EnergyPriceInputs =
+  | {
+      gasoline: V2GasolineInputs;
+      electricity?: never;
+    }
+  | {
+      gasoline?: never;
+      electricity: V2ElectricityInputs;
+    };
 
 export type V2TripEvaluationRequest = Omit<
   GeneratedV2TripEvaluationRequest,
-  "gasoline"
-> & {
-  gasoline: V2GasolineInputs;
-};
+  "gasoline" | "electricity"
+> &
+  V2EnergyPriceInputs;
 
-// Shared V1/V2 response contracts.
+// Shared route, decision, and V1 response contracts.
 
 export type RouteResponse = ApiSchemas["RouteResponse"];
 
@@ -71,3 +89,20 @@ export type RouteEvaluationResponse = ApiSchemas["RouteEvaluationResponse"];
 export type DecisionResponse = ApiSchemas["DecisionResponse"];
 
 export type TripEvaluationResponse = ApiSchemas["TripEvaluationResponse"];
+
+// V2-only typed physical-energy response contracts.
+
+export type V2GasolineConsumptionResponse =
+  ApiSchemas["V2GasolineConsumptionResponse"];
+
+export type V2ElectricConsumptionResponse =
+  ApiSchemas["V2ElectricConsumptionResponse"];
+
+export type V2EnergyConsumptionResponse =
+  V2GasolineConsumptionResponse | V2ElectricConsumptionResponse;
+
+export type V2EnergyEstimateResponse = ApiSchemas["V2EnergyEstimateResponse"];
+
+export type V2RouteEvaluationResponse = ApiSchemas["V2RouteEvaluationResponse"];
+
+export type V2TripEvaluationResponse = ApiSchemas["V2TripEvaluationResponse"];

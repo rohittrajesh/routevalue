@@ -11,17 +11,24 @@ from routevalue.api.dependencies import (
     get_google_routes_api_key,
     get_google_routes_http_client,
 )
-from routevalue.api.mappers import to_trip_evaluation_response
 from routevalue.api.preferences import get_user_preferences_repository
 from routevalue.api.saved_vehicles import get_saved_vehicle_repository
 from routevalue.api.schemas import (
     ApiErrorCode,
     ApiErrorResponse,
     ResolvedLocationInput,
-    TripEvaluationResponse,
     V2TripEvaluationRequest,
 )
 from routevalue.api.user_identity import get_authenticated_user
+from routevalue.api.v2_evaluation_mappers import (
+    to_v2_trip_evaluation_response,
+)
+from routevalue.api.v2_evaluation_schemas import (
+    V2TripEvaluationResponse,
+)
+from routevalue.application.electric_evaluation import (
+    ElectricEvaluationContext,
+)
 from routevalue.application.gasoline_evaluation import (
     GasolineEvaluationContext,
     UnsupportedVehicleEnergyTypeError,
@@ -43,9 +50,13 @@ from routevalue.application.profile_resolution import (
     ProfileResolutionService,
 )
 from routevalue.application.profile_trip_evaluation import (
+    EnergyInputMismatchError,
     ProfileDrivenTripEvaluationService,
 )
 from routevalue.domain.identity import SavedVehicleId
+from routevalue.infrastructure.energy.electric import (
+    ElectricEnergyCostEstimator,
+)
 from routevalue.infrastructure.energy.gasoline import (
     GasolineEnergyCostEstimator,
 )
@@ -76,6 +87,17 @@ def _build_gasoline_estimator(
     )
 
 
+def _build_electric_estimator(
+    context: ElectricEvaluationContext,
+) -> EnergyCostEstimator:
+    """Compose the baseline BEV estimator from resolved context."""
+
+    return ElectricEnergyCostEstimator(
+        vehicle=context.vehicle,
+        electricity_price_quote=context.electricity_price_quote,
+    )
+
+
 def get_profile_driven_trip_evaluation_service(
     preferences_repository: Annotated[
         UserPreferencesRepository,
@@ -94,7 +116,7 @@ def get_profile_driven_trip_evaluation_service(
         Depends(get_google_routes_http_client),
     ],
 ) -> ProfileDrivenTripEvaluationService:
-    """Compose authenticated V2 evaluation using existing infrastructure."""
+    """Compose authenticated V2 evaluation with both energy models."""
 
     profile_resolution_service = ProfileResolutionService(
         preferences_repository=preferences_repository,
@@ -110,6 +132,7 @@ def get_profile_driven_trip_evaluation_service(
         profile_resolution_service=profile_resolution_service,
         route_provider=route_provider,
         gasoline_estimator_factory=_build_gasoline_estimator,
+        electric_estimator_factory=_build_electric_estimator,
     )
 
 
@@ -194,7 +217,7 @@ def _profile_failure_response(
 
 @router.post(
     "",
-    response_model=TripEvaluationResponse,
+    response_model=V2TripEvaluationResponse,
     responses={
         401: {
             "model": ApiErrorResponse,
@@ -206,7 +229,7 @@ def _profile_failure_response(
         },
         409: {
             "model": ApiErrorResponse,
-            "description": "Required profile data is missing or unsupported.",
+            "description": "Required profile data or energy input is incompatible.",
         },
         500: {
             "model": ApiErrorResponse,
@@ -232,8 +255,8 @@ def evaluate_profile_driven_trip(
         ProfileDrivenTripEvaluationService,
         Depends(get_profile_driven_trip_evaluation_service),
     ],
-) -> TripEvaluationResponse | JSONResponse:
-    """Evaluate a trip using the authenticated user's persisted profile."""
+) -> V2TripEvaluationResponse | JSONResponse:
+    """Evaluate an owned gasoline vehicle or BEV using saved preferences."""
 
     requested_vehicle_id = (
         SavedVehicleId(value=request.saved_vehicle_id)
@@ -241,22 +264,38 @@ def evaluate_profile_driven_trip(
         else None
     )
 
+    fuel_price_per_gallon = (
+        request.gasoline.fuel_price_per_gallon if request.gasoline is not None else None
+    )
+
+    price_per_kilowatt_hour = (
+        request.electricity.price_per_kilowatt_hour if request.electricity is not None else None
+    )
+
     try:
         result = service.evaluate_trip(
             user.user_id,
             _to_route_search_request(request),
-            fuel_price_per_gallon=request.gasoline.fuel_price_per_gallon,
+            fuel_price_per_gallon=fuel_price_per_gallon,
+            price_per_kilowatt_hour=price_per_kilowatt_hour,
             requested_vehicle_id=requested_vehicle_id,
         )
 
     except ProfileResolutionError as exc:
         return _profile_failure_response(exc)
 
+    except EnergyInputMismatchError:
+        return _error_response(
+            status_code=409,
+            code=ApiErrorCode.ENERGY_INPUT_MISMATCH,
+            detail="The energy price type does not match the selected vehicle.",
+        )
+
     except UnsupportedVehicleEnergyTypeError:
         return _error_response(
             status_code=409,
             code=ApiErrorCode.UNSUPPORTED_VEHICLE_ENERGY_TYPE,
-            detail="The selected vehicle is not supported for gasoline evaluation.",
+            detail="The selected vehicle has an unsupported energy type.",
         )
 
     except (
@@ -276,4 +315,4 @@ def evaluate_profile_driven_trip(
             detail="Profile storage is temporarily unavailable. Please try again.",
         )
 
-    return to_trip_evaluation_response(result)
+    return to_v2_trip_evaluation_response(result)

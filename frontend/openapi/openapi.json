@@ -20,6 +20,7 @@
           "default_vehicle_not_configured",
           "default_vehicle_unavailable",
           "unsupported_vehicle_energy_type",
+          "energy_input_mismatch",
           "profile_service_unavailable",
           "profile_state_invalid"
         ],
@@ -736,6 +737,101 @@
         "title": "UserProfileResponse",
         "type": "object"
       },
+      "V2ElectricConsumptionResponse": {
+        "description": "Physical electrical energy consumed by a route.",
+        "properties": {
+          "energy_type": {
+            "const": "electricity",
+            "title": "Energy Type",
+            "type": "string"
+          },
+          "kilowatt_hours": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Kilowatt Hours",
+            "type": "string"
+          }
+        },
+        "required": ["energy_type", "kilowatt_hours"],
+        "title": "V2ElectricConsumptionResponse",
+        "type": "object"
+      },
+      "V2ElectricityInputs": {
+        "additionalProperties": false,
+        "description": "Current electricity price for profile-driven BEV evaluation.",
+        "properties": {
+          "price_per_kilowatt_hour": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Price Per Kilowatt Hour"
+          }
+        },
+        "required": ["price_per_kilowatt_hour"],
+        "title": "V2ElectricityInputs",
+        "type": "object"
+      },
+      "V2EnergyEstimateResponse": {
+        "description": "Route energy cost and optional typed physical consumption.",
+        "properties": {
+          "consumption": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "electricity": "#/components/schemas/V2ElectricConsumptionResponse",
+                    "gasoline": "#/components/schemas/V2GasolineConsumptionResponse"
+                  },
+                  "propertyName": "energy_type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/V2GasolineConsumptionResponse"
+                  },
+                  {
+                    "$ref": "#/components/schemas/V2ElectricConsumptionResponse"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumption"
+          },
+          "cost": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cost",
+            "type": "string"
+          }
+        },
+        "required": ["cost"],
+        "title": "V2EnergyEstimateResponse",
+        "type": "object"
+      },
+      "V2GasolineConsumptionResponse": {
+        "description": "Physical gasoline consumed by a route.",
+        "properties": {
+          "energy_type": {
+            "const": "gasoline",
+            "title": "Energy Type",
+            "type": "string"
+          },
+          "gallons": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Gallons",
+            "type": "string"
+          }
+        },
+        "required": ["energy_type", "gallons"],
+        "title": "V2GasolineConsumptionResponse",
+        "type": "object"
+      },
       "V2GasolineInputs": {
         "additionalProperties": false,
         "description": "Current gasoline price input for profile-driven trip evaluation.",
@@ -757,15 +853,81 @@
         "title": "V2GasolineInputs",
         "type": "object"
       },
+      "V2RouteEvaluationResponse": {
+        "description": "V2 route evaluation including typed physical energy.",
+        "properties": {
+          "cost_breakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostBreakdownResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eligibility": {
+            "$ref": "#/components/schemas/EligibilityResponse"
+          },
+          "energy_estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2EnergyEstimateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteGeometryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "route": {
+            "$ref": "#/components/schemas/RouteResponse"
+          }
+        },
+        "required": [
+          "route",
+          "energy_estimate",
+          "eligibility",
+          "cost_breakdown"
+        ],
+        "title": "V2RouteEvaluationResponse",
+        "type": "object"
+      },
       "V2TripEvaluationRequest": {
         "additionalProperties": false,
-        "description": "Authenticated V2 trip request using stored user personalization.",
+        "description": "Authenticated V2 trip using stored user personalization.\n\nExactly one energy-price object is required. The selected owned\nvehicle determines which energy type is valid.",
         "properties": {
           "destination": {
             "$ref": "#/components/schemas/ResolvedLocationInput"
           },
+          "electricity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2ElectricityInputs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "gasoline": {
-            "$ref": "#/components/schemas/V2GasolineInputs"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2GasolineInputs"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "origin": {
             "$ref": "#/components/schemas/ResolvedLocationInput"
@@ -783,8 +945,26 @@
             "title": "Saved Vehicle Id"
           }
         },
-        "required": ["origin", "destination", "gasoline"],
+        "required": ["origin", "destination"],
         "title": "V2TripEvaluationRequest",
+        "type": "object"
+      },
+      "V2TripEvaluationResponse": {
+        "description": "Authenticated V2 trip response with typed energy information.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/DecisionResponse"
+          },
+          "route_evaluations": {
+            "items": {
+              "$ref": "#/components/schemas/V2RouteEvaluationResponse"
+            },
+            "title": "Route Evaluations",
+            "type": "array"
+          }
+        },
+        "required": ["route_evaluations", "decision"],
+        "title": "V2TripEvaluationResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -1032,7 +1212,7 @@
     },
     "/api/v2/trip-evaluations": {
       "post": {
-        "description": "Evaluate a trip using the authenticated user's persisted profile.",
+        "description": "Evaluate an owned gasoline vehicle or BEV using saved preferences.",
         "operationId": "evaluate_profile_driven_trip_api_v2_trip_evaluations_post",
         "requestBody": {
           "content": {
@@ -1049,7 +1229,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TripEvaluationResponse"
+                  "$ref": "#/components/schemas/V2TripEvaluationResponse"
                 }
               }
             },
@@ -1083,7 +1263,7 @@
                 }
               }
             },
-            "description": "Required profile data is missing or unsupported."
+            "description": "Required profile data or energy input is incompatible."
           },
           "422": {
             "content": {

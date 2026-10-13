@@ -35,11 +35,12 @@ class ApiErrorCode(StrEnum):
     VEHICLE_CONFIGURATION_NOT_FOUND = "vehicle_configuration_not_found"
     VEHICLE_SPECIFICATION_UNAVAILABLE = "vehicle_specification_unavailable"
 
-    # V2-M4 profile-driven evaluation failures.
+    # V2 authenticated profile-driven evaluation.
     VALUE_OF_TIME_NOT_CONFIGURED = "value_of_time_not_configured"
     DEFAULT_VEHICLE_NOT_CONFIGURED = "default_vehicle_not_configured"
     DEFAULT_VEHICLE_UNAVAILABLE = "default_vehicle_unavailable"
     UNSUPPORTED_VEHICLE_ENERGY_TYPE = "unsupported_vehicle_energy_type"
+    ENERGY_INPUT_MISMATCH = "energy_input_mismatch"
     PROFILE_SERVICE_UNAVAILABLE = "profile_service_unavailable"
     PROFILE_STATE_INVALID = "profile_state_invalid"
 
@@ -148,7 +149,7 @@ class TripEvaluationRequest(BaseModel):
         return value
 
 
-# V2-M4: Authenticated profile-driven evaluation request contracts.
+# V2: Authenticated profile-driven evaluation request contracts.
 
 
 class V2GasolineInputs(BaseModel):
@@ -177,8 +178,38 @@ class V2GasolineInputs(BaseModel):
         return value
 
 
+class V2ElectricityInputs(BaseModel):
+    """Current electricity price for profile-driven BEV evaluation."""
+
+    model_config = {
+        "extra": "forbid",
+    }
+
+    price_per_kilowatt_hour: Decimal
+
+    @field_validator("price_per_kilowatt_hour")
+    @classmethod
+    def electricity_price_must_be_valid(
+        cls,
+        value: Decimal,
+    ) -> Decimal:
+        """Require a finite, nonnegative electricity price."""
+
+        if not value.is_finite():
+            raise ValueError("price_per_kilowatt_hour must be finite")
+
+        if value < 0:
+            raise ValueError("price_per_kilowatt_hour cannot be negative")
+
+        return value
+
+
 class V2TripEvaluationRequest(BaseModel):
-    """Authenticated V2 trip request using stored user personalization."""
+    """Authenticated V2 trip using stored user personalization.
+
+    Exactly one energy-price object is required. The selected owned
+    vehicle determines which energy type is valid.
+    """
 
     model_config = {
         "extra": "forbid",
@@ -187,7 +218,18 @@ class V2TripEvaluationRequest(BaseModel):
     origin: ResolvedLocationInput
     destination: ResolvedLocationInput
     saved_vehicle_id: UUID | None = None
-    gasoline: V2GasolineInputs
+
+    gasoline: V2GasolineInputs | None = None
+    electricity: V2ElectricityInputs | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_energy_input(self) -> Self:
+        """Reject missing or conflicting energy-price objects."""
+
+        if (self.gasoline is None) == (self.electricity is None):
+            raise ValueError("exactly one of gasoline or electricity must be supplied")
+
+        return self
 
 
 class RouteResponse(BaseModel):

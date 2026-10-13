@@ -356,6 +356,8 @@ def test_foreign_vehicle_is_hidden_with_404() -> None:
 
 
 def test_bev_returns_409_without_running_routes() -> None:
+    """A BEV must reject gasoline pricing before acquiring routes."""
+
     user_id = UserId(value=uuid4())
     vehicle_id = SavedVehicleId(value=uuid4())
 
@@ -375,10 +377,13 @@ def test_bev_returns_409_without_running_routes() -> None:
         vehicles={(user_id, vehicle_id): bev},
     )
 
-    response = client.post("/api/v2/trip-evaluations", json=_body())
+    response = client.post(
+        "/api/v2/trip-evaluations",
+        json=_body(),
+    )
 
     assert response.status_code == 409
-    assert response.json()["code"] == "unsupported_vehicle_energy_type"
+    assert response.json()["code"] == "energy_input_mismatch"
     assert routes.calls == []
 
 
