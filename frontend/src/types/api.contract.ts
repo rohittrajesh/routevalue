@@ -1,4 +1,3 @@
-
 /**
  * Compile-time assertions for RouteValue V1/V2 evaluation contracts.
  *
@@ -17,24 +16,21 @@ import type {
 
 type Assert<Condition extends true> = Condition;
 
-type Assignable<Source, Destination> =
-  [Source] extends [Destination] ? true : false;
+type Assignable<Source, Destination> = [Source] extends [Destination]
+  ? true
+  : false;
 
 type V1Operation = paths["/trip-evaluations"]["post"];
 
 type V2Operation = paths["/api/v2/trip-evaluations"]["post"];
 
-type V1RequestBody =
-  V1Operation["requestBody"]["content"]["application/json"];
+type V1RequestBody = V1Operation["requestBody"]["content"]["application/json"];
 
-type V2RequestBody =
-  V2Operation["requestBody"]["content"]["application/json"];
+type V2RequestBody = V2Operation["requestBody"]["content"]["application/json"];
 
-type V1Success =
-  V1Operation["responses"][200]["content"]["application/json"];
+type V1Success = V1Operation["responses"][200]["content"]["application/json"];
 
-type V2Success =
-  V2Operation["responses"][200]["content"]["application/json"];
+type V2Success = V2Operation["responses"][200]["content"]["application/json"];
 
 export type CheckV1RequestCompatible = Assert<
   Assignable<TripEvaluationRequest, V1RequestBody>
@@ -57,27 +53,19 @@ export type CheckV1StillHasEfficiency = Assert<
 >;
 
 export type CheckV1StillHasValueOfTime = Assert<
-  "value_of_time_per_hour" extends keyof TripEvaluationRequest
-    ? true
-    : false
+  "value_of_time_per_hour" extends keyof TripEvaluationRequest ? true : false
 >;
 
 export type CheckV2HasNoClientValueOfTime = Assert<
-  "value_of_time_per_hour" extends keyof V2TripEvaluationRequest
-    ? false
-    : true
+  "value_of_time_per_hour" extends keyof V2TripEvaluationRequest ? false : true
 >;
 
 export type CheckV2HasNoClientUserId = Assert<
-  "user_id" extends keyof V2TripEvaluationRequest
-    ? false
-    : true
+  "user_id" extends keyof V2TripEvaluationRequest ? false : true
 >;
 
 export type CheckV2HasNoClientEfficiency = Assert<
-  "fuel_efficiency_mpg" extends keyof V2GasolineInputs
-    ? false
-    : true
+  "fuel_efficiency_mpg" extends keyof V2GasolineInputs ? false : true
 >;
 
 export type CheckV2HasNoClientFuelGrade = Assert<

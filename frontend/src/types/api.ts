@@ -1,4 +1,3 @@
-
 import type { components } from "../api/generated/schema";
 
 type ApiSchemas = components["schemas"];
@@ -44,8 +43,7 @@ export type V2GasolineInputs = Omit<
   fuel_price_per_gallon: string;
 };
 
-type GeneratedV2TripEvaluationRequest =
-  ApiSchemas["V2TripEvaluationRequest"];
+type GeneratedV2TripEvaluationRequest = ApiSchemas["V2TripEvaluationRequest"];
 
 export type V2TripEvaluationRequest = Omit<
   GeneratedV2TripEvaluationRequest,

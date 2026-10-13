@@ -61,7 +61,6 @@ def test_v2_gasoline_contract_allows_only_price() -> None:
     }
 
 
-
 def test_v2_reuses_the_existing_evaluation_response() -> None:
     schema = _schema()
 
@@ -69,9 +68,7 @@ def test_v2_reuses_the_existing_evaluation_response() -> None:
     v2 = schema["paths"]["/api/v2/trip-evaluations"]["post"]
 
     def response_reference(operation: dict[str, Any]) -> str:
-        reference = operation["responses"]["200"]["content"][
-            "application/json"
-        ]["schema"]["$ref"]
+        reference = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
 
         assert isinstance(reference, str)
 
