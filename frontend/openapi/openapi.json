@@ -15,7 +15,13 @@
           "vehicle_catalog_service_error",
           "vehicle_catalog_service_unavailable",
           "vehicle_configuration_not_found",
-          "vehicle_specification_unavailable"
+          "vehicle_specification_unavailable",
+          "value_of_time_not_configured",
+          "default_vehicle_not_configured",
+          "default_vehicle_unavailable",
+          "unsupported_vehicle_energy_type",
+          "profile_service_unavailable",
+          "profile_state_invalid"
         ],
         "title": "ApiErrorCode",
         "type": "string"
@@ -730,6 +736,57 @@
         "title": "UserProfileResponse",
         "type": "object"
       },
+      "V2GasolineInputs": {
+        "additionalProperties": false,
+        "description": "Current gasoline price input for profile-driven trip evaluation.",
+        "properties": {
+          "fuel_price_per_gallon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Fuel Price Per Gallon"
+          }
+        },
+        "required": ["fuel_price_per_gallon"],
+        "title": "V2GasolineInputs",
+        "type": "object"
+      },
+      "V2TripEvaluationRequest": {
+        "additionalProperties": false,
+        "description": "Authenticated V2 trip request using stored user personalization.",
+        "properties": {
+          "destination": {
+            "$ref": "#/components/schemas/ResolvedLocationInput"
+          },
+          "gasoline": {
+            "$ref": "#/components/schemas/V2GasolineInputs"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/ResolvedLocationInput"
+          },
+          "saved_vehicle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Vehicle Id"
+          }
+        },
+        "required": ["origin", "destination", "gasoline"],
+        "title": "V2TripEvaluationRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -971,6 +1028,111 @@
         ],
         "summary": "Update Preferences",
         "tags": ["V2 Preferences"]
+      }
+    },
+    "/api/v2/trip-evaluations": {
+      "post": {
+        "description": "Evaluate a trip using the authenticated user's persisted profile.",
+        "operationId": "evaluate_profile_driven_trip_api_v2_trip_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2TripEvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripEvaluationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The selected saved vehicle is unavailable."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Required profile data is missing or unsupported."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Server configuration or persisted profile state is invalid."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The routing service returned an unusable response."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "An upstream service is temporarily unavailable."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evaluate Profile Driven Trip",
+        "tags": ["V2 Trip Evaluations"]
       }
     },
     "/api/v2/vehicles": {

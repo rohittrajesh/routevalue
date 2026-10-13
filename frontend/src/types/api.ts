@@ -1,3 +1,4 @@
+
 import type { components } from "../api/generated/schema";
 
 type ApiSchemas = components["schemas"];
@@ -9,6 +10,8 @@ export type ApiErrorResponse = ApiSchemas["ApiErrorResponse"];
 export type ResolvedLocationInput = ApiSchemas["ResolvedLocationInput"];
 
 export type GasolineGrade = ApiSchemas["GasolineGradeInput"];
+
+// V1 request contracts remain unchanged.
 
 type GeneratedGasolineInputs = ApiSchemas["GasolineInputs"];
 
@@ -29,6 +32,29 @@ export type TripEvaluationRequest = Omit<
   value_of_time_per_hour: string;
   gasoline: GasolineInputs;
 };
+
+// V2-M4: Authenticated profile-driven evaluation request contracts.
+
+type GeneratedV2GasolineInputs = ApiSchemas["V2GasolineInputs"];
+
+export type V2GasolineInputs = Omit<
+  GeneratedV2GasolineInputs,
+  "fuel_price_per_gallon"
+> & {
+  fuel_price_per_gallon: string;
+};
+
+type GeneratedV2TripEvaluationRequest =
+  ApiSchemas["V2TripEvaluationRequest"];
+
+export type V2TripEvaluationRequest = Omit<
+  GeneratedV2TripEvaluationRequest,
+  "gasoline"
+> & {
+  gasoline: V2GasolineInputs;
+};
+
+// Shared V1/V2 response contracts.
 
 export type RouteResponse = ApiSchemas["RouteResponse"];
 

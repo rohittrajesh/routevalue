@@ -48,6 +48,26 @@ export interface paths {
     patch: operations["update_preferences_api_v2_preferences_patch"];
     trace?: never;
   };
+  "/api/v2/trip-evaluations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Evaluate Profile Driven Trip
+     * @description Evaluate a trip using the authenticated user's persisted profile.
+     */
+    post: operations["evaluate_profile_driven_trip_api_v2_trip_evaluations_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/vehicles": {
     parameters: {
       query?: never;
@@ -157,7 +177,13 @@ export interface components {
       | "vehicle_catalog_service_error"
       | "vehicle_catalog_service_unavailable"
       | "vehicle_configuration_not_found"
-      | "vehicle_specification_unavailable";
+      | "vehicle_specification_unavailable"
+      | "value_of_time_not_configured"
+      | "default_vehicle_not_configured"
+      | "default_vehicle_unavailable"
+      | "unsupported_vehicle_energy_type"
+      | "profile_service_unavailable"
+      | "profile_state_invalid";
     /**
      * ApiErrorResponse
      * @description Stable public representation of a RouteValue request failure.
@@ -452,6 +478,25 @@ export interface components {
        */
       user_id: string;
     };
+    /**
+     * V2GasolineInputs
+     * @description Current gasoline price input for profile-driven trip evaluation.
+     */
+    V2GasolineInputs: {
+      /** Fuel Price Per Gallon */
+      fuel_price_per_gallon: number | string;
+    };
+    /**
+     * V2TripEvaluationRequest
+     * @description Authenticated V2 trip request using stored user personalization.
+     */
+    V2TripEvaluationRequest: {
+      destination: components["schemas"]["ResolvedLocationInput"];
+      gasoline: components["schemas"]["V2GasolineInputs"];
+      origin: components["schemas"]["ResolvedLocationInput"];
+      /** Saved Vehicle Id */
+      saved_vehicle_id?: string | null;
+    };
     /** ValidationError */
     ValidationError: {
       /** Context */
@@ -627,6 +672,93 @@ export interface operations {
         };
       };
       /** @description Authentication is temporarily unavailable. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  evaluate_profile_driven_trip_api_v2_trip_evaluations_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["V2TripEvaluationRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TripEvaluationResponse"];
+        };
+      };
+      /** @description Authentication is required. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description The selected saved vehicle is unavailable. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Required profile data is missing or unsupported. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+      /** @description Server configuration or persisted profile state is invalid. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description The routing service returned an unusable response. */
+      502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description An upstream service is temporarily unavailable. */
       503: {
         headers: {
           [name: string]: unknown;

@@ -45,6 +45,9 @@ from routevalue.api.saved_vehicles import (
 from routevalue.api.user_identity import (
     close_user_identity_resources,
 )
+from routevalue.api.v2_trip_evaluations import (
+    router as v2_trip_evaluations_router,
+)
 from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesError,
 )
@@ -153,6 +156,8 @@ def create_app() -> FastAPI:
     app.include_router(preferences_router)
 
     app.include_router(saved_vehicles_router)
+
+    app.include_router(v2_trip_evaluations_router)
 
     @app.get("/health")
     def health_check() -> dict[str, str]:

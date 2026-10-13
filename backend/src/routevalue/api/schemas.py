@@ -21,16 +21,27 @@ class ApiErrorCode(StrEnum):
 
     AUTHENTICATION_REQUIRED = "authentication_required"
     AUTHENTICATION_SERVICE_UNAVAILABLE = "authentication_service_unavailable"
+
     ROUTING_SERVICE_UNAVAILABLE = "routing_service_unavailable"
     ROUTING_SERVICE_ERROR = "routing_service_error"
     ROUTING_RESPONSE_INVALID = "routing_response_invalid"
+
     SAVED_VEHICLE_NOT_FOUND = "saved_vehicle_not_found"
     SERVICE_CONFIGURATION_ERROR = "service_configuration_error"
+
     VEHICLE_CATALOG_RESPONSE_INVALID = "vehicle_catalog_response_invalid"
     VEHICLE_CATALOG_SERVICE_ERROR = "vehicle_catalog_service_error"
     VEHICLE_CATALOG_SERVICE_UNAVAILABLE = "vehicle_catalog_service_unavailable"
     VEHICLE_CONFIGURATION_NOT_FOUND = "vehicle_configuration_not_found"
     VEHICLE_SPECIFICATION_UNAVAILABLE = "vehicle_specification_unavailable"
+
+    # V2-M4 profile-driven evaluation failures.
+    VALUE_OF_TIME_NOT_CONFIGURED = "value_of_time_not_configured"
+    DEFAULT_VEHICLE_NOT_CONFIGURED = "default_vehicle_not_configured"
+    DEFAULT_VEHICLE_UNAVAILABLE = "default_vehicle_unavailable"
+    UNSUPPORTED_VEHICLE_ENERGY_TYPE = "unsupported_vehicle_energy_type"
+    PROFILE_SERVICE_UNAVAILABLE = "profile_service_unavailable"
+    PROFILE_STATE_INVALID = "profile_state_invalid"
 
 
 class ApiErrorResponse(BaseModel):
@@ -135,6 +146,48 @@ class TripEvaluationRequest(BaseModel):
             raise ValueError("value_of_time_per_hour cannot be negative")
 
         return value
+
+
+# V2-M4: Authenticated profile-driven evaluation request contracts.
+
+
+class V2GasolineInputs(BaseModel):
+    """Current gasoline price input for profile-driven trip evaluation."""
+
+    model_config = {
+        "extra": "forbid",
+    }
+
+    fuel_price_per_gallon: Decimal
+
+    @field_validator("fuel_price_per_gallon")
+    @classmethod
+    def fuel_price_must_be_valid(
+        cls,
+        value: Decimal,
+    ) -> Decimal:
+        """Require a finite, nonnegative gasoline price."""
+
+        if not value.is_finite():
+            raise ValueError("fuel_price_per_gallon must be finite")
+
+        if value < 0:
+            raise ValueError("fuel_price_per_gallon cannot be negative")
+
+        return value
+
+
+class V2TripEvaluationRequest(BaseModel):
+    """Authenticated V2 trip request using stored user personalization."""
+
+    model_config = {
+        "extra": "forbid",
+    }
+
+    origin: ResolvedLocationInput
+    destination: ResolvedLocationInput
+    saved_vehicle_id: UUID | None = None
+    gasoline: V2GasolineInputs
 
 
 class RouteResponse(BaseModel):
