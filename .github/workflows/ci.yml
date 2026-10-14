@@ -1,3 +1,4 @@
+
 name: CI
 
 on:
@@ -74,6 +75,112 @@ jobs:
       - name: Check database schema consistency
         run: uv run alembic check
 
+      - name: Create isolated M8 EIA test database
+        run: |
+          uv run python - <<'PY'
+          import os
+
+          from sqlalchemy import create_engine, text
+
+          engine = create_engine(
+              os.environ["DATABASE_URL"],
+              isolation_level="AUTOCOMMIT",
+          )
+
+          try:
+              with engine.connect() as connection:
+                  connection.execute(
+                      text("CREATE DATABASE routevalue_m8_eia_test")
+                  )
+
+              print("M8 isolated test database created")
+          finally:
+              engine.dispose()
+          PY
+
+      - name: Migrate isolated M8 EIA test database
+        env:
+          DATABASE_URL: postgresql+psycopg://routevalue_local:routevalue_local_only@127.0.0.1:55432/routevalue_m8_eia_test
+          DATABASE_URL_UNPOOLED: postgresql+psycopg://routevalue_local:routevalue_local_only@127.0.0.1:55432/routevalue_m8_eia_test
+        run: |
+          uv run alembic upgrade head
+          uv run alembic current
+          uv run alembic check
+
+      - name: Verify both isolated test databases
+        env:
+          M8_TEST_DATABASE_URL: postgresql+psycopg://routevalue_local:routevalue_local_only@127.0.0.1:55432/routevalue_m8_eia_test
+        run: |
+          uv run python - <<'PY'
+          import os
+
+          from sqlalchemy import create_engine, text
+
+          databases = {
+              "legacy": (
+                  os.environ["ROUTEVALUE_TEST_DATABASE_URL"],
+                  "routevalue_m3b4",
+              ),
+              "M8 EIA": (
+                  os.environ["M8_TEST_DATABASE_URL"],
+                  "routevalue_m8_eia_test",
+              ),
+          }
+
+          for label, (database_url, expected_name) in databases.items():
+              engine = create_engine(database_url)
+
+              try:
+                  with engine.connect() as connection:
+                      name = connection.execute(
+                          text("SELECT current_database()")
+                      ).scalar_one()
+
+                      revision = connection.execute(
+                          text(
+                              "SELECT version_num "
+                              "FROM public.alembic_version"
+                          )
+                      ).scalar_one()
+
+                  assert name == expected_name
+                  assert revision == "e8a1d4c209bf"
+
+                  print(f"{label}: database and revision verified")
+              finally:
+                  engine.dispose()
+          PY
+
+      - name: Prepare EIA XLS integration fixtures
+        run: |
+          curl --fail --location --silent --show-error \
+            --retry 3 --connect-timeout 10 --max-time 90 \
+            --output /tmp/routevalue_eia_california.xls \
+            "https://www.eia.gov/dnav/pet/xls/PET_PRI_GND_DCUS_SCA_W.xls"
+
+          curl --fail --location --silent --show-error \
+            --retry 3 --connect-timeout 10 --max-time 90 \
+            --output /tmp/routevalue_eia_gasoline.xls \
+            "https://www.eia.gov/dnav/pet/xls/PET_PRI_GND_DCUS_NUS_W.xls"
+
+          uv run python - <<'PY'
+          from pathlib import Path
+
+          signature = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+          paths = (
+              Path("/tmp/routevalue_eia_california.xls"),
+              Path("/tmp/routevalue_eia_gasoline.xls"),
+          )
+
+          for path in paths:
+              assert path.is_file(), f"Missing fixture: {path}"
+              assert path.read_bytes().startswith(signature), (
+                  f"Invalid XLS fixture: {path}"
+              )
+              print(f"Verified EIA workbook: {path.name}")
+          PY
+
       - name: Run PostgreSQL integration tests
         run: |
           uv run pytest -q \
@@ -87,6 +194,8 @@ jobs:
             tests/test_api_saved_vehicles_authenticated_postgres.py
 
       - name: Run complete backend tests
+        env:
+          DATABASE_URL_UNPOOLED: postgresql+psycopg://routevalue_local:routevalue_local_only@127.0.0.1:55432/routevalue_m8_eia_test
         run: uv run pytest -q
 
       - name: Run Ruff lint
