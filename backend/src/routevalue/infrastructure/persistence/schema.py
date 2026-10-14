@@ -203,6 +203,85 @@ Index("ix_auth_identities_user_id", auth_identities.c.user_id)
 Index("ix_saved_vehicles_user_id", saved_vehicles.c.user_id)
 
 
+# EIA gasoline pricing is global market data, not user-owned data.
+# One snapshot contains a complete regional set of grade observations.
+
+eia_pricing_snapshots = Table(
+    "eia_pricing_snapshots",
+    metadata,
+    Column("region_id", String(64), primary_key=True),
+    Column("geographic_scope", String(32), nullable=False),
+    Column("display_name", Text(), nullable=False),
+    Column("provider", String(32), nullable=False),
+    Column("workbook_url", Text(), nullable=False),
+    Column(
+        "refreshed_at",
+        DateTime(timezone=True),
+        nullable=False,
+    ),
+    CheckConstraint(
+        "length(btrim(region_id)) > 0",
+        name="ck_eia_snapshots_region_nonblank",
+    ),
+    CheckConstraint(
+        "length(btrim(display_name)) > 0",
+        name="ck_eia_snapshots_name_nonblank",
+    ),
+    CheckConstraint(
+        "provider = 'EIA'",
+        name="ck_eia_snapshots_provider",
+    ),
+    CheckConstraint(
+        "geographic_scope IN ('national', 'region', 'state', 'metro')",
+        name="ck_eia_snapshots_scope",
+    ),
+    CheckConstraint(
+        "length(btrim(workbook_url)) > 0",
+        name="ck_eia_snapshots_url_nonblank",
+    ),
+)
+
+
+eia_pricing_observations = Table(
+    "eia_pricing_observations",
+    metadata,
+    Column(
+        "region_id",
+        String(64),
+        ForeignKey(
+            "public.eia_pricing_snapshots.region_id",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    ),
+    Column("fuel_grade", String(16), primary_key=True),
+    Column("series_id", String(128), nullable=False),
+    Column(
+        "observed_at",
+        DateTime(timezone=True),
+        nullable=False,
+    ),
+    Column("price_per_gallon", Numeric(), nullable=False),
+    UniqueConstraint(
+        "region_id",
+        "series_id",
+        name="uq_eia_observations_region_series",
+    ),
+    CheckConstraint(
+        "fuel_grade IN ('regular', 'midgrade', 'premium')",
+        name="ck_eia_observations_grade",
+    ),
+    CheckConstraint(
+        "length(btrim(series_id)) > 0",
+        name="ck_eia_observations_series_nonblank",
+    ),
+    CheckConstraint(
+        "price_per_gallon >= 0 AND price_per_gallon != 'NaN'::numeric",
+        name="ck_eia_observations_nonnegative_price",
+    ),
+)
+
+
 type AlembicObjectType = Literal[
     "schema",
     "table",

@@ -1,4 +1,4 @@
-"""Offline validation of the first RouteValue persistence schema."""
+"""Offline validation of RouteValue persistence schema and migrations."""
 
 from pathlib import Path
 
@@ -16,6 +16,8 @@ from sqlalchemy.schema import CreateTable
 
 from routevalue.infrastructure.persistence.schema import (
     auth_identities,
+    eia_pricing_observations,
+    eia_pricing_snapshots,
     metadata,
     saved_vehicles,
     user_preferences,
@@ -29,6 +31,8 @@ def test_only_routevalue_owned_tables_are_registered() -> None:
         "public.auth_identities",
         "public.user_preferences",
         "public.saved_vehicles",
+        "public.eia_pricing_snapshots",
+        "public.eia_pricing_observations",
     }
 
 
@@ -48,7 +52,6 @@ def test_primary_keys_are_internal_uuids(
     table = metadata.tables[table_name]
 
     assert [column.name for column in table.primary_key.columns] == [key_name]
-
     assert isinstance(table.c[key_name].type, Uuid)
 
 
@@ -178,6 +181,76 @@ def test_database_constraints_cover_vehicle_and_preference_validity() -> None:
     )
 
 
+def test_eia_snapshot_primary_key_is_regional() -> None:
+    """Verify regional identity and timezone-aware refresh storage."""
+    from sqlalchemy import DateTime
+
+    assert [column.name for column in eia_pricing_snapshots.primary_key.columns] == ["region_id"]
+
+    refreshed_at = eia_pricing_snapshots.c.refreshed_at
+
+    assert refreshed_at.nullable is False
+    assert isinstance(refreshed_at.type, DateTime)
+    assert refreshed_at.type.timezone is True
+
+
+def test_eia_observation_primary_key_is_region_and_grade() -> None:
+    assert [column.name for column in eia_pricing_observations.primary_key.columns] == [
+        "region_id",
+        "fuel_grade",
+    ]
+
+
+def test_eia_observation_price_is_unrounded_decimal() -> None:
+    price = eia_pricing_observations.c.price_per_gallon
+
+    assert isinstance(price.type, Numeric)
+    assert price.type.precision is None
+    assert price.type.scale is None
+    assert price.nullable is False
+
+
+def test_eia_observation_foreign_key_uses_cascade() -> None:
+    constraints = [
+        constraint
+        for constraint in eia_pricing_observations.constraints
+        if isinstance(constraint, ForeignKeyConstraint)
+    ]
+
+    assert len(constraints) == 1
+    assert constraints[0].ondelete == "CASCADE"
+
+    assert {fk.target_fullname for fk in eia_pricing_observations.c.region_id.foreign_keys} == {
+        "public.eia_pricing_snapshots.region_id"
+    }
+
+
+def test_eia_observations_have_unique_series_per_region() -> None:
+    constraints = [
+        constraint
+        for constraint in eia_pricing_observations.constraints
+        if isinstance(constraint, UniqueConstraint)
+    ]
+
+    assert any(
+        constraint.name == "uq_eia_observations_region_series"
+        and [column.name for column in constraint.columns] == ["region_id", "series_id"]
+        for constraint in constraints
+    )
+
+
+def test_eia_price_database_constraints_are_registered() -> None:
+    names = {
+        constraint.name
+        for constraint in eia_pricing_observations.constraints
+        if isinstance(constraint, CheckConstraint)
+    }
+
+    assert "ck_eia_observations_grade" in names
+    assert "ck_eia_observations_series_nonblank" in names
+    assert "ck_eia_observations_nonnegative_price" in names
+
+
 def test_generated_ddl_stays_in_public_schema() -> None:
     from sqlalchemy.engine import make_url
 
@@ -195,6 +268,8 @@ def test_generated_ddl_stays_in_public_schema() -> None:
             auth_identities,
             saved_vehicles,
             user_preferences,
+            eia_pricing_snapshots,
+            eia_pricing_observations,
         ):
             sql = str(CreateTable(table).compile(dialect=engine.dialect))
 
@@ -211,13 +286,17 @@ def test_alembic_recognizes_exactly_one_current_head() -> None:
     config = Config(str(backend_root / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
 
-    assert scripts.get_heads() == ["c8e4b72a91d3"]
+    assert scripts.get_heads() == ["e8a1d4c209bf"]
 
     initial = scripts.get_revision("7b3c2a91d0ef")
     mass_migration = scripts.get_revision("c8e4b72a91d3")
+    eia_migration = scripts.get_revision("e8a1d4c209bf")
 
     assert initial is not None
     assert initial.down_revision is None
 
     assert mass_migration is not None
     assert mass_migration.down_revision == "7b3c2a91d0ef"
+
+    assert eia_migration is not None
+    assert eia_migration.down_revision == "c8e4b72a91d3"

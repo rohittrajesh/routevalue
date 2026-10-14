@@ -2,8 +2,13 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 
+from routevalue.domain.gasoline_price_metadata import (
+    GasolineMarketMetadata,
+    GasolinePriceGeographicScope,
+)
 from routevalue.domain.units import (
     Gallons,
     KilowattHours,
@@ -151,18 +156,67 @@ class GasolinePriceQuote:
     fuel_grade: GasolineGrade
     source: GasolinePriceSource
     observed_at: datetime | None
+    market_metadata: GasolineMarketMetadata | None = None
 
     def __post_init__(self) -> None:
+        """Validate gasoline price and provenance metadata."""
+
+        if not isinstance(self.price_per_gallon, Decimal):
+            raise TypeError("price_per_gallon must be a Decimal")
+
+        if not self.price_per_gallon.is_finite():
+            raise ValueError("price_per_gallon must be finite")
+
         if self.price_per_gallon < 0:
             raise ValueError("price_per_gallon cannot be negative")
+
+        if not isinstance(self.fuel_grade, GasolineGrade):
+            raise TypeError("fuel_grade must be a GasolineGrade")
+
+        if not isinstance(self.source, GasolinePriceSource):
+            raise TypeError("source must be a GasolinePriceSource")
 
         if self.source is not GasolinePriceSource.USER_OVERRIDE and self.observed_at is None:
             raise ValueError("market fuel price requires an observation timestamp")
 
-        if self.observed_at is not None and (
-            self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None
-        ):
-            raise ValueError("observed_at must be timezone-aware")
+        if self.observed_at is not None:
+            if not isinstance(self.observed_at, datetime):
+                raise TypeError("observed_at must be a datetime")
+
+            if self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None:
+                raise ValueError("observed_at must be timezone-aware")
+
+        if self.market_metadata is not None:
+            if not isinstance(self.market_metadata, GasolineMarketMetadata):
+                raise TypeError("market_metadata must be a GasolineMarketMetadata")
+
+            if self.source is GasolinePriceSource.USER_OVERRIDE:
+                raise ValueError("user override cannot contain market metadata")
+
+            geographic_scope = self.market_metadata.geography.scope
+
+            if self.source is GasolinePriceSource.REGIONAL_MARKET and geographic_scope not in (
+                GasolinePriceGeographicScope.NATIONAL,
+                GasolinePriceGeographicScope.REGION,
+                GasolinePriceGeographicScope.STATE,
+                GasolinePriceGeographicScope.METRO,
+            ):
+                raise ValueError("regional market quote has incompatible geographic scope")
+
+            if self.source is GasolinePriceSource.LOCAL_MARKET and geographic_scope not in (
+                GasolinePriceGeographicScope.METRO,
+                GasolinePriceGeographicScope.STATION,
+            ):
+                raise ValueError("local market quote has incompatible geographic scope")
+
+            published_at = self.market_metadata.published_at
+
+            if (
+                published_at is not None
+                and self.observed_at is not None
+                and published_at < self.observed_at
+            ):
+                raise ValueError("publication timestamp cannot precede observation timestamp")
 
 
 FuelPriceQuote = GasolinePriceQuote
