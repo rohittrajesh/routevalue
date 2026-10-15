@@ -11,6 +11,10 @@ from routevalue.api.dependencies import (
     get_google_routes_api_key,
     get_google_routes_http_client,
 )
+from routevalue.api.eia_pricing_dependencies import (
+    build_lazy_eia_pricing_dependencies,
+)
+from routevalue.api.errors import ServiceConfigurationError
 from routevalue.api.preferences import get_user_preferences_repository
 from routevalue.api.saved_vehicles import get_saved_vehicle_repository
 from routevalue.api.schemas import (
@@ -23,7 +27,10 @@ from routevalue.api.terrain_v2_composition import (
     build_terrain_v2_evaluation_service,
 )
 from routevalue.api.terrain_v2_service import TerrainV2EvaluationService
-from routevalue.api.user_identity import get_authenticated_user
+from routevalue.api.user_identity import (
+    get_application_database_engine,
+    get_authenticated_user,
+)
 from routevalue.api.v2_evaluation_mappers import (
     to_v2_trip_evaluation_response,
 )
@@ -39,6 +46,15 @@ from routevalue.application.electric_evaluation import (
 from routevalue.application.gasoline_evaluation import (
     GasolineEvaluationContext,
     UnsupportedVehicleEnergyTypeError,
+)
+from routevalue.application.gasoline_price_failures import (
+    GasolinePriceProviderError,
+    GasolinePriceProviderFailureReason,
+    GasolinePriceUnavailableError,
+    GasolinePriceUnavailableReason,
+)
+from routevalue.application.gasoline_price_geography import (
+    PricingGeographyUnavailableError,
 )
 from routevalue.application.identity import AuthenticatedUser
 from routevalue.application.models import (
@@ -66,6 +82,9 @@ from routevalue.infrastructure.energy.electric import (
 from routevalue.infrastructure.energy.gasoline import (
     GasolineEnergyCostEstimator,
 )
+from routevalue.infrastructure.persistence.eia_pricing_snapshots import (
+    EiaPricingPersistenceError,
+)
 from routevalue.infrastructure.persistence.saved_vehicles import (
     SavedVehiclePersistenceError,
 )
@@ -88,7 +107,6 @@ def _build_gasoline_estimator(
     context: GasolineEvaluationContext,
 ) -> EnergyCostEstimator:
     """Compose the existing baseline gasoline estimator."""
-
     return GasolineEnergyCostEstimator(
         vehicle=context.vehicle,
         fuel_price_quote=context.fuel_price_quote,
@@ -99,7 +117,6 @@ def _build_electric_estimator(
     context: ElectricEvaluationContext,
 ) -> EnergyCostEstimator:
     """Compose the existing baseline BEV estimator."""
-
     return ElectricEnergyCostEstimator(
         vehicle=context.vehicle,
         electricity_price_quote=context.electricity_price_quote,
@@ -127,18 +144,22 @@ def get_profile_driven_trip_evaluation_service(
         Depends(get_google_routes_http_client),
     ],
 ) -> V2TripEvaluationService:
-    """Compose the V2 evaluator with terrain acquisition disabled.
+    """Compose authenticated V2 evaluation with read-only EIA pricing.
 
-    Preserve this dependency function's identity for existing FastAPI
-    dependency overrides.
+    Reuse the existing application database engine.
 
-    No elevation provider or acquisition service is constructed here.
-    The current Google routing geometry remains an OVERVIEW polyline.
+    Terrain acquisition remains disabled. Automatic gasoline pricing
+    reads persisted observations only and never downloads EIA data.
+
+    Preserve the existing FastAPI dependency override identity.
     """
-
     route_provider: RouteProvider = GoogleRoutesRouteProvider(
         api_key=api_key,
         client=client,
+    )
+
+    gasoline_provider, jurisdiction_resolver = build_lazy_eia_pricing_dependencies(
+        engine_factory=get_application_database_engine,
     )
 
     return build_terrain_v2_evaluation_service(
@@ -146,6 +167,8 @@ def get_profile_driven_trip_evaluation_service(
         saved_vehicle_repository=saved_vehicle_repository,
         route_provider=route_provider,
         terrain_acquisition_service=None,
+        gasoline_price_provider=gasoline_provider,
+        gasoline_jurisdiction_resolver=jurisdiction_resolver,
     )
 
 
@@ -153,7 +176,6 @@ def _to_resolved_location(
     location: ResolvedLocationInput,
 ) -> ResolvedLocation:
     """Map a validated HTTP location to the application model."""
-
     return ResolvedLocation(
         display_name=location.display_name,
         latitude=location.latitude,
@@ -167,7 +189,6 @@ def _to_route_search_request(
     request: V2TripEvaluationRequest,
 ) -> RouteSearchRequest:
     """Map V2 trip-specific inputs without introducing V1 personalization."""
-
     return RouteSearchRequest(
         origin=_to_resolved_location(request.origin),
         destination=_to_resolved_location(request.destination),
@@ -181,7 +202,6 @@ def _error_response(
     detail: str,
 ) -> JSONResponse:
     """Return the established flat RouteValue API error shape."""
-
     return JSONResponse(
         status_code=status_code,
         content={
@@ -218,9 +238,7 @@ def _profile_failure_response(
     error: ProfileResolutionError,
 ) -> JSONResponse:
     """Translate provider-neutral profile failures into HTTP responses."""
-
     status_code, detail = _PROFILE_FAILURES[error.reason]
-
     return _error_response(
         status_code=status_code,
         code=ApiErrorCode(error.reason.value),
@@ -242,7 +260,11 @@ def _profile_failure_response(
         },
         409: {
             "model": ApiErrorResponse,
-            "description": "Required profile data or energy input is incompatible.",
+            "description": "Required profile or pricing data is unavailable or incompatible.",
+        },
+        422: {
+            "model": ApiErrorResponse,
+            "description": "Invalid or conflicting energy price inputs.",
         },
         500: {
             "model": ApiErrorResponse,
@@ -250,11 +272,11 @@ def _profile_failure_response(
         },
         502: {
             "model": ApiErrorResponse,
-            "description": "The routing service returned an unusable response.",
+            "description": "An upstream provider returned an invalid response.",
         },
         503: {
             "model": ApiErrorResponse,
-            "description": "An upstream service is temporarily unavailable.",
+            "description": "An upstream service or pricing data is unavailable.",
         },
     },
 )
@@ -285,6 +307,17 @@ def evaluate_profile_driven_trip(
         request.electricity.price_per_kilowatt_hour if request.electricity is not None else None
     )
 
+    if (
+        isinstance(service, ProfileDrivenTripEvaluationService)
+        and fuel_price_per_gallon is None
+        and price_per_kilowatt_hour is None
+    ):
+        return _error_response(
+            status_code=422,
+            code=ApiErrorCode.ENERGY_INPUT_MISMATCH,
+            detail="An energy price must be supplied for this evaluation.",
+        )
+
     try:
         result = service.evaluate_trip(
             user.user_id,
@@ -309,6 +342,87 @@ def evaluate_profile_driven_trip(
             status_code=409,
             code=ApiErrorCode.UNSUPPORTED_VEHICLE_ENERGY_TYPE,
             detail="The selected vehicle has an unsupported energy type.",
+        )
+
+    except PricingGeographyUnavailableError:
+        return _error_response(
+            status_code=409,
+            code=ApiErrorCode.GASOLINE_PRICE_UNAVAILABLE,
+            detail=(
+                "Automatic gasoline pricing is not available for this "
+                "location. Provide a manual gasoline price."
+            ),
+        )
+
+    except GasolinePriceUnavailableError as exc:
+        if exc.reason is GasolinePriceUnavailableReason.PRICE_STALE:
+            return _error_response(
+                status_code=503,
+                code=ApiErrorCode.GASOLINE_PRICE_STALE,
+                detail=(
+                    "Automatic gasoline pricing is out of date. "
+                    "Provide a manual price or try again later."
+                ),
+            )
+
+        if exc.reason is GasolinePriceUnavailableReason.PROVIDER_UNAVAILABLE:
+            return _error_response(
+                status_code=503,
+                code=ApiErrorCode.GASOLINE_PRICE_PROVIDER_UNAVAILABLE,
+                detail=(
+                    "Automatic gasoline pricing is temporarily unavailable. "
+                    "Provide a manual price or try again later."
+                ),
+            )
+
+        if exc.reason is GasolinePriceUnavailableReason.INVALID_QUOTE:
+            return _error_response(
+                status_code=502,
+                code=ApiErrorCode.GASOLINE_PRICE_INVALID,
+                detail="The gasoline pricing service returned unusable data.",
+            )
+
+        return _error_response(
+            status_code=409,
+            code=ApiErrorCode.GASOLINE_PRICE_UNAVAILABLE,
+            detail=(
+                "No eligible automatic gasoline price is available "
+                "for this vehicle and location. Provide a manual price."
+            ),
+        )
+
+    except GasolinePriceProviderError as exc:
+        if exc.reason is GasolinePriceProviderFailureReason.INVALID_RESPONSE:
+            return _error_response(
+                status_code=502,
+                code=ApiErrorCode.GASOLINE_PRICE_INVALID,
+                detail="The gasoline pricing service returned unusable data.",
+            )
+
+        return _error_response(
+            status_code=503,
+            code=ApiErrorCode.GASOLINE_PRICE_PROVIDER_UNAVAILABLE,
+            detail=(
+                "Automatic gasoline pricing is temporarily unavailable. "
+                "Provide a manual price or try again later."
+            ),
+        )
+
+    except EiaPricingPersistenceError:
+        return _error_response(
+            status_code=502,
+            code=ApiErrorCode.GASOLINE_PRICE_INVALID,
+            detail="The gasoline pricing service returned unusable data.",
+        )
+
+    except ServiceConfigurationError:
+        return _error_response(
+            status_code=503,
+            code=ApiErrorCode.GASOLINE_PRICE_PROVIDER_UNAVAILABLE,
+            detail=(
+                "Automatic gasoline pricing is temporarily unavailable. "
+                "Provide a manual price or try again later."
+            ),
         )
 
     except NoRoutesAvailableError:

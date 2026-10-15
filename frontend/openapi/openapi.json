@@ -22,7 +22,11 @@
           "unsupported_vehicle_energy_type",
           "energy_input_mismatch",
           "profile_service_unavailable",
-          "profile_state_invalid"
+          "profile_state_invalid",
+          "gasoline_price_unavailable",
+          "gasoline_price_stale",
+          "gasoline_price_provider_unavailable",
+          "gasoline_price_invalid"
         ],
         "title": "ApiErrorCode",
         "type": "string"
@@ -904,7 +908,7 @@
       },
       "V2TripEvaluationRequest": {
         "additionalProperties": false,
-        "description": "Authenticated V2 trip using stored user personalization.\n\nExactly one energy-price object is required. The selected owned\nvehicle determines which energy type is valid.",
+        "description": "Authenticated V2 trip using stored user personalization.\n\nGasoline vehicles may omit an explicit energy-price object to\nrequest automatic pricing from the configured pricing service.\n\nElectricity prices remain mandatory for BEV evaluation.\n\nConflicting manual gasoline and electricity inputs are rejected.\nThe selected owned vehicle determines the valid energy type.",
         "properties": {
           "destination": {
             "$ref": "#/components/schemas/ResolvedLocationInput"
@@ -1263,17 +1267,17 @@
                 }
               }
             },
-            "description": "Required profile data or energy input is incompatible."
+            "description": "Required profile or pricing data is unavailable or incompatible."
           },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid or conflicting energy price inputs."
           },
           "500": {
             "content": {
@@ -1293,7 +1297,7 @@
                 }
               }
             },
-            "description": "The routing service returned an unusable response."
+            "description": "An upstream provider returned an invalid response."
           },
           "503": {
             "content": {
@@ -1303,7 +1307,7 @@
                 }
               }
             },
-            "description": "An upstream service is temporarily unavailable."
+            "description": "An upstream service or pricing data is unavailable."
           }
         },
         "security": [

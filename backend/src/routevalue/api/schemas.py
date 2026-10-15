@@ -44,6 +44,12 @@ class ApiErrorCode(StrEnum):
     PROFILE_SERVICE_UNAVAILABLE = "profile_service_unavailable"
     PROFILE_STATE_INVALID = "profile_state_invalid"
 
+    # V2 automatic gasoline pricing.
+    GASOLINE_PRICE_UNAVAILABLE = "gasoline_price_unavailable"
+    GASOLINE_PRICE_STALE = "gasoline_price_stale"
+    GASOLINE_PRICE_PROVIDER_UNAVAILABLE = "gasoline_price_provider_unavailable"
+    GASOLINE_PRICE_INVALID = "gasoline_price_invalid"
+
 
 class ApiErrorResponse(BaseModel):
     """Stable public representation of a RouteValue request failure."""
@@ -207,8 +213,13 @@ class V2ElectricityInputs(BaseModel):
 class V2TripEvaluationRequest(BaseModel):
     """Authenticated V2 trip using stored user personalization.
 
-    Exactly one energy-price object is required. The selected owned
-    vehicle determines which energy type is valid.
+    Gasoline vehicles may omit an explicit energy-price object to
+    request automatic pricing from the configured pricing service.
+
+    Electricity prices remain mandatory for BEV evaluation.
+
+    Conflicting manual gasoline and electricity inputs are rejected.
+    The selected owned vehicle determines the valid energy type.
     """
 
     model_config = {
@@ -223,11 +234,11 @@ class V2TripEvaluationRequest(BaseModel):
     electricity: V2ElectricityInputs | None = None
 
     @model_validator(mode="after")
-    def exactly_one_energy_input(self) -> Self:
-        """Reject missing or conflicting energy-price objects."""
+    def energy_inputs_must_not_conflict(self) -> Self:
+        """Allow automatic gasoline pricing but reject conflicting inputs."""
 
-        if (self.gasoline is None) == (self.electricity is None):
-            raise ValueError("exactly one of gasoline or electricity must be supplied")
+        if self.gasoline is not None and self.electricity is not None:
+            raise ValueError("gasoline and electricity cannot both be supplied")
 
         return self
 

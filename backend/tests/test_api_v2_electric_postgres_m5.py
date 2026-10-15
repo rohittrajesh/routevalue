@@ -384,23 +384,34 @@ def test_bev_evaluation_requires_valid_authentication(
 
 
 @pytest.mark.parametrize(
-    "bad_body",
+    ("bad_body", "expected_status"),
     [
-        _body(electricity=None),
-        _body(electricity="0.31", gasoline="4.50"),
-        _body(electricity="-0.01"),
-        _body(electricity="NaN"),
+        (_body(electricity=None), 409),
+        (_body(electricity="0.31", gasoline="4.50"), 422),
+        (_body(electricity="-0.01"), 422),
+        (_body(electricity="NaN"), 422),
     ],
 )
 def test_invalid_electricity_contract_fails_before_google(
     electric_postgres: ElectricPostgresHarness,
     bad_body: dict[str, object],
+    expected_status: int,
 ) -> None:
     harness = electric_postgres
     bev = _save_bev(harness, harness.owner)
     _configure(harness, harness.owner, bev)
-    response = harness.client.post(_PATH, headers=_headers(), json=bad_body)
-    assert response.status_code == 422
+
+    response = harness.client.post(
+        _PATH,
+        headers=_headers(),
+        json=bad_body,
+    )
+
+    assert response.status_code == expected_status
+
+    if expected_status == 409:
+        assert response.json()["code"] == "energy_input_mismatch"
+
     assert harness.google_requests == []
 
 

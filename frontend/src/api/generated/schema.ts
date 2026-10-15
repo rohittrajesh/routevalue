@@ -184,7 +184,11 @@ export interface components {
       | "unsupported_vehicle_energy_type"
       | "energy_input_mismatch"
       | "profile_service_unavailable"
-      | "profile_state_invalid";
+      | "profile_state_invalid"
+      | "gasoline_price_unavailable"
+      | "gasoline_price_stale"
+      | "gasoline_price_provider_unavailable"
+      | "gasoline_price_invalid";
     /**
      * ApiErrorResponse
      * @description Stable public representation of a RouteValue request failure.
@@ -551,8 +555,13 @@ export interface components {
      * V2TripEvaluationRequest
      * @description Authenticated V2 trip using stored user personalization.
      *
-     *     Exactly one energy-price object is required. The selected owned
-     *     vehicle determines which energy type is valid.
+     *     Gasoline vehicles may omit an explicit energy-price object to
+     *     request automatic pricing from the configured pricing service.
+     *
+     *     Electricity prices remain mandatory for BEV evaluation.
+     *
+     *     Conflicting manual gasoline and electricity inputs are rejected.
+     *     The selected owned vehicle determines the valid energy type.
      */
     V2TripEvaluationRequest: {
       destination: components["schemas"]["ResolvedLocationInput"];
@@ -796,7 +805,7 @@ export interface operations {
           "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
-      /** @description Required profile data or energy input is incompatible. */
+      /** @description Required profile or pricing data is unavailable or incompatible. */
       409: {
         headers: {
           [name: string]: unknown;
@@ -805,13 +814,13 @@ export interface operations {
           "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
-      /** @description Validation Error */
+      /** @description Invalid or conflicting energy price inputs. */
       422: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+          "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
       /** @description Server configuration or persisted profile state is invalid. */
@@ -823,7 +832,7 @@ export interface operations {
           "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
-      /** @description The routing service returned an unusable response. */
+      /** @description An upstream provider returned an invalid response. */
       502: {
         headers: {
           [name: string]: unknown;
@@ -832,7 +841,7 @@ export interface operations {
           "application/json": components["schemas"]["ApiErrorResponse"];
         };
       };
-      /** @description An upstream service is temporarily unavailable. */
+      /** @description An upstream service or pricing data is unavailable. */
       503: {
         headers: {
           [name: string]: unknown;
