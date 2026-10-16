@@ -68,6 +68,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/vehicle-catalog/configurations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Catalog Configurations
+     * @description Return canonical identities suitable for saved-vehicle creation.
+     */
+    get: operations["list_catalog_configurations_api_v2_vehicle_catalog_configurations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/vehicle-catalog/makes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Catalog Makes
+     * @description Return makes available for a selected model year.
+     */
+    get: operations["list_catalog_makes_api_v2_vehicle_catalog_makes_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/vehicle-catalog/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Catalog Models
+     * @description Return models available for a selected year and make.
+     */
+    get: operations["list_catalog_models_api_v2_vehicle_catalog_models_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/vehicle-catalog/years": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Catalog Years
+     * @description Return available years in provider-defined order.
+     */
+    get: operations["list_catalog_years_api_v2_vehicle_catalog_years_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/vehicles": {
     parameters: {
       query?: never;
@@ -593,6 +673,56 @@ export interface components {
       /** Error Type */
       type: string;
     };
+    /**
+     * VehicleCatalogConfigurationResponse
+     * @description One canonical provider-backed catalog selection.
+     */
+    VehicleCatalogConfigurationResponse: {
+      /** Configuration */
+      configuration: string;
+      /** Make */
+      make: string;
+      /** Model */
+      model: string;
+      /** Source */
+      source: string;
+      /** Source Id */
+      source_id: string;
+      /** Year */
+      year: number;
+    };
+    /**
+     * VehicleConfigurationsResponse
+     * @description Selectable vehicle configurations.
+     */
+    VehicleConfigurationsResponse: {
+      /** Configurations */
+      configurations: components["schemas"]["VehicleCatalogConfigurationResponse"][];
+    };
+    /**
+     * VehicleMakesResponse
+     * @description Available makes for a model year.
+     */
+    VehicleMakesResponse: {
+      /** Makes */
+      makes: string[];
+    };
+    /**
+     * VehicleModelsResponse
+     * @description Available models for a year and make.
+     */
+    VehicleModelsResponse: {
+      /** Models */
+      models: string[];
+    };
+    /**
+     * VehicleYearsResponse
+     * @description Available vehicle model years.
+     */
+    VehicleYearsResponse: {
+      /** Years */
+      years: number[];
+    };
   };
   responses: never;
   parameters: never;
@@ -848,6 +978,122 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  list_catalog_configurations_api_v2_vehicle_catalog_configurations_get: {
+    parameters: {
+      query: {
+        year: number;
+        make: string;
+        model: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VehicleConfigurationsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_catalog_makes_api_v2_vehicle_catalog_makes_get: {
+    parameters: {
+      query: {
+        year: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VehicleMakesResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_catalog_models_api_v2_vehicle_catalog_models_get: {
+    parameters: {
+      query: {
+        year: number;
+        make: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VehicleModelsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_catalog_years_api_v2_vehicle_catalog_years_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VehicleYearsResponse"];
         };
       };
     };

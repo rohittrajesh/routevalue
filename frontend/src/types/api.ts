@@ -62,6 +62,10 @@ type V2EnergyPriceInputs =
   | {
       gasoline?: never;
       electricity: V2ElectricityInputs;
+    }
+  | {
+      gasoline?: never;
+      electricity?: never;
     };
 
 export type V2TripEvaluationRequest = Omit<

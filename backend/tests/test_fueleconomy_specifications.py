@@ -15,6 +15,7 @@ from routevalue.infrastructure.vehicles.fueleconomy_gov import (
 )
 from routevalue.infrastructure.vehicles.fueleconomy_specifications import (
     normalize_fueleconomy_gasoline_vehicle,
+    normalize_fueleconomy_vehicle,
 )
 
 
@@ -53,45 +54,27 @@ def _vehicle_xml(
 
 
 @pytest.mark.parametrize(
-    (
-        "provider_fuel_type",
-        "expected_grade",
-    ),
+    ("provider_fuel_type", "expected_grade"),
     [
-        (
-            "Regular Gasoline",
-            GasolineGrade.REGULAR,
-        ),
-        (
-            "Midgrade Gasoline",
-            GasolineGrade.MIDGRADE,
-        ),
-        (
-            "Premium Gasoline",
-            GasolineGrade.PREMIUM,
-        ),
+        ("Regular Gasoline", GasolineGrade.REGULAR),
+        ("Midgrade Gasoline", GasolineGrade.MIDGRADE),
+        ("Premium Gasoline", GasolineGrade.PREMIUM),
     ],
 )
 def test_normalize_gasoline_vehicle_maps_supported_fuel_grade(
     provider_fuel_type: str,
     expected_grade: GasolineGrade,
 ) -> None:
-    result = normalize_fueleconomy_gasoline_vehicle(
-        _vehicle_xml(
-            fuel_type_1=provider_fuel_type,
-        )
-    )
+    result = normalize_fueleconomy_gasoline_vehicle(_vehicle_xml(fuel_type_1=provider_fuel_type))
 
-    assert result == (
-        result.__class__(
-            specification=GasolineVehicleSpecification(
-                city_mpg=Decimal(28),
-                highway_mpg=Decimal(39),
-                combined_mpg=Decimal(32),
-                fuel_grade=expected_grade,
-            ),
-            unavailable_reason=None,
-        )
+    assert result == result.__class__(
+        specification=GasolineVehicleSpecification(
+            city_mpg=Decimal(28),
+            highway_mpg=Decimal(39),
+            combined_mpg=Decimal(32),
+            fuel_grade=expected_grade,
+        ),
+        unavailable_reason=None,
     )
 
 
@@ -104,20 +87,52 @@ def test_normalize_gasoline_vehicle_preserves_all_mpg_values() -> None:
         )
     )
 
-    assert isinstance(
-        result.specification,
-        GasolineVehicleSpecification,
-    )
+    assert isinstance(result.specification, GasolineVehicleSpecification)
     assert result.specification.city_mpg == Decimal("21.5")
     assert result.specification.highway_mpg == Decimal("30.25")
     assert result.specification.combined_mpg == Decimal("24.75")
     assert result.specification.fuel_grade is GasolineGrade.REGULAR
 
 
+def test_normalize_2021_audi_hybrid_preserves_premium_gasoline_mpg() -> None:
+    result = normalize_fueleconomy_vehicle(
+        _vehicle_xml(
+            atv_type="Hybrid",
+            fuel_type_1="Premium Gasoline",
+            city08="23",
+            highway08="31",
+            comb08="26",
+        )
+    )
+
+    assert result.unavailable_reason is None
+    assert result.specification == GasolineVehicleSpecification(
+        city_mpg=Decimal(23),
+        highway_mpg=Decimal(31),
+        combined_mpg=Decimal(26),
+        fuel_grade=GasolineGrade.PREMIUM,
+    )
+
+
+def test_normalize_non_plugin_hybrid_accepts_regular_gasoline() -> None:
+    result = normalize_fueleconomy_vehicle(
+        _vehicle_xml(
+            atv_type="Hybrid",
+            fuel_type_1="Regular Gasoline",
+            city08="50",
+            highway08="45",
+            comb08="48",
+        )
+    )
+
+    assert isinstance(result.specification, GasolineVehicleSpecification)
+    assert result.specification.combined_mpg == Decimal(48)
+    assert result.specification.fuel_grade is GasolineGrade.REGULAR
+
+
 @pytest.mark.parametrize(
     "atv_type",
     [
-        "Hybrid",
         "Plug-in Hybrid",
         "FFV",
         "Diesel",
@@ -130,11 +145,7 @@ def test_normalize_gasoline_vehicle_preserves_all_mpg_values() -> None:
 def test_normalize_gasoline_vehicle_rejects_advanced_powertrain(
     atv_type: str,
 ) -> None:
-    result = normalize_fueleconomy_gasoline_vehicle(
-        _vehicle_xml(
-            atv_type=atv_type,
-        )
-    )
+    result = normalize_fueleconomy_gasoline_vehicle(_vehicle_xml(atv_type=atv_type))
 
     assert result.specification is None
     assert result.unavailable_reason is VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN
@@ -142,24 +153,40 @@ def test_normalize_gasoline_vehicle_rejects_advanced_powertrain(
 
 @pytest.mark.parametrize(
     "secondary_fuel",
-    [
-        "E85",
-        "Electricity",
-        "CNG",
-        "LPG",
-    ],
+    ["E85", "Electricity", "CNG", "LPG"],
 )
 def test_normalize_gasoline_vehicle_rejects_secondary_fuel(
     secondary_fuel: str,
 ) -> None:
-    result = normalize_fueleconomy_gasoline_vehicle(
+    result = normalize_fueleconomy_gasoline_vehicle(_vehicle_xml(fuel_type_2=secondary_fuel))
+
+    assert result.specification is None
+    assert result.unavailable_reason is VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN
+
+
+def test_hybrid_with_secondary_electricity_remains_unsupported() -> None:
+    result = normalize_fueleconomy_vehicle(
         _vehicle_xml(
-            fuel_type_2=secondary_fuel,
+            atv_type="Hybrid",
+            fuel_type_1="Premium Gasoline",
+            fuel_type_2="Electricity",
         )
     )
 
     assert result.specification is None
     assert result.unavailable_reason is VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN
+
+
+def test_hybrid_missing_mpg_remains_unavailable() -> None:
+    result = normalize_fueleconomy_vehicle(
+        _vehicle_xml(
+            atv_type="Hybrid",
+            comb08=None,
+        )
+    )
+
+    assert result.specification is None
+    assert result.unavailable_reason is VehicleSpecificationUnavailableReason.MISSING_REQUIRED_DATA
 
 
 @pytest.mark.parametrize(
@@ -175,64 +202,28 @@ def test_normalize_gasoline_vehicle_rejects_secondary_fuel(
 def test_normalize_gasoline_vehicle_rejects_unsupported_primary_fuel(
     primary_fuel: str,
 ) -> None:
-    result = normalize_fueleconomy_gasoline_vehicle(
-        _vehicle_xml(
-            fuel_type_1=primary_fuel,
-        )
-    )
+    result = normalize_fueleconomy_gasoline_vehicle(_vehicle_xml(fuel_type_1=primary_fuel))
 
     assert result.specification is None
     assert result.unavailable_reason is VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN
 
 
 def test_normalize_gasoline_vehicle_preserves_missing_fuel_type() -> None:
-    result = normalize_fueleconomy_gasoline_vehicle(
-        _vehicle_xml(
-            fuel_type_1=None,
-        )
-    )
+    result = normalize_fueleconomy_gasoline_vehicle(_vehicle_xml(fuel_type_1=None))
 
     assert result.specification is None
     assert result.unavailable_reason is VehicleSpecificationUnavailableReason.MISSING_REQUIRED_DATA
 
 
 @pytest.mark.parametrize(
-    (
-        "city08",
-        "highway08",
-        "comb08",
-    ),
+    ("city08", "highway08", "comb08"),
     [
-        (
-            None,
-            "39",
-            "32",
-        ),
-        (
-            "28",
-            None,
-            "32",
-        ),
-        (
-            "28",
-            "39",
-            None,
-        ),
-        (
-            "0",
-            "39",
-            "32",
-        ),
-        (
-            "28",
-            "0",
-            "32",
-        ),
-        (
-            "28",
-            "39",
-            "0",
-        ),
+        (None, "39", "32"),
+        ("28", None, "32"),
+        ("28", "39", None),
+        ("0", "39", "32"),
+        ("28", "0", "32"),
+        ("28", "39", "0"),
     ],
 )
 def test_normalize_gasoline_vehicle_preserves_missing_efficiency(
@@ -253,27 +244,11 @@ def test_normalize_gasoline_vehicle_preserves_missing_efficiency(
 
 
 @pytest.mark.parametrize(
-    (
-        "city08",
-        "highway08",
-        "comb08",
-    ),
+    ("city08", "highway08", "comb08"),
     [
-        (
-            "not-a-number",
-            "39",
-            "32",
-        ),
-        (
-            "28",
-            "NaN",
-            "32",
-        ),
-        (
-            "28",
-            "39",
-            "-1",
-        ),
+        ("not-a-number", "39", "32"),
+        ("28", "NaN", "32"),
+        ("28", "39", "-1"),
     ],
 )
 def test_normalize_gasoline_vehicle_rejects_malformed_efficiency(
@@ -314,8 +289,8 @@ def test_normalize_gasoline_vehicle_accepts_lowercase_atvtype_field() -> None:
 
     result = normalize_fueleconomy_gasoline_vehicle(root)
 
-    assert result.specification is None
-    assert result.unavailable_reason is VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN
+    assert isinstance(result.specification, GasolineVehicleSpecification)
+    assert result.specification.combined_mpg == Decimal(48)
 
 
 def test_normalize_gasoline_vehicle_rejects_conflicting_atvtype_fields() -> None:

@@ -206,7 +206,6 @@ def test_fueleconomy_provider_resolves_battery_electric_vehicle() -> None:
 @pytest.mark.parametrize(
     "advanced_vehicle_type",
     [
-        "Hybrid",
         "Plug-in Hybrid",
         "FFV",
         "Diesel",

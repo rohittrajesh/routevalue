@@ -1006,6 +1006,105 @@
         "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VehicleCatalogConfigurationResponse": {
+        "description": "One canonical provider-backed catalog selection.",
+        "properties": {
+          "configuration": {
+            "title": "Configuration",
+            "type": "string"
+          },
+          "make": {
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "make",
+          "model",
+          "configuration",
+          "source",
+          "source_id"
+        ],
+        "title": "VehicleCatalogConfigurationResponse",
+        "type": "object"
+      },
+      "VehicleConfigurationsResponse": {
+        "description": "Selectable vehicle configurations.",
+        "properties": {
+          "configurations": {
+            "items": {
+              "$ref": "#/components/schemas/VehicleCatalogConfigurationResponse"
+            },
+            "title": "Configurations",
+            "type": "array"
+          }
+        },
+        "required": ["configurations"],
+        "title": "VehicleConfigurationsResponse",
+        "type": "object"
+      },
+      "VehicleMakesResponse": {
+        "description": "Available makes for a model year.",
+        "properties": {
+          "makes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Makes",
+            "type": "array"
+          }
+        },
+        "required": ["makes"],
+        "title": "VehicleMakesResponse",
+        "type": "object"
+      },
+      "VehicleModelsResponse": {
+        "description": "Available models for a year and make.",
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          }
+        },
+        "required": ["models"],
+        "title": "VehicleModelsResponse",
+        "type": "object"
+      },
+      "VehicleYearsResponse": {
+        "description": "Available vehicle model years.",
+        "properties": {
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": ["years"],
+        "title": "VehicleYearsResponse",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -1317,6 +1416,205 @@
         ],
         "summary": "Evaluate Profile Driven Trip",
         "tags": ["V2 Trip Evaluations"]
+      }
+    },
+    "/api/v2/vehicle-catalog/configurations": {
+      "get": {
+        "description": "Return canonical identities suitable for saved-vehicle creation.",
+        "operationId": "list_catalog_configurations_api_v2_vehicle_catalog_configurations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "make",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "pattern": ".*\\S.*",
+              "title": "Make",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "model",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "pattern": ".*\\S.*",
+              "title": "Model",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleConfigurationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Catalog Configurations",
+        "tags": ["V2 Vehicle Catalog"]
+      }
+    },
+    "/api/v2/vehicle-catalog/makes": {
+      "get": {
+        "description": "Return makes available for a selected model year.",
+        "operationId": "list_catalog_makes_api_v2_vehicle_catalog_makes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleMakesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Catalog Makes",
+        "tags": ["V2 Vehicle Catalog"]
+      }
+    },
+    "/api/v2/vehicle-catalog/models": {
+      "get": {
+        "description": "Return models available for a selected year and make.",
+        "operationId": "list_catalog_models_api_v2_vehicle_catalog_models_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "make",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "pattern": ".*\\S.*",
+              "title": "Make",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleModelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Catalog Models",
+        "tags": ["V2 Vehicle Catalog"]
+      }
+    },
+    "/api/v2/vehicle-catalog/years": {
+      "get": {
+        "description": "Return available years in provider-defined order.",
+        "operationId": "list_catalog_years_api_v2_vehicle_catalog_years_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleYearsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Catalog Years",
+        "tags": ["V2 Vehicle Catalog"]
       }
     },
     "/api/v2/vehicles": {

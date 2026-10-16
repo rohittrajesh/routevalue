@@ -48,6 +48,9 @@ from routevalue.api.user_identity import (
 from routevalue.api.v2_trip_evaluations import (
     router as v2_trip_evaluations_router,
 )
+from routevalue.api.vehicle_catalog import (
+    router as vehicle_catalog_router,
+)
 from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesError,
 )
@@ -150,13 +153,10 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
-
     app.include_router(profile_router)
-
     app.include_router(preferences_router)
-
     app.include_router(saved_vehicles_router)
-
+    app.include_router(vehicle_catalog_router)
     app.include_router(v2_trip_evaluations_router)
 
     @app.get("/health")

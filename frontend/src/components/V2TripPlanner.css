@@ -1,0 +1,147 @@
+.m9-trip-panel {
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid #e4e9f1;
+  border-radius: 16px;
+  background: #fafbfd;
+}
+
+.m9-trip-panel h3 {
+  margin: 0 0 14px;
+  font-size: 1.6rem;
+  letter-spacing: -0.035em;
+}
+
+.m9-trip-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 26px;
+}
+
+.m9-trip-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.m9-trip-profile-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  color: #59657a;
+}
+
+.m9-trip-profile-summary strong {
+  color: #172033;
+  font-size: 1.08rem;
+}
+
+.m9-trip-profile-summary small,
+.m9-trip-electric-price small {
+  color: #68758a;
+}
+
+.m9-trip-price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid #dce3ec;
+  border-radius: 12px;
+}
+
+.m9-trip-price-section legend {
+  padding: 0 8px;
+  font-weight: 750;
+}
+
+.m9-trip-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #344159;
+}
+
+.m9-trip-electric-price {
+  max-width: 320px;
+}
+
+.m9-trip-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.m9-trip-error,
+.m9-trip-notice {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #f3c5cb;
+  border-radius: 12px;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.m9-trip-error p {
+  margin-bottom: 12px;
+}
+
+.m9-trip-result {
+  margin-top: 30px;
+  padding-top: 26px;
+  border-top: 1px solid #dce3ec;
+}
+
+.m9-trip-result h4 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.m9-trip-recommendation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #bcd5c5;
+  border-radius: 12px;
+  background: #f1f8f3;
+}
+
+.m9-trip-recommendation p {
+  margin: 0;
+}
+
+.m9-trip-route-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.m9-trip-route-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid #e1e7ef;
+  border-radius: 12px;
+  background: white;
+}
+
+@media (max-width: 760px) {
+  .m9-trip-panel {
+    padding: 20px;
+  }
+
+  .m9-trip-fields,
+  .m9-trip-route-list {
+    grid-template-columns: 1fr;
+  }
+}

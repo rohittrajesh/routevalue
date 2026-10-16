@@ -112,7 +112,8 @@ export type CheckV2HasOptionalVehicleSelection = Assert<
   >
 >;
 
-// Exactly one powertrain-specific pricing object is required.
+// Automatic gasoline pricing permits omitted price inputs.
+// Explicit gasoline and electricity prices remain mutually exclusive.
 
 type V2CommonRequest = Pick<V2TripEvaluationRequest, "origin" | "destination">;
 
@@ -137,10 +138,8 @@ export type CheckV2AllowsElectricityOnly = Assert<
   Assignable<V2ElectricityRequest, V2TripEvaluationRequest>
 >;
 
-export type CheckV2RejectsMissingPrice = Assert<
-  Assignable<V2CommonRequest, V2TripEvaluationRequest> extends false
-    ? true
-    : false
+export type CheckV2AllowsAutomaticGasolinePricing = Assert<
+  Assignable<V2CommonRequest, V2TripEvaluationRequest>
 >;
 
 export type CheckV2RejectsBothPrices = Assert<

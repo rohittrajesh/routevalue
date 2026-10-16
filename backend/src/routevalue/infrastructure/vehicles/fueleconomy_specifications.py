@@ -49,17 +49,21 @@ def normalize_fueleconomy_vehicle(
 def normalize_fueleconomy_gasoline_vehicle(
     root: Element,
 ) -> VehicleSpecificationLookupResult:
-    """Normalize one conventional gasoline FuelEconomy.gov vehicle record."""
+    """Normalize gasoline-only vehicles, including non-plug-in hybrids."""
 
     _validate_vehicle_root(root)
 
     advanced_vehicle_type = _vehicle_advanced_type(root)
+
     secondary_fuel_type = _optional_text(
         root,
         "fuelType2",
     )
 
-    if advanced_vehicle_type is not None or secondary_fuel_type is not None:
+    # A regular or non-plug-in hybrid can use EPA gasoline MPG,
+    # provided gasoline is its only listed fuel.
+    # Plug-in hybrids and other advanced powertrains remain unsupported.
+    if advanced_vehicle_type not in (None, "Hybrid") or secondary_fuel_type is not None:
         return _unavailable(VehicleSpecificationUnavailableReason.UNSUPPORTED_POWERTRAIN)
 
     primary_fuel_type = _optional_text(
