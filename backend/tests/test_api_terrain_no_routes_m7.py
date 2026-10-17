@@ -53,14 +53,18 @@ def _body(*, electric: bool) -> dict[str, object]:
 def test_no_routes_returns_safe_502_for_both_powertrains(
     electric: bool,
 ) -> None:
+    """Preserve safe routing failures for gasoline and electric trips."""
+
     service = Mock(spec=TerrainV2EvaluationService)
-    service.evaluate_trip.side_effect = NoRoutesAvailableError(
+
+    service.evaluate_trip_with_diagnostics.side_effect = NoRoutesAvailableError(
         "internal routing details must remain private"
     )
 
     app = create_app()
 
     app.dependency_overrides[get_authenticated_user] = lambda: AuthenticatedUser(user_id=_USER_ID)
+
     app.dependency_overrides[get_profile_driven_trip_evaluation_service] = lambda: service
 
     with TestClient(app) as client:
@@ -70,14 +74,18 @@ def test_no_routes_returns_safe_502_for_both_powertrains(
         )
 
     assert response.status_code == 502
+
     assert response.json() == {
         "code": "routing_response_invalid",
         "detail": "The routing service returned no usable routes.",
     }
-    assert "internal routing details" not in response.text
-    service.evaluate_trip.assert_called_once()
 
-    args, kwargs = service.evaluate_trip.call_args
+    assert "internal routing details" not in response.text
+
+    service.evaluate_trip_with_diagnostics.assert_called_once()
+    service.evaluate_trip.assert_not_called()
+
+    args, kwargs = service.evaluate_trip_with_diagnostics.call_args
 
     assert args[0] == _USER_ID
     assert kwargs["requested_vehicle_id"] is None

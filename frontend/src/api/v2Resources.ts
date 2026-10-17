@@ -1,4 +1,3 @@
-
 import type { components } from "./generated/schema";
 import type {
   V2TripEvaluationRequest,
@@ -33,11 +32,7 @@ export async function getAuthenticatedToken(): Promise<string> {
     );
   }
 
-  if (
-    token === null ||
-    !token.trim() ||
-    token.trim() !== token
-  ) {
+  if (token === null || !token.trim() || token.trim() !== token) {
     throw new ApiRequestError(
       "Please sign in to continue.",
       401,
@@ -73,11 +68,7 @@ export async function getUserPreferences(): Promise<UserPreferences> {
 export async function updateUserPreferences(
   changes: PreferencesUpdate,
 ): Promise<UserPreferences> {
-  return requestV2<UserPreferences>(
-    "/preferences",
-    "PATCH",
-    changes,
-  );
+  return requestV2<UserPreferences>("/preferences", "PATCH", changes);
 }
 
 export async function getSavedVehicles(): Promise<SavedVehicleList> {
@@ -87,16 +78,10 @@ export async function getSavedVehicles(): Promise<SavedVehicleList> {
 export async function createSavedVehicle(
   selection: SavedVehicleCreate,
 ): Promise<SavedVehicle> {
-  return requestV2<SavedVehicle>(
-    "/vehicles",
-    "POST",
-    selection,
-  );
+  return requestV2<SavedVehicle>("/vehicles", "POST", selection);
 }
 
-export async function deleteSavedVehicle(
-  vehicleId: string,
-): Promise<void> {
+export async function deleteSavedVehicle(vehicleId: string): Promise<void> {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       vehicleId,
@@ -105,10 +90,7 @@ export async function deleteSavedVehicle(
     throw new Error("Invalid saved vehicle ID.");
   }
 
-  return requestV2<void>(
-    `/vehicles/${vehicleId}`,
-    "DELETE",
-  );
+  return requestV2<void>(`/vehicles/${vehicleId}`, "DELETE");
 }
 
 export async function evaluateV2Trip(

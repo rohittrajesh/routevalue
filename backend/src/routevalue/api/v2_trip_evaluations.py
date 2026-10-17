@@ -23,6 +23,10 @@ from routevalue.api.schemas import (
     ResolvedLocationInput,
     V2TripEvaluationRequest,
 )
+from routevalue.api.terrain_status import (
+    V2TerrainStatusResponse,
+    build_v2_terrain_status,
+)
 from routevalue.api.terrain_v2_composition import (
     build_terrain_v2_evaluation_service,
 )
@@ -291,7 +295,7 @@ def evaluate_profile_driven_trip(
         Depends(get_profile_driven_trip_evaluation_service),
     ],
 ) -> V2TripEvaluationResponse | JSONResponse:
-    """Evaluate an owned gasoline vehicle or BEV using saved preferences."""
+    """Evaluate an authenticated trip and expose actual terrain status."""
 
     requested_vehicle_id = (
         SavedVehicleId(value=request.saved_vehicle_id)
@@ -318,14 +322,36 @@ def evaluate_profile_driven_trip(
             detail="An energy price must be supplied for this evaluation.",
         )
 
+    terrain_status: V2TerrainStatusResponse | None = None
+
     try:
-        result = service.evaluate_trip(
-            user.user_id,
-            _to_route_search_request(request),
-            fuel_price_per_gallon=fuel_price_per_gallon,
-            price_per_kilowatt_hour=price_per_kilowatt_hour,
-            requested_vehicle_id=requested_vehicle_id,
-        )
+        search_request = _to_route_search_request(request)
+
+        if isinstance(service, TerrainV2EvaluationService):
+            outcome = service.evaluate_trip_with_diagnostics(
+                user.user_id,
+                search_request,
+                fuel_price_per_gallon=fuel_price_per_gallon,
+                price_per_kilowatt_hour=price_per_kilowatt_hour,
+                requested_vehicle_id=requested_vehicle_id,
+            )
+
+            result = outcome.evaluation.trip
+
+            terrain_status = build_v2_terrain_status(
+                acquisitions=outcome.acquisitions,
+                geometry_decision=outcome.geometry_decision,
+                terrain_energy=outcome.evaluation.terrain_energy,
+            )
+
+        else:
+            result = service.evaluate_trip(
+                user.user_id,
+                search_request,
+                fuel_price_per_gallon=fuel_price_per_gallon,
+                price_per_kilowatt_hour=price_per_kilowatt_hour,
+                requested_vehicle_id=requested_vehicle_id,
+            )
 
     except ProfileResolutionError as exc:
         return _profile_failure_response(exc)
@@ -449,4 +475,7 @@ def evaluate_profile_driven_trip(
             detail="Profile storage is temporarily unavailable. Please try again.",
         )
 
-    return to_v2_trip_evaluation_response(result)
+    return to_v2_trip_evaluation_response(
+        result,
+        terrain_status=terrain_status,
+    )

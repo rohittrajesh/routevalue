@@ -10,18 +10,14 @@ import type {
   ResolvedLocationInput,
   V2TripEvaluationResponse,
 } from "../types/api";
-import {
-  formatDecisionReason,
-  formatDistance,
-  formatDuration,
-  formatMoney,
-} from "../utils/format";
+import { formatMoney } from "../utils/format";
 import {
   buildV2TripRequest,
   isValidNonnegativeDecimal,
   type GasolinePricingMode,
 } from "../utils/v2TripRequest";
 import PlaceAutocompleteInput from "./PlaceAutocompleteInput";
+import V2TripResults from "./V2TripResults";
 import "./V2TripPlanner.css";
 
 interface V2TripPlannerProps {
@@ -71,19 +67,6 @@ function tripErrorMessage(error: unknown): string {
   return error.message;
 }
 
-function displayConsumption(
-  consumption: NonNullable<
-    NonNullable<
-      V2TripEvaluationResponse["route_evaluations"][number]["energy_estimate"]
-    >["consumption"]
-  >,
-): string {
-  if (consumption.energy_type === "gasoline") {
-    return `${Number(consumption.gallons).toFixed(2)} gal`;
-  }
-  return `${Number(consumption.kilowatt_hours).toFixed(2)} kWh`;
-}
-
 export default function V2TripPlanner({
   vehicles,
   preferences,
@@ -125,6 +108,7 @@ export default function V2TripPlanner({
       ? isValidNonnegativeDecimal(electricityPrice)
       : gasolinePricingMode === "automatic" ||
         isValidNonnegativeDecimal(gasolinePrice);
+
   const ready =
     origin !== null &&
     destination !== null &&
@@ -176,7 +160,9 @@ export default function V2TripPlanner({
         gasolinePrice,
         electricityPrice,
       });
+
       const response = await evaluateV2Trip(request);
+
       if (version === requestVersion.current) {
         setEvaluatedVehicleName(vehicleName(selectedVehicle));
         setResult(response);
@@ -191,15 +177,6 @@ export default function V2TripPlanner({
     }
   }
 
-  const recommendedRoute = result?.decision.recommended_route;
-  const recommendation = result?.route_evaluations.find(
-    (evaluation) =>
-      recommendedRoute !== null &&
-      recommendedRoute !== undefined &&
-      evaluation.route.distance_meters === recommendedRoute.distance_meters &&
-      evaluation.route.duration_seconds === recommendedRoute.duration_seconds &&
-      evaluation.route.toll_cost === recommendedRoute.toll_cost,
-  );
   const showManualFallback =
     error instanceof ApiRequestError &&
     selectedVehicle?.specification.powertrain === "gasoline" &&
@@ -220,6 +197,7 @@ export default function V2TripPlanner({
           Save a vehicle in your garage before comparing routes.
         </p>
       )}
+
       {!hasValueOfTime && (
         <p role="alert" className="m9-trip-notice">
           Save your value of time in Personal settings before comparing routes.
@@ -236,6 +214,7 @@ export default function V2TripPlanner({
             placeholder="Choose a starting location"
             onLocationChange={handleOrigin}
           />
+
           <PlaceAutocompleteInput
             label="Destination"
             placeholder="Choose a destination"
@@ -246,6 +225,7 @@ export default function V2TripPlanner({
         <div className="m9-trip-fields">
           <label className="field">
             <span>Vehicle for this trip</span>
+
             <select
               value={selectedId}
               onChange={(event) => {
@@ -257,6 +237,7 @@ export default function V2TripPlanner({
               {vehicles.length === 0 && (
                 <option value="">Save a vehicle first</option>
               )}
+
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
                   {vehicleName(vehicle)}
@@ -267,6 +248,7 @@ export default function V2TripPlanner({
               ))}
             </select>
           </label>
+
           <div className="m9-trip-profile-summary">
             <span>Saved value of time</span>
             <strong>
@@ -281,6 +263,7 @@ export default function V2TripPlanner({
         {selectedVehicle?.specification.powertrain === "gasoline" && (
           <fieldset className="m9-trip-price-section">
             <legend>Gasoline price</legend>
+
             <label className="m9-trip-choice">
               <input
                 type="radio"
@@ -294,6 +277,7 @@ export default function V2TripPlanner({
               />
               Automatic regional pricing (when available)
             </label>
+
             <label className="m9-trip-choice">
               <input
                 type="radio"
@@ -307,6 +291,7 @@ export default function V2TripPlanner({
               />
               Enter my price
             </label>
+
             {gasolinePricingMode === "manual" && (
               <label className="field field-medium">
                 <span>Gasoline price ($/gallon)</span>
@@ -354,6 +339,7 @@ export default function V2TripPlanner({
           >
             {isSubmitting ? "Comparing routes..." : "Compare routes"}
           </button>
+
           {!ready && (
             <p className="m9-note">
               Select both location suggestions, a vehicle, and a valid energy
@@ -366,6 +352,7 @@ export default function V2TripPlanner({
       {error !== null && (
         <div className="m9-trip-error" role="alert">
           <p>{tripErrorMessage(error)}</p>
+
           {showManualFallback && (
             <button
               type="button"
@@ -381,71 +368,13 @@ export default function V2TripPlanner({
         </div>
       )}
 
-      {result !== null && (
-        <section
-          className="m9-trip-result"
-          aria-labelledby="m9-trip-results-heading"
-        >
-          <p className="eyebrow">Route evaluation</p>
-          <h4 id="m9-trip-results-heading">Your route comparison</h4>
-          <p className="m9-note">
-            Evaluated with {evaluatedVehicleName}.{" "}
-            {result.decision.eligible_count} of{" "}
-            {result.decision.candidate_count} routes eligible.
-          </p>
-          {recommendation !== undefined ? (
-            <div className="m9-trip-recommendation">
-              <strong>
-                Recommended:{" "}
-                {formatDuration(recommendation.route.duration_seconds)}
-              </strong>
-              <span>
-                {formatDistance(recommendation.route.distance_meters)}
-              </span>
-              <span>
-                Personalized cost:{" "}
-                {formatMoney(
-                  recommendation.cost_breakdown?.generalized_cost ?? null,
-                )}
-              </span>
-              <p>{formatDecisionReason(result.decision.reason)}</p>
-            </div>
-          ) : (
-            <p className="m9-trip-notice">
-              No eligible route recommendation is available. Check route details
-              below.
-            </p>
-          )}
-          <ul className="m9-trip-route-list">
-            {result.route_evaluations.map((evaluation, index) => (
-              <li key={index}>
-                <strong>Route {index + 1}</strong>
-                <span>{formatDuration(evaluation.route.duration_seconds)}</span>
-                <span>{formatDistance(evaluation.route.distance_meters)}</span>
-                <span>
-                  Total:{" "}
-                  {formatMoney(
-                    evaluation.cost_breakdown?.generalized_cost ?? null,
-                  )}
-                </span>
-                <span>
-                  Energy cost:{" "}
-                  {formatMoney(evaluation.energy_estimate?.cost ?? null)}
-                </span>
-                {evaluation.energy_estimate?.consumption != null && (
-                  <span>
-                    Energy used:{" "}
-                    {displayConsumption(evaluation.energy_estimate.consumption)}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="m9-note">
-            Display values are rounded for readability; the backend retains full
-            calculation precision. Map and terrain detail will be added in M9-E.
-          </p>
-        </section>
+      {result !== null && origin !== null && destination !== null && (
+        <V2TripResults
+          result={result}
+          origin={origin}
+          destination={destination}
+          evaluatedVehicleName={evaluatedVehicleName}
+        />
       )}
     </section>
   );

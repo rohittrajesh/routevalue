@@ -12,6 +12,7 @@ from routevalue.api.schemas import (
     RouteGeometryResponse,
     RouteResponse,
 )
+from routevalue.api.terrain_status import V2TerrainStatusResponse
 
 
 class V2GasolineConsumptionResponse(BaseModel):
@@ -52,7 +53,16 @@ class V2RouteEvaluationResponse(BaseModel):
 
 
 class V2TripEvaluationResponse(BaseModel):
-    """Authenticated V2 trip response with typed energy information."""
+    """Authenticated V2 trip response with optional terrain diagnostics.
+
+    Preserve the legacy serialized response when terrain diagnostics
+    are not supplied, while exposing actual terrain status whenever
+    the authenticated terrain evaluation service provides it.
+    """
 
     route_evaluations: list[V2RouteEvaluationResponse]
     decision: DecisionResponse
+    terrain_status: V2TerrainStatusResponse | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )

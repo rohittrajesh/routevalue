@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from routevalue.application.authenticated_terrain_trip import (
+    AuthenticatedTerrainTripOutcome,
     AuthenticatedTerrainTripService,
 )
 from routevalue.application.models import RouteSearchRequest, TripEvaluationResult
@@ -43,3 +44,25 @@ class TerrainV2EvaluationService:
         )
 
         return outcome.evaluation.trip
+
+    def evaluate_trip_with_diagnostics(
+        self,
+        user_id: UserId,
+        request: RouteSearchRequest,
+        *,
+        fuel_price_per_gallon: MoneyPerGallon | None = None,
+        price_per_kilowatt_hour: MoneyPerKilowattHour | None = None,
+        requested_vehicle_id: SavedVehicleId | None = None,
+    ) -> AuthenticatedTerrainTripOutcome:
+        """Return the full authenticated evaluation and terrain diagnostics.
+
+        Run the application evaluation exactly once. This preserves
+        the actual acquisition, geometry, and energy decisions.
+        """
+        return self.application_service.evaluate_trip(
+            user_id,
+            request,
+            fuel_price_per_gallon=fuel_price_per_gallon,
+            price_per_kilowatt_hour=price_per_kilowatt_hour,
+            requested_vehicle_id=requested_vehicle_id,
+        )

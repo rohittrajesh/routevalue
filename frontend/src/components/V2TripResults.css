@@ -1,0 +1,78 @@
+.m9-v2-result-list {
+  margin-top: 22px;
+}
+
+.m9-v2-result-card {
+  min-width: 0;
+}
+
+.m9-v2-result-recommended {
+  border-color: #bcd5c5 !important;
+}
+
+.m9-v2-result-selected {
+  outline: 2px solid #68758a;
+  outline-offset: 2px;
+}
+
+.m9-v2-result-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.m9-v2-best-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #e8f3eb;
+  color: #176235;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.m9-v2-cost-details {
+  display: grid;
+  gap: 9px;
+  margin: 12px 0 0;
+}
+
+.m9-v2-cost-details div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.m9-v2-cost-details dt {
+  color: #68758a;
+}
+
+.m9-v2-cost-details dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.m9-v2-consumption {
+  margin: 8px 0 0;
+  color: #344159;
+}
+
+.m9-v2-unavailable {
+  margin: 8px 0;
+  color: #9f1239;
+}
+
+.m9-v2-map-button {
+  align-self: flex-start;
+  margin-top: 12px;
+}
+
+@media (max-width: 480px) {
+  .m9-v2-cost-details div {
+    flex-wrap: wrap;
+  }
+}

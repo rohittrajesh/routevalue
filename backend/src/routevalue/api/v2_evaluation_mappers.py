@@ -1,6 +1,7 @@
 """Map application trip results to V2-specific energy-aware responses."""
 
 from routevalue.api.mappers import to_trip_evaluation_response
+from routevalue.api.terrain_status import V2TerrainStatusResponse
 from routevalue.api.v2_evaluation_schemas import (
     V2ElectricConsumptionResponse,
     V2EnergyEstimateResponse,
@@ -54,8 +55,10 @@ def _to_v2_energy_estimate(
 
 def to_v2_trip_evaluation_response(
     result: TripEvaluationResult,
+    *,
+    terrain_status: V2TerrainStatusResponse | None = None,
 ) -> V2TripEvaluationResponse:
-    """Extend the existing response mapping without changing V1."""
+    """Map V2 evaluation without changing physical-energy semantics."""
 
     common_response = to_trip_evaluation_response(result)
 
@@ -77,4 +80,5 @@ def to_v2_trip_evaluation_response(
     return V2TripEvaluationResponse(
         route_evaluations=evaluations,
         decision=common_response.decision,
+        terrain_status=terrain_status,
     )
