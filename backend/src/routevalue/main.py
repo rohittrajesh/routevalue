@@ -51,6 +51,9 @@ from routevalue.api.v2_trip_evaluations import (
 from routevalue.api.vehicle_catalog import (
     router as vehicle_catalog_router,
 )
+from routevalue.api.vehicle_mass import (
+    router as vehicle_mass_router,
+)
 from routevalue.infrastructure.routing.google_routes import (
     GoogleRoutesError,
 )
@@ -156,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(profile_router)
     app.include_router(preferences_router)
     app.include_router(saved_vehicles_router)
+    app.include_router(vehicle_mass_router)
     app.include_router(vehicle_catalog_router)
     app.include_router(v2_trip_evaluations_router)
 
@@ -163,9 +167,7 @@ def create_app() -> FastAPI:
     def health_check() -> dict[str, str]:
         """Report whether the RouteValue API process is available."""
 
-        return {
-            "status": "ok",
-        }
+        return {"status": "ok"}
 
     return app
 

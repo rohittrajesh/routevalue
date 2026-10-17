@@ -27,6 +27,9 @@ from routevalue.api.terrain_status import (
     V2TerrainStatusResponse,
     build_v2_terrain_status,
 )
+from routevalue.api.terrain_v2_acquisition import (
+    build_optional_terrain_acquisition_service,
+)
 from routevalue.api.terrain_v2_composition import (
     build_terrain_v2_evaluation_service,
 )
@@ -38,15 +41,9 @@ from routevalue.api.user_identity import (
 from routevalue.api.v2_evaluation_mappers import (
     to_v2_trip_evaluation_response,
 )
-from routevalue.api.v2_evaluation_schemas import (
-    V2TripEvaluationResponse,
-)
-from routevalue.application.authenticated_terrain_trip import (
-    NoRoutesAvailableError,
-)
-from routevalue.application.electric_evaluation import (
-    ElectricEvaluationContext,
-)
+from routevalue.api.v2_evaluation_schemas import V2TripEvaluationResponse
+from routevalue.application.authenticated_terrain_trip import NoRoutesAvailableError
+from routevalue.application.electric_evaluation import ElectricEvaluationContext
 from routevalue.application.gasoline_evaluation import (
     GasolineEvaluationContext,
     UnsupportedVehicleEnergyTypeError,
@@ -57,9 +54,7 @@ from routevalue.application.gasoline_price_failures import (
     GasolinePriceUnavailableError,
     GasolinePriceUnavailableReason,
 )
-from routevalue.application.gasoline_price_geography import (
-    PricingGeographyUnavailableError,
-)
+from routevalue.application.gasoline_price_geography import PricingGeographyUnavailableError
 from routevalue.application.identity import AuthenticatedUser
 from routevalue.application.models import (
     ResolvedLocation,
@@ -80,12 +75,8 @@ from routevalue.application.profile_trip_evaluation import (
     ProfileDrivenTripEvaluationService,
 )
 from routevalue.domain.identity import SavedVehicleId
-from routevalue.infrastructure.energy.electric import (
-    ElectricEnergyCostEstimator,
-)
-from routevalue.infrastructure.energy.gasoline import (
-    GasolineEnergyCostEstimator,
-)
+from routevalue.infrastructure.energy.electric import ElectricEnergyCostEstimator
+from routevalue.infrastructure.energy.gasoline import GasolineEnergyCostEstimator
 from routevalue.infrastructure.persistence.eia_pricing_snapshots import (
     EiaPricingPersistenceError,
 )
@@ -95,9 +86,7 @@ from routevalue.infrastructure.persistence.saved_vehicles import (
 from routevalue.infrastructure.persistence.user_preferences import (
     UserPreferencesPersistenceError,
 )
-from routevalue.infrastructure.routing.google_routes import (
-    GoogleRoutesRouteProvider,
-)
+from routevalue.infrastructure.routing.google_routes import GoogleRoutesRouteProvider
 
 router = APIRouter(
     prefix="/api/v2/trip-evaluations",
@@ -105,12 +94,10 @@ router = APIRouter(
 )
 
 
-# Preserve the legacy estimator helpers for existing imports and tests.
-# The new default composition does not need these factories.
 def _build_gasoline_estimator(
     context: GasolineEvaluationContext,
 ) -> EnergyCostEstimator:
-    """Compose the existing baseline gasoline estimator."""
+    """Preserve the existing baseline gasoline estimator helper."""
     return GasolineEnergyCostEstimator(
         vehicle=context.vehicle,
         fuel_price_quote=context.fuel_price_quote,
@@ -120,7 +107,7 @@ def _build_gasoline_estimator(
 def _build_electric_estimator(
     context: ElectricEvaluationContext,
 ) -> EnergyCostEstimator:
-    """Compose the existing baseline BEV estimator."""
+    """Preserve the existing baseline BEV estimator helper."""
     return ElectricEnergyCostEstimator(
         vehicle=context.vehicle,
         electricity_price_quote=context.electricity_price_quote,
@@ -148,19 +135,27 @@ def get_profile_driven_trip_evaluation_service(
         Depends(get_google_routes_http_client),
     ],
 ) -> V2TripEvaluationService:
-    """Compose authenticated V2 evaluation with read-only EIA pricing.
+    """Compose V2 evaluation with consistent routing and terrain geometry.
 
-    Reuse the existing application database engine.
+    Default mode retains existing overview routing without live elevation
+    requests. The explicit local-development mode couples HIGH_QUALITY
+    route geometry with guarded elevation acquisition.
 
-    Terrain acquisition remains disabled. Automatic gasoline pricing
-    reads persisted observations only and never downloads EIA data.
-
-    Preserve the existing FastAPI dependency override identity.
+    Automatic gasoline pricing reads persisted EIA observations only.
     """
-    route_provider: RouteProvider = GoogleRoutesRouteProvider(
-        api_key=api_key,
-        client=client,
-    )
+    terrain_service = build_optional_terrain_acquisition_service(client=client)
+
+    if terrain_service is None:
+        route_provider: RouteProvider = GoogleRoutesRouteProvider(
+            api_key=api_key,
+            client=client,
+        )
+    else:
+        route_provider = GoogleRoutesRouteProvider(
+            api_key=api_key,
+            client=client,
+            polyline_quality="HIGH_QUALITY",
+        )
 
     gasoline_provider, jurisdiction_resolver = build_lazy_eia_pricing_dependencies(
         engine_factory=get_application_database_engine,
@@ -170,7 +165,7 @@ def get_profile_driven_trip_evaluation_service(
         preferences_repository=preferences_repository,
         saved_vehicle_repository=saved_vehicle_repository,
         route_provider=route_provider,
-        terrain_acquisition_service=None,
+        terrain_acquisition_service=terrain_service,
         gasoline_price_provider=gasoline_provider,
         gasoline_jurisdiction_resolver=jurisdiction_resolver,
     )

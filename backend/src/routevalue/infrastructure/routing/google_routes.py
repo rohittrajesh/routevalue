@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from time import sleep
+from typing import Literal
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -30,6 +31,13 @@ _GOOGLE_ROUTES_RETRY_DELAYS_SECONDS = (
     0.25,
     0.5,
 )
+
+type GooglePolylineQuality = Literal["OVERVIEW", "HIGH_QUALITY"]
+
+
+def _validate_polyline_quality(quality: str) -> None:
+    if quality not in ("OVERVIEW", "HIGH_QUALITY"):
+        raise ValueError("polyline_quality must be OVERVIEW or HIGH_QUALITY")
 
 
 class GoogleRoutesError(RuntimeError):
@@ -61,10 +69,13 @@ class GoogleRoutesRouteProvider:
         api_key: str,
         client: httpx.Client,
         sleeper: Callable[[float], None] = sleep,
+        polyline_quality: GooglePolylineQuality = "OVERVIEW",
     ) -> None:
+        _validate_polyline_quality(polyline_quality)
         self._api_key = api_key
         self._client = client
         self._sleeper = sleeper
+        self._polyline_quality = polyline_quality
 
     def get_routes(
         self,
@@ -106,6 +117,7 @@ class GoogleRoutesRouteProvider:
                     json=build_google_routes_request_payload(
                         request,
                         avoid_tolls=avoid_tolls,
+                        polyline_quality=self._polyline_quality,
                     ),
                 )
             except httpx.RequestError as exc:
@@ -233,8 +245,11 @@ def build_google_routes_request_payload(
     request: RouteSearchRequest,
     *,
     avoid_tolls: bool = False,
+    polyline_quality: GooglePolylineQuality = "OVERVIEW",
 ) -> dict[str, object]:
     """Build a Google Compute Routes request from provider-neutral inputs."""
+
+    _validate_polyline_quality(polyline_quality)
 
     payload: dict[str, object] = {
         "origin": _to_google_waypoint(request.origin),
@@ -243,7 +258,7 @@ def build_google_routes_request_payload(
         "routingPreference": "TRAFFIC_AWARE",
         "computeAlternativeRoutes": True,
         "polylineEncoding": "GEO_JSON_LINESTRING",
-        "polylineQuality": "OVERVIEW",
+        "polylineQuality": polyline_quality,
         "extraComputations": ["TOLLS"],
     }
 

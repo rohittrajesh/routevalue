@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 
 import type {
@@ -39,6 +40,56 @@ function formatConsumption(consumption: V2EnergyConsumptionResponse): string {
   return `${Number(consumption.kilowatt_hours).toFixed(2)} kWh`;
 }
 
+function terrainFallbackDescription(reason: string): string {
+  switch (reason) {
+    case "acquisition_disabled":
+      return "Elevation sampling is currently disabled, so terrain adjustments cannot be calculated.";
+    case "elevation_unavailable":
+      return "Elevation observations were unavailable for at least one route.";
+    case "untrusted_geometry":
+      return "The available route geometry was not reliable enough for terrain calculations.";
+    case "insufficient_coverage":
+      return "At least one route did not have sufficient usable elevation-data coverage.";
+    case "invalid_route_distance":
+      return "At least one route had an unusable distance for terrain calculations.";
+    case "missing_vehicle_mass":
+      return "The selected vehicle does not have verified mass data required for terrain energy calculations.";
+    case "safety_fallback":
+      return "RouteValue selected the baseline energy model to preserve a consistent comparison.";
+    default:
+      return "An additional terrain-related fallback condition was reported.";
+  }
+}
+
+function terrainAcquisitionDescription(status: string | undefined): string {
+  switch (status) {
+    case "complete":
+      return "Complete";
+    case "partial":
+      return "Partial";
+    case "unavailable":
+      return "Unavailable";
+    default:
+      return "Not reported";
+  }
+}
+
+function terrainCoverageDescription(
+  fraction: string | number | null | undefined,
+): string {
+  if (fraction === null || fraction === undefined) {
+    return "Not reported";
+  }
+
+  const numeric = Number(fraction);
+
+  if (!Number.isFinite(numeric) || numeric < 0 || numeric > 1) {
+    return "Not reported";
+  }
+
+  return `${Math.round(numeric * 100)}%`;
+}
+
 export default function V2TripResults({
   result,
   origin,
@@ -60,6 +111,16 @@ export default function V2TripResults({
 
   const recommendedEvaluation =
     recommendedIndex >= 0 ? result.route_evaluations[recommendedIndex] : null;
+
+  const terrain = result.terrain_status;
+
+  const terrainRoutesMatch =
+    terrain !== null &&
+    terrain !== undefined &&
+    terrain.route_acquisition_statuses.length ===
+      result.route_evaluations.length &&
+    terrain.route_coverage_fractions.length ===
+      result.route_evaluations.length;
 
   return (
     <section
@@ -100,6 +161,80 @@ export default function V2TripResults({
             ? "No routes were returned for this trip."
             : "No eligible recommendation is available. Review the route details below."}
         </p>
+      )}
+
+      {result.route_evaluations.length > 0 && (
+        <section
+          className="m9-v2-terrain-panel"
+          aria-label="Terrain calculation status"
+        >
+          <p className="eyebrow">Terrain-aware energy</p>
+
+          {terrain === null || terrain === undefined ? (
+            <>
+              <h5>Terrain status unavailable</h5>
+              <p>
+                This evaluation did not provide terrain diagnostics. RouteValue
+                cannot confirm whether terrain adjustments were applied.
+              </p>
+            </>
+          ) : (
+            <>
+              <h5>
+                {terrain.terrain_applied
+                  ? "Terrain adjustments applied"
+                  : "Baseline energy estimates used"}
+              </h5>
+
+              <p>
+                {terrain.terrain_applied
+                  ? "RouteValue applied terrain-aware energy corrections to the evaluated routes."
+                  : "RouteValue evaluated these routes using the standard vehicle energy model without terrain corrections."}
+              </p>
+
+              {!terrain.terrain_applied &&
+                terrain.fallback_reasons.length > 0 && (
+                  <ul className="m9-v2-terrain-reasons">
+                    {terrain.fallback_reasons.map((reason, index) => (
+                      <li key={`${reason}-${index}`}>
+                        {terrainFallbackDescription(reason)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+              {terrainRoutesMatch ? (
+                <div className="m9-v2-terrain-routes">
+                  <strong>Elevation data by route</strong>
+
+                  <dl aria-label="Per-route terrain observations">
+                    {result.route_evaluations.map((_, index) => (
+                      <div key={index}>
+                        <dt>Route {index + 1}</dt>
+                        <dd>
+                          Elevation:{" "}
+                          {terrainAcquisitionDescription(
+                            terrain.route_acquisition_statuses[index],
+                          )}
+                          {" · "}
+                          Usable coverage:{" "}
+                          {terrainCoverageDescription(
+                            terrain.route_coverage_fractions[index],
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ) : (
+                <p className="m9-v2-terrain-warning">
+                  Per-route terrain observations could not be aligned with the
+                  evaluated routes.
+                </p>
+              )}
+            </>
+          )}
+        </section>
       )}
 
       {result.route_evaluations.length > 0 && (

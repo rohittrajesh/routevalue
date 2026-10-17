@@ -573,6 +573,16 @@
             "title": "Specification Retrieved At",
             "type": "string"
           },
+          "vehicle_mass": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VehicleMassResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "year": {
             "title": "Year",
             "type": "integer"
@@ -592,6 +602,12 @@
         ],
         "title": "SavedVehicleResponse",
         "type": "object"
+      },
+      "TerrainAcquisitionStatus": {
+        "description": "Availability of terrain observations for one route candidate.",
+        "enum": ["complete", "partial", "unavailable"],
+        "title": "TerrainAcquisitionStatus",
+        "type": "string"
       },
       "TripEvaluationRequest": {
         "description": "HTTP request body for evaluating a trip.",
@@ -906,6 +922,66 @@
         "title": "V2RouteEvaluationResponse",
         "type": "object"
       },
+      "V2TerrainFallbackReason": {
+        "description": "Reasons a trip used the standard energy model.",
+        "enum": [
+          "acquisition_disabled",
+          "elevation_unavailable",
+          "untrusted_geometry",
+          "insufficient_coverage",
+          "invalid_route_distance",
+          "missing_vehicle_mass",
+          "safety_fallback"
+        ],
+        "title": "V2TerrainFallbackReason",
+        "type": "string"
+      },
+      "V2TerrainStatusResponse": {
+        "description": "Trip-wide energy mode and per-route terrain availability.",
+        "properties": {
+          "fallback_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/V2TerrainFallbackReason"
+            },
+            "title": "Fallback Reasons",
+            "type": "array"
+          },
+          "route_acquisition_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/TerrainAcquisitionStatus"
+            },
+            "title": "Route Acquisition Statuses",
+            "type": "array"
+          },
+          "route_coverage_fractions": {
+            "items": {
+              "anyOf": [
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Route Coverage Fractions",
+            "type": "array"
+          },
+          "terrain_applied": {
+            "title": "Terrain Applied",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "terrain_applied",
+          "fallback_reasons",
+          "route_acquisition_statuses",
+          "route_coverage_fractions"
+        ],
+        "title": "V2TerrainStatusResponse",
+        "type": "object"
+      },
       "V2TripEvaluationRequest": {
         "additionalProperties": false,
         "description": "Authenticated V2 trip using stored user personalization.\n\nGasoline vehicles may omit an explicit energy-price object to\nrequest automatic pricing from the configured pricing service.\n\nElectricity prices remain mandatory for BEV evaluation.\n\nConflicting manual gasoline and electricity inputs are rejected.\nThe selected owned vehicle determines the valid energy type.",
@@ -954,7 +1030,7 @@
         "type": "object"
       },
       "V2TripEvaluationResponse": {
-        "description": "Authenticated V2 trip response with typed energy information.",
+        "description": "Authenticated V2 trip response with optional terrain diagnostics.\n\nPreserve the legacy serialized response when terrain diagnostics\nare not supplied, while exposing actual terrain status whenever\nthe authenticated terrain evaluation service provides it.",
         "properties": {
           "decision": {
             "$ref": "#/components/schemas/DecisionResponse"
@@ -965,6 +1041,16 @@
             },
             "title": "Route Evaluations",
             "type": "array"
+          },
+          "terrain_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2TerrainStatusResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": ["route_evaluations", "decision"],
@@ -1074,6 +1160,91 @@
         },
         "required": ["makes"],
         "title": "VehicleMakesResponse",
+        "type": "object"
+      },
+      "VehicleMassResponse": {
+        "description": "Mass and its provenance, without claiming independent verification.",
+        "properties": {
+          "kilograms": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Kilograms",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VehicleMassSource"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          }
+        },
+        "required": ["kilograms", "source", "source_reference"],
+        "title": "VehicleMassResponse",
+        "type": "object"
+      },
+      "VehicleMassSource": {
+        "description": "Provenance of a vehicle mass observation.",
+        "enum": [
+          "manufacturer_curb_weight",
+          "epa_test_weight",
+          "user_provided"
+        ],
+        "title": "VehicleMassSource",
+        "type": "string"
+      },
+      "VehicleMassUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Set or clear a user-reported curb weight.",
+        "properties": {
+          "source_reference": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "enum": ["lb", "kg"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": ["weight"],
+        "title": "VehicleMassUpdateRequest",
         "type": "object"
       },
       "VehicleModelsResponse": {
@@ -1315,7 +1486,7 @@
     },
     "/api/v2/trip-evaluations": {
       "post": {
-        "description": "Evaluate an owned gasoline vehicle or BEV using saved preferences.",
+        "description": "Evaluate an authenticated trip and expose actual terrain status.",
         "operationId": "evaluate_profile_driven_trip_api_v2_trip_evaluations_post",
         "requestBody": {
           "content": {
@@ -1938,6 +2109,96 @@
         ],
         "summary": "Get Saved Vehicle",
         "tags": ["V2 Saved Vehicles"]
+      }
+    },
+    "/api/v2/vehicles/{vehicle_id}/mass": {
+      "patch": {
+        "description": "Update one owned vehicle without changing its catalog efficiency.",
+        "operationId": "update_saved_vehicle_mass_api_v2_vehicles__vehicle_id__mass_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VehicleMassUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedVehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Invalid vehicle mass or provenance."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Saved Vehicle Mass",
+        "tags": ["V2 Vehicle Mass"]
       }
     },
     "/health": {

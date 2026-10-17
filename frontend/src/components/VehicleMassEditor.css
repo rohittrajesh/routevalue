@@ -1,0 +1,96 @@
+
+.m9-mass-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.m9-mass-editor .m9-mass-value,
+.m9-mass-editor .m9-mass-source {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.m9-mass-editor .m9-mass-value {
+  color: #344159;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.m9-mass-editor .m9-mass-source {
+  color: #68758a;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.m9-mass-editor > .v2-secondary-button {
+  font-size: 0.85rem;
+  padding: 9px 13px;
+}
+
+.m9-mass-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.m9-mass-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 0.65fr);
+  gap: 12px;
+}
+
+.m9-mass-form .field {
+  width: 100%;
+  min-width: 0;
+}
+
+.m9-mass-form input,
+.m9-mass-form select {
+  width: 100%;
+}
+
+.m9-mass-help {
+  margin: 0;
+  color: #68758a;
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+.m9-mass-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.m9-mass-actions span {
+  font-size: 0.85rem;
+  color: #9f1239;
+}
+
+.m9-mass-notice,
+.m9-mass-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.m9-mass-notice {
+  color: #166534;
+}
+
+.m9-mass-error {
+  color: #9f1239;
+}
+
+@media (max-width: 600px) {
+  .m9-mass-fields {
+    grid-template-columns: 1fr;
+  }
+}

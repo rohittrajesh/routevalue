@@ -1,3 +1,4 @@
+
 import type { components } from "./generated/schema";
 import type {
   V2TripEvaluationRequest,
@@ -16,6 +17,10 @@ export type PreferencesUpdate = Schemas["UserPreferencesUpdateRequest"];
 export type SavedVehicle = Schemas["SavedVehicleResponse"];
 export type SavedVehicleCreate = Schemas["SavedVehicleCreateRequest"];
 export type SavedVehicleList = Schemas["SavedVehicleListResponse"];
+export type VehicleMassUpdate = Schemas["VehicleMassUpdateRequest"];
+
+const VEHICLE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function getAuthenticatedToken(): Promise<string> {
   const auth = getNeonAuthClient();
@@ -82,15 +87,26 @@ export async function createSavedVehicle(
 }
 
 export async function deleteSavedVehicle(vehicleId: string): Promise<void> {
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      vehicleId,
-    )
-  ) {
+  if (!VEHICLE_ID_PATTERN.test(vehicleId)) {
     throw new Error("Invalid saved vehicle ID.");
   }
 
   return requestV2<void>(`/vehicles/${vehicleId}`, "DELETE");
+}
+
+export async function updateSavedVehicleMass(
+  vehicleId: string,
+  changes: VehicleMassUpdate,
+): Promise<SavedVehicle> {
+  if (!VEHICLE_ID_PATTERN.test(vehicleId)) {
+    throw new Error("Invalid saved vehicle ID.");
+  }
+
+  return requestV2<SavedVehicle>(
+    `/vehicles/${vehicleId}/mass`,
+    "PATCH",
+    changes,
+  );
 }
 
 export async function evaluateV2Trip(

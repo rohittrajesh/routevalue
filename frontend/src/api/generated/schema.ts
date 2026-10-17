@@ -59,7 +59,7 @@ export interface paths {
     put?: never;
     /**
      * Evaluate Profile Driven Trip
-     * @description Evaluate an owned gasoline vehicle or BEV using saved preferences.
+     * @description Evaluate an authenticated trip and expose actual terrain status.
      */
     post: operations["evaluate_profile_driven_trip_api_v2_trip_evaluations_post"];
     delete?: never;
@@ -194,6 +194,26 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v2/vehicles/{vehicle_id}/mass": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Saved Vehicle Mass
+     * @description Update one owned vehicle without changing its catalog efficiency.
+     */
+    patch: operations["update_saved_vehicle_mass_api_v2_vehicles__vehicle_id__mass_patch"];
     trace?: never;
   };
   "/health": {
@@ -505,9 +525,16 @@ export interface components {
        * Format: date-time
        */
       specification_retrieved_at: string;
+      vehicle_mass?: components["schemas"]["VehicleMassResponse"] | null;
       /** Year */
       year: number;
     };
+    /**
+     * TerrainAcquisitionStatus
+     * @description Availability of terrain observations for one route candidate.
+     * @enum {string}
+     */
+    TerrainAcquisitionStatus: "complete" | "partial" | "unavailable";
     /**
      * TripEvaluationRequest
      * @description HTTP request body for evaluating a trip.
@@ -632,6 +659,33 @@ export interface components {
       route: components["schemas"]["RouteResponse"];
     };
     /**
+     * V2TerrainFallbackReason
+     * @description Reasons a trip used the standard energy model.
+     * @enum {string}
+     */
+    V2TerrainFallbackReason:
+      | "acquisition_disabled"
+      | "elevation_unavailable"
+      | "untrusted_geometry"
+      | "insufficient_coverage"
+      | "invalid_route_distance"
+      | "missing_vehicle_mass"
+      | "safety_fallback";
+    /**
+     * V2TerrainStatusResponse
+     * @description Trip-wide energy mode and per-route terrain availability.
+     */
+    V2TerrainStatusResponse: {
+      /** Fallback Reasons */
+      fallback_reasons: components["schemas"]["V2TerrainFallbackReason"][];
+      /** Route Acquisition Statuses */
+      route_acquisition_statuses: components["schemas"]["TerrainAcquisitionStatus"][];
+      /** Route Coverage Fractions */
+      route_coverage_fractions: (string | null)[];
+      /** Terrain Applied */
+      terrain_applied: boolean;
+    };
+    /**
      * V2TripEvaluationRequest
      * @description Authenticated V2 trip using stored user personalization.
      *
@@ -653,12 +707,17 @@ export interface components {
     };
     /**
      * V2TripEvaluationResponse
-     * @description Authenticated V2 trip response with typed energy information.
+     * @description Authenticated V2 trip response with optional terrain diagnostics.
+     *
+     *     Preserve the legacy serialized response when terrain diagnostics
+     *     are not supplied, while exposing actual terrain status whenever
+     *     the authenticated terrain evaluation service provides it.
      */
     V2TripEvaluationResponse: {
       decision: components["schemas"]["DecisionResponse"];
       /** Route Evaluations */
       route_evaluations: components["schemas"]["V2RouteEvaluationResponse"][];
+      terrain_status?: components["schemas"]["V2TerrainStatusResponse"] | null;
     };
     /** ValidationError */
     ValidationError: {
@@ -706,6 +765,36 @@ export interface components {
     VehicleMakesResponse: {
       /** Makes */
       makes: string[];
+    };
+    /**
+     * VehicleMassResponse
+     * @description Mass and its provenance, without claiming independent verification.
+     */
+    VehicleMassResponse: {
+      /** Kilograms */
+      kilograms: string;
+      source: components["schemas"]["VehicleMassSource"];
+      /** Source Reference */
+      source_reference: string | null;
+    };
+    /**
+     * VehicleMassSource
+     * @description Provenance of a vehicle mass observation.
+     * @enum {string}
+     */
+    VehicleMassSource:
+      "manufacturer_curb_weight" | "epa_test_weight" | "user_provided";
+    /**
+     * VehicleMassUpdateRequest
+     * @description Set or clear a user-reported curb weight.
+     */
+    VehicleMassUpdateRequest: {
+      /** Source Reference */
+      source_reference?: string | null;
+      /** Unit */
+      unit?: ("lb" | "kg") | null;
+      /** Weight */
+      weight: number | string | null;
     };
     /**
      * VehicleModelsResponse
@@ -1343,6 +1432,75 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
         };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+    };
+  };
+  update_saved_vehicle_mass_api_v2_vehicles__vehicle_id__mass_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        vehicle_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VehicleMassUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SavedVehicleResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApiErrorResponse"];
+        };
+      };
+      /** @description Invalid vehicle mass or provenance. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Internal Server Error */
       500: {

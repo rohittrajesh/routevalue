@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { ApiRequestError } from "../api/tripEvaluations";
@@ -17,6 +18,7 @@ import {
 } from "../utils/vehicleDisplay";
 
 import VehicleCatalogPicker from "./VehicleCatalogPicker";
+import VehicleMassEditor from "./VehicleMassEditor";
 import "./PersonalizationDashboard.css";
 
 interface PersonalizationDashboardProps {
@@ -346,6 +348,22 @@ export default function PersonalizationDashboard({
                     <p className="m9-efficiency">
                       {formatVehicleEfficiency(vehicle.specification)}
                     </p>
+
+                    <VehicleMassEditor
+                      vehicle={vehicle}
+                      disabled={busy}
+                      onUpdated={async () => {
+                        onProfileChanged();
+
+                        try {
+                          await reloadData();
+                        } catch {
+                          setActionError(
+                            "Vehicle mass was saved, but the updated garage could not be reloaded.",
+                          );
+                        }
+                      }}
+                    />
                   </div>
 
                   <div className="m9-vehicle-actions">

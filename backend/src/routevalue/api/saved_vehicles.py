@@ -23,6 +23,7 @@ from routevalue.api.vehicle_schemas import (
     SavedVehicleCreateRequest,
     SavedVehicleListResponse,
     SavedVehicleResponse,
+    VehicleMassResponse,
 )
 from routevalue.application.identity import (
     AuthenticatedUser,
@@ -127,7 +128,7 @@ def _configuration_from_request(
 def _to_response(
     vehicle: SavedVehicle,
 ) -> SavedVehicleResponse:
-    """Map a provider-neutral saved vehicle to the public API."""
+    """Map a saved vehicle and its optional mass to the public API."""
 
     specification = vehicle.specification
 
@@ -135,41 +136,48 @@ def _to_response(
         GasolineSavedVehicleSpecificationResponse | ElectricSavedVehicleSpecificationResponse
     )
 
-    if isinstance(
-        specification,
-        GasolineVehicleSpecification,
-    ):
+    if isinstance(specification, GasolineVehicleSpecification):
         specification_response = GasolineSavedVehicleSpecificationResponse(
-            fuel_grade=(specification.fuel_grade.value),
-            combined_mpg=(specification.combined_mpg),
-            city_mpg=(specification.city_mpg),
-            highway_mpg=(specification.highway_mpg),
+            fuel_grade=specification.fuel_grade.value,
+            combined_mpg=specification.combined_mpg,
+            city_mpg=specification.city_mpg,
+            highway_mpg=specification.highway_mpg,
         )
 
-    elif isinstance(
-        specification,
-        ElectricVehicleSpecification,
-    ):
+    elif isinstance(specification, ElectricVehicleSpecification):
         specification_response = ElectricSavedVehicleSpecificationResponse(
-            combined_kwh_per_mile=(specification.combined_kwh_per_mile),
-            city_kwh_per_mile=(specification.city_kwh_per_mile),
-            highway_kwh_per_mile=(specification.highway_kwh_per_mile),
+            combined_kwh_per_mile=specification.combined_kwh_per_mile,
+            city_kwh_per_mile=specification.city_kwh_per_mile,
+            highway_kwh_per_mile=specification.highway_kwh_per_mile,
         )
 
     else:
         raise TypeError("unsupported saved vehicle specification")
+
+    mass = specification.vehicle_mass
+
+    mass_response = (
+        VehicleMassResponse(
+            kilograms=mass.kilograms,
+            source=mass.source,
+            source_reference=mass.source_reference,
+        )
+        if mass is not None
+        else None
+    )
 
     return SavedVehicleResponse(
         id=vehicle.id.value,
         year=vehicle.configuration.year,
         make=vehicle.configuration.make,
         model=vehicle.configuration.model,
-        configuration=(vehicle.configuration.configuration),
+        configuration=vehicle.configuration.configuration,
         source=vehicle.configuration.source,
         source_id=vehicle.configuration.source_id,
-        specification_retrieved_at=(vehicle.specification_retrieved_at),
+        specification_retrieved_at=vehicle.specification_retrieved_at,
         saved_at=vehicle.saved_at,
         specification=specification_response,
+        vehicle_mass=mass_response,
     )
 
 

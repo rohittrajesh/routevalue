@@ -105,6 +105,34 @@ class PostgresSavedVehicleRepository:
 
         return _row_to_saved_vehicle(row)
 
+    def update_vehicle_mass(
+        self,
+        user_id: UserId,
+        vehicle_id: SavedVehicleId,
+        mass: VehicleMass | None,
+    ) -> SavedVehicle | None:
+        """Update mass only on a vehicle owned by the requesting user."""
+
+        with self._engine.begin() as connection:
+            row = (
+                connection.execute(
+                    update(saved_vehicles)
+                    .where(
+                        saved_vehicles.c.user_id == user_id.value,
+                        saved_vehicles.c.id == vehicle_id.value,
+                    )
+                    .values(**_mass_values(mass))
+                    .returning(*saved_vehicles.c)
+                )
+                .mappings()
+                .one_or_none()
+            )
+
+        if row is None:
+            return None
+
+        return _row_to_saved_vehicle(row)
+
     def delete_vehicle(
         self,
         user_id: UserId,
