@@ -1,0 +1,11 @@
+{
+  "probe": "random_invalid_reset_token",
+  "http_status": 400,
+  "rejected_as_invalid_token": true,
+  "email_requests": 0,
+  "real_account_credentials_used": false,
+  "checked_at": "2026-10-20T21:06:36.095539+00:00",
+  "scope": "local app / pinned Neon development; no hosted staging",
+  "real_mailbox_delivery_verified": false,
+  "real_password_reset_and_return_sign_in_verified": false
+}

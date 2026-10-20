@@ -73,9 +73,13 @@ not provide per-request session revocation introspection.
 
 [M10 session acceptance](m10-batch-2-sessions.md) records live local/Neon-development
 restore/sign-out/return-sign-in evidence. No dedicated hosted V2 staging exists.
-Password recovery UI is absent; recovery/verification delivery, provider policies,
-JWT lifetime expectations and hosted HTTPS origins remain explicit pre-release
-checks. These are not certified by SDK availability or a working local login.
+The final M10 batch adds real SDK reset requests, verification resends and the
+`/v2/reset-password` link screen, with URL-token removal, no persistent token
+storage, confirmation and explicit post-reset sign-out recovery. See
+[final M10 acceptance](m10-final-acceptance.md). Owner-observed recovery and
+verification email delivery remain pending; provider policy, JWT lifetime
+expectations and hosted HTTPS origins remain explicit pre-release checks. These
+are not certified by SDK availability or a working local login.
 
 ## Terrain and pricing invariants
 

@@ -721,3 +721,8 @@ checks and the read-only quota health command.
 [Batch 4 EIA operations](docs/m10-batch-4-eia-operations.md) documents the guarded
 local hourly maintenance job, real pricing recovery and remaining hosted scheduling
 and alert-delivery checks.
+
+[Final M10 acceptance](docs/m10-final-acceptance.md) consolidates the completed
+integration batches, account-recovery implementation and final regression gates.
+The remaining owner check is real development recovery/verification email delivery
+and return sign-in. Hosted provisioning and production release remain M11 work.

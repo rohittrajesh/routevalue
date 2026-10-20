@@ -32,6 +32,23 @@ export function getNeonAuthClient() {
             : null,
         };
       },
+      requestPasswordReset: async () => ({
+        data: { status: true },
+        error: null,
+      }),
+      sendVerificationEmail: async () => ({
+        data: { status: true },
+        error: null,
+      }),
+      resetPassword: async ({
+        token,
+      }: {
+        token: string;
+        newPassword: string;
+      }) =>
+        token === "browser-test-reset-token"
+          ? { data: { status: true }, error: null }
+          : { data: null, error: { code: "INVALID_TOKEN" } },
       signOut: async () => {
         window.localStorage.removeItem("browser-test-user");
         notify();

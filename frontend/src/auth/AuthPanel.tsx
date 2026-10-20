@@ -1,21 +1,13 @@
 import { useState, type FormEvent } from "react";
 
+import { isSuccessfulAuthResult } from "./authResult";
 import { getNeonAuthClient } from "./neonClient";
-import { authErrorMessage } from "./authErrors";
+import { authErrorMessage, recoveryErrorMessage } from "./authErrors";
 
-type AuthMode = "sign-in" | "sign-up";
+const emailNotice =
+  "If this account is eligible, check your inbox for the authentication message. You can then return to sign in.";
 
-function isSuccessfulAuthResult(value: unknown): boolean {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  if ("error" in value && value.error != null) {
-    return false;
-  }
-
-  return "data" in value && value.data != null;
-}
+type AuthMode = "sign-in" | "sign-up" | "recover" | "verify";
 
 export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
   const [mode, setMode] = useState<AuthMode>("sign-in");
@@ -30,12 +22,12 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
       ? `${window.location.protocol}//localhost:${window.location.port}/v2`
       : null;
 
-  function changeMode() {
+  function changeMode(next: AuthMode) {
     if (isSubmitting) {
       return;
     }
 
-    setMode((current) => (current === "sign-in" ? "sign-up" : "sign-in"));
+    setMode(next);
     setPassword("");
     setError(null);
     setNotice(null);
@@ -53,21 +45,32 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
     setNotice(null);
 
     const normalizedEmail = email.trim();
+    const emailOnly = mode === "recover" || mode === "verify";
 
     try {
       const auth = getNeonAuthClient();
 
       const result: unknown =
-        mode === "sign-in"
-          ? await auth.adapter.signIn.email({
+        mode === "recover"
+          ? await auth.adapter.requestPasswordReset({
               email: normalizedEmail,
-              password,
+              redirectTo: `${window.location.origin}/v2/reset-password`,
             })
-          : await auth.adapter.signUp.email({
-              name: name.trim(),
-              email: normalizedEmail,
-              password,
-            });
+          : mode === "verify"
+            ? await auth.adapter.sendVerificationEmail({
+                email: normalizedEmail,
+                callbackURL: `${window.location.origin}/v2`,
+              })
+            : mode === "sign-in"
+              ? await auth.adapter.signIn.email({
+                  email: normalizedEmail,
+                  password,
+                })
+              : await auth.adapter.signUp.email({
+                  name: name.trim(),
+                  email: normalizedEmail,
+                  password,
+                });
 
       if (!isSuccessfulAuthResult(result)) {
         throw typeof result === "object" && result !== null && "error" in result
@@ -78,12 +81,32 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
       setPassword("");
       if (mode === "sign-in") onSignedIn?.();
       setNotice(
-        mode === "sign-in"
-          ? "Request completed. Waiting for session confirmation..."
-          : "Account request completed. Check your inbox if email verification is required, then sign in.",
+        emailOnly
+          ? emailNotice
+          : mode === "sign-in"
+            ? "Request completed. Waiting for session confirmation..."
+            : "Account request completed. Check your inbox if email verification is required, then sign in.",
       );
     } catch (failure: unknown) {
-      setError(authErrorMessage(failure, mode === "sign-up"));
+      const code =
+        typeof failure === "object" &&
+        failure !== null &&
+        "code" in failure &&
+        typeof failure.code === "string"
+          ? failure.code.toLowerCase()
+          : "";
+      if (
+        emailOnly &&
+        ["user_not_found", "email_already_verified"].includes(code)
+      ) {
+        setNotice(emailNotice);
+        return;
+      }
+      setError(
+        emailOnly
+          ? recoveryErrorMessage(failure)
+          : authErrorMessage(failure, mode === "sign-up"),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -94,13 +117,21 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
       <p className="eyebrow">RouteValue account</p>
 
       <h2 id="v2-auth-title">
-        {mode === "sign-in" ? "Sign in" : "Create your account"}
+        {mode === "recover"
+          ? "Reset your password"
+          : mode === "verify"
+            ? "Verify your email"
+            : mode === "sign-in"
+              ? "Sign in"
+              : "Create your account"}
       </h2>
 
       <p className="muted">
-        {mode === "sign-in"
-          ? "Access your saved vehicles and personalized driving preferences."
-          : "Create an account to save vehicles and personalize your routes."}
+        {mode === "recover" || mode === "verify"
+          ? "Enter your account email to request a new message from the authentication service."
+          : mode === "sign-in"
+            ? "Access your saved vehicles and personalized driving preferences."
+            : "Create an account to save vehicles and personalize your routes."}
       </p>
 
       <form className="v2-auth-form" onSubmit={handleSubmit}>
@@ -131,20 +162,22 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
           />
         </label>
 
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete={
-              mode === "sign-in" ? "current-password" : "new-password"
-            }
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={8}
-            required
-            disabled={isSubmitting}
-          />
-        </label>
+        {(mode === "sign-in" || mode === "sign-up") && (
+          <label className="field">
+            <span>Password</span>
+            <input
+              type="password"
+              autoComplete={
+                mode === "sign-in" ? "current-password" : "new-password"
+              }
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={8}
+              required
+              disabled={isSubmitting}
+            />
+          </label>
+        )}
 
         {error && (
           <p className="v2-feedback v2-error" role="alert">
@@ -171,18 +204,43 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
         >
           {isSubmitting
             ? "Please wait..."
-            : mode === "sign-in"
-              ? "Sign in"
-              : "Create account"}
+            : mode === "recover"
+              ? "Send reset email"
+              : mode === "verify"
+                ? "Send verification email"
+                : mode === "sign-in"
+                  ? "Sign in"
+                  : "Create account"}
         </button>
       </form>
 
       <p className="v2-auth-switch">
-        {mode === "sign-in" ? "New to RouteValue?" : "Already have an account?"}{" "}
-        <button type="button" onClick={changeMode}>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => changeMode(mode === "sign-in" ? "sign-up" : "sign-in")}
+        >
           {mode === "sign-in" ? "Create an account" : "I have an account"}
         </button>
       </p>
+      {mode === "sign-in" && (
+        <p className="v2-auth-switch">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => changeMode("recover")}
+          >
+            Forgot password?
+          </button>{" "}
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => changeMode("verify")}
+          >
+            Resend verification email
+          </button>
+        </p>
+      )}
     </section>
   );
 }

@@ -70,3 +70,12 @@ export function authErrorMessage(error: unknown, registering: boolean): string {
     ? "Account creation failed. Check your information and try again."
     : "Sign-in failed. Check your credentials and try again.";
 }
+
+/** Recovery never exposes whether an account exists or raw provider details. */
+export function recoveryErrorMessage(error: unknown): string {
+  const record = typeof error === "object" && error !== null ? error : {};
+  if ("status" in record && record.status === 429) {
+    return "Too many requests. Wait a few minutes before trying again.";
+  }
+  return "The authentication request could not be completed. Retry, or request a new email if the link expired. Contact the app administrator if this continues.";
+}

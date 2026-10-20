@@ -4,16 +4,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AuthPanel from "./AuthPanel";
 
-const { signInMock, signUpMock } = vi.hoisted(() => ({
-  signInMock: vi.fn(),
-  signUpMock: vi.fn(),
-}));
+const { signInMock, signUpMock, resetRequestMock, verifyMock } = vi.hoisted(
+  () => ({
+    signInMock: vi.fn(),
+    signUpMock: vi.fn(),
+    resetRequestMock: vi.fn(),
+    verifyMock: vi.fn(),
+  }),
+);
 
 vi.mock("./neonClient", () => ({
   getNeonAuthClient: () => ({
     adapter: {
       signIn: { email: signInMock },
       signUp: { email: signUpMock },
+      requestPasswordReset: resetRequestMock,
+      sendVerificationEmail: verifyMock,
     },
   }),
 }));
@@ -22,6 +28,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   signInMock.mockResolvedValue({ data: {}, error: null });
   signUpMock.mockResolvedValue({ data: {}, error: null });
+  resetRequestMock.mockResolvedValue({ data: { status: true }, error: null });
+  verifyMock.mockResolvedValue({ data: { status: true }, error: null });
 });
 
 describe("AuthPanel", () => {
@@ -142,4 +150,73 @@ it("confirms successful reauthentication but never rejected credentials", async 
   await user.click(screen.getByRole("button", { name: "Sign in" }));
   await waitFor(() => expect(signedIn).toHaveBeenCalledOnce());
   expect(screen.getByLabelText("Password")).toHaveValue("");
+});
+
+it.each([
+  ["Forgot password?", "Send reset email", "reset"],
+  ["Resend verification email", "Send verification email", "verify"],
+])(
+  "requests %s through the SDK without signing in",
+  async (link, submit, kind) => {
+    const signedIn = vi.fn();
+    const user = userEvent.setup();
+    render(<AuthPanel onSignedIn={signedIn} />);
+    await user.type(screen.getByLabelText("Password"), "discarded-secret");
+    await user.click(screen.getByRole("button", { name: link }));
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Email"), "someone@example.test");
+    await user.click(screen.getByRole("button", { name: submit }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "If this account is eligible",
+    );
+    if (kind === "reset")
+      expect(resetRequestMock).toHaveBeenCalledWith({
+        email: "someone@example.test",
+        redirectTo: `${window.location.origin}/v2/reset-password`,
+      });
+    else
+      expect(verifyMock).toHaveBeenCalledWith({
+        email: "someone@example.test",
+        callbackURL: `${window.location.origin}/v2`,
+      });
+    expect(signInMock).not.toHaveBeenCalled();
+    expect(signedIn).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "I have an account" }));
+    expect(screen.getByLabelText("Password")).toHaveValue("");
+  },
+);
+
+it("keeps provider secrets and account existence out of recovery errors", async () => {
+  resetRequestMock.mockResolvedValue({
+    data: null,
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "private@example.test secret-token",
+    },
+  });
+  const user = userEvent.setup();
+  render(<AuthPanel />);
+  await user.click(screen.getByRole("button", { name: "Forgot password?" }));
+  await user.type(screen.getByLabelText("Email"), "someone@example.test");
+  await user.click(screen.getByRole("button", { name: "Send reset email" }));
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("could not be completed");
+  expect(alert).not.toHaveTextContent("private@example.test");
+  expect(alert).not.toHaveTextContent("secret-token");
+});
+
+it("does not distinguish an unknown email from an eligible recovery request", async () => {
+  resetRequestMock.mockResolvedValueOnce({
+    data: null,
+    error: { code: "USER_NOT_FOUND" },
+  });
+  const user = userEvent.setup();
+  render(<AuthPanel />);
+  await user.click(screen.getByRole("button", { name: "Forgot password?" }));
+  await user.type(screen.getByLabelText("Email"), "someone@example.test");
+  await user.click(screen.getByRole("button", { name: "Send reset email" }));
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "If this account is eligible",
+  );
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
