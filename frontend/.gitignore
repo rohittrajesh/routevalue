@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 playwright-report
 test-results
+# Synthetic production-bundle acceptance output
+dist-release-smoke

@@ -1,6 +1,6 @@
 [project]
 name = "routevalue"
-version = "1.0.0"
+version = "2.0.0"
 description = "A route decision engine that compares travel options using personalized generalized cost."
 requires-python = ">=3.13"
 dependencies = [

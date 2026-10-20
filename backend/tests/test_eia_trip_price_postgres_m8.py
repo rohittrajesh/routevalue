@@ -107,7 +107,7 @@ def m8_engine() -> Iterator[Engine]:
                 text("SELECT version_num FROM public.alembic_version")
             ).scalar_one()
 
-            assert revision == "a19d6e2c740b"
+            assert revision == "d41e7a902b63"
 
         clean()
         yield engine

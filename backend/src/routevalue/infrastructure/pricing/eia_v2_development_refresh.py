@@ -36,7 +36,7 @@ _DEVELOPMENT_DATABASE_HOST = "ep-lucky-meadow-ark81i54.c-4.us-west-2.aws.neon.te
 _DEVELOPMENT_AUTH_HOST = "ep-lucky-meadow-ark81i54.neonauth.c-4.us-west-2.aws.neon.tech"
 _DEVELOPMENT_DATABASE = "neondb"
 _DEVELOPMENT_USER = "neondb_owner"
-_SUPPORTED_REVISIONS = frozenset({"e8a1d4c209bf", "f2b7c39a106d", "a19d6e2c740b"})
+_SUPPORTED_REVISIONS = frozenset({"e8a1d4c209bf", "f2b7c39a106d", "a19d6e2c740b", "d41e7a902b63"})
 
 _REGIONS: dict[str, tuple[EiaGasolineRegion, ...]] = {
     "california": (EIA_CALIFORNIA_REGION,),

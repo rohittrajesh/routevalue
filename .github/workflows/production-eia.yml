@@ -1,0 +1,68 @@
+name: Production EIA maintenance
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Avoid the top of the hour. The runner itself checks publication/freshness.
+    - cron: "23 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: routevalue-production-eia
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out release code
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require explicit operations activation
+        id: activation
+        env:
+          OPERATIONS_ENABLED: ${{ vars.ROUTEVALUE_PRODUCTION_EIA_ENABLED }}
+        run: |
+          if [ "$OPERATIONS_ENABLED" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Production EIA operations are disabled; no health or refresh success is claimed."
+          fi
+
+      - name: Set up Python
+        if: steps.activation.outputs.enabled == 'true'
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        if: steps.activation.outputs.enabled == 'true'
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Install locked runtime dependencies
+        if: steps.activation.outputs.enabled == 'true'
+        run: uv sync --locked --no-dev
+
+      - name: Guard target, refresh only when due, and verify actual freshness
+        if: steps.activation.outputs.enabled == 'true'
+        env:
+          PYTHONPATH: src
+          DATABASE_URL: ${{ secrets.ROUTEVALUE_PRODUCTION_DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.ROUTEVALUE_PRODUCTION_DATABASE_URL_UNPOOLED }}
+          NEON_AUTH_BASE_URL: ${{ vars.ROUTEVALUE_PRODUCTION_AUTH_URL }}
+          NEON_AUTH_JWKS_URL: ${{ vars.ROUTEVALUE_PRODUCTION_JWKS_URL }}
+        run: >-
+          uv run --locked --no-sync python -m
+          routevalue.infrastructure.pricing.eia_production_operations
+          --execute --confirm-production-branch v2-production-routevalue
+          --target-manifest ../deployment/production-target.json

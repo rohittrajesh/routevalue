@@ -1,0 +1,8 @@
+{
+  "branch": "v2-production-routevalue",
+  "database_host": "ep-divine-butterfly-arpkfk7f.c-4.us-west-2.aws.neon.tech",
+  "database": "neondb",
+  "role": "routevalue_prod_app",
+  "auth_url": "https://ep-divine-butterfly-arpkfk7f.neonauth.c-4.us-west-2.aws.neon.tech/neondb/auth",
+  "jwks_url": "https://ep-divine-butterfly-arpkfk7f.neonauth.c-4.us-west-2.aws.neon.tech/neondb/auth/.well-known/jwks.json"
+}

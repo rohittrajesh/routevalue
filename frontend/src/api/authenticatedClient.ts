@@ -1,6 +1,6 @@
 import type { ApiErrorResponse } from "../types/api";
 
-import { getApiBaseUrl } from "./config";
+import { getV2ApiBaseUrl } from "./config";
 import { ApiRequestError } from "./tripEvaluations";
 
 export interface AuthenticatedRequestOptions {
@@ -60,7 +60,7 @@ export async function authenticatedV2Request<T>(
   let response: Response;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}/v2${path}`, {
+    response = await fetch(`${getV2ApiBaseUrl()}${path}`, {
       method: options.method ?? "GET",
       headers,
       body:

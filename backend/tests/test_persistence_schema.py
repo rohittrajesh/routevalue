@@ -18,6 +18,7 @@ from routevalue.infrastructure.persistence.schema import (
     auth_identities,
     eia_pricing_observations,
     eia_pricing_snapshots,
+    eia_refresh_attempts,
     elevation_call_reservations,
     metadata,
     saved_vehicles,
@@ -35,6 +36,7 @@ def test_only_routevalue_owned_tables_are_registered() -> None:
         "public.eia_pricing_snapshots",
         "public.eia_pricing_observations",
         "public.elevation_call_reservations",
+        "public.eia_refresh_attempts",
     }
 
 
@@ -271,8 +273,10 @@ def test_generated_ddl_stays_in_public_schema() -> None:
             saved_vehicles,
             user_preferences,
             eia_pricing_snapshots,
+            eia_refresh_attempts,
             eia_pricing_observations,
             elevation_call_reservations,
+            eia_refresh_attempts,
         ):
             sql = str(CreateTable(table).compile(dialect=engine.dialect))
 
@@ -289,7 +293,10 @@ def test_alembic_recognizes_exactly_one_current_head() -> None:
     config = Config(str(backend_root / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
 
-    assert scripts.get_heads() == ["a19d6e2c740b"]
+    assert scripts.get_heads() == ["d41e7a902b63"]
+    retry_migration = scripts.get_revision("d41e7a902b63")
+    assert retry_migration is not None
+    assert retry_migration.down_revision == "a19d6e2c740b"
     preference_migration = scripts.get_revision("a19d6e2c740b")
     assert preference_migration is not None
     assert preference_migration.down_revision == "f2b7c39a106d"

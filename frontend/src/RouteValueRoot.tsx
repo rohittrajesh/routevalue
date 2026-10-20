@@ -9,7 +9,10 @@ export default function RouteValueRoot() {
   const pathname = window.location.pathname;
 
   const recovery = pathname === "/v2/reset-password";
-  const isV2Route = pathname === "/v2" || pathname === "/v2/" || recovery;
+  const v2Homepage =
+    import.meta.env.VITE_V2_HOMEPAGE === "1" && pathname === "/";
+  const isV2Route =
+    v2Homepage || pathname === "/v2" || pathname === "/v2/" || recovery;
 
   if (!isV2Route) {
     return <App />;

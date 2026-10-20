@@ -144,7 +144,7 @@ jobs:
                       ).scalar_one()
 
                   assert name == expected_name
-                  assert revision == "a19d6e2c740b"
+                  assert revision == "d41e7a902b63"
 
                   print(f"{label}: database and revision verified")
               finally:
@@ -305,6 +305,9 @@ jobs:
 
       - name: Run Playwright E2E
         run: npm run test:e2e
+
+      - name: Verify production V2 bundle and legacy routes
+        run: npm run test:release
 
   backend-container:
     name: Backend container

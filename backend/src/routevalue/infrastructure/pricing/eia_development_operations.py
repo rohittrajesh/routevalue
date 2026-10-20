@@ -15,6 +15,7 @@ from sqlalchemy.engine import Engine
 from routevalue.infrastructure.persistence.eia_pricing_snapshots import (
     PostgresEiaPricingSnapshotRepository,
 )
+from routevalue.infrastructure.pricing.eia_attempt_state import AttemptState
 from routevalue.infrastructure.pricing.eia_geography import EIA_CALIFORNIA_REGION, EIA_US_REGION
 from routevalue.infrastructure.pricing.eia_health_check import pricing_health
 from routevalue.infrastructure.pricing.eia_refresh_advisory_lock import hold_eia_refresh_lock
@@ -71,20 +72,27 @@ def read_attempts(path: Path, now: datetime) -> dict[str, str]:
 def run_operations(
     *,
     engine: Engine,
-    state_directory: Path,
+    state_directory: Path | None = None,
+    attempt_state: AttemptState | None = None,
     client_factory: Callable[[], httpx.Client],
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> dict[str, object]:
     """Serialize monitoring/conditional refresh and throttle even unsuccessful attempts.
 
-    CLI validates the immutable development target before invoking this function.
+    Each CLI must validate its explicit target before invoking this function.
+    Development uses private file state; hosted operations use shared SQL state.
     A successful refresh is not success unless source observations are usable.
     """
     with hold_eia_refresh_lock(engine):
         now = clock()
         expected = latest_expected_eia_observation(now)
-        state_path = state_directory / "attempts.json"
-        attempts = read_attempts(state_path, now)
+        state_path = state_directory / "attempts.json" if state_directory is not None else None
+        if attempt_state is not None:
+            attempts = attempt_state.read(now)
+        elif state_path is not None:
+            attempts = read_attempts(state_path, now)
+        else:
+            raise ValueError("durable attempt state is required")
         repository = PostgresEiaPricingSnapshotRepository(engine=engine)
         before = pricing_health(repository, as_of=now)
         due = []
@@ -112,7 +120,10 @@ def run_operations(
             # Persist BEFORE any HTTP attempt. Crash/uncertain persistence wastes
             # retry opportunity conservatively; it never causes an immediate loop.
             attempts[region_id] = now.isoformat()
-            write_private_json(state_path, {"version": 1, "attempts": attempts})
+            if attempt_state is not None:
+                attempt_state.write(attempts)
+            elif state_path is not None:
+                write_private_json(state_path, {"version": 1, "attempts": attempts})
             attempted.append(region_id)
             with client_factory() as client:
                 result = EiaRefreshCoordinator(

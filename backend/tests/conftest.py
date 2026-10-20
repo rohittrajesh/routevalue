@@ -12,7 +12,7 @@ from routevalue.infrastructure.persistence.connection import (
 )
 
 _TEST_DATABASE_ENV = "ROUTEVALUE_TEST_DATABASE_URL"
-_EXPECTED_REVISION = "a19d6e2c740b"
+_EXPECTED_REVISION = "d41e7a902b63"
 
 
 @pytest.fixture(scope="session")

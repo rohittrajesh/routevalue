@@ -309,6 +309,16 @@ elevation_call_reservations = Table(
 Index("ix_elevation_calls_reserved_at", elevation_call_reservations.c.reserved_at)
 
 
+# Hosted retry bookkeeping; no accounts, credentials, prices or locations.
+eia_refresh_attempts = Table(
+    "eia_refresh_attempts",
+    metadata,
+    Column("region_id", String(3), primary_key=True),
+    Column("attempted_at", DateTime(timezone=True), nullable=False),
+    CheckConstraint("region_id IN ('SCA', 'NUS')", name="ck_eia_refresh_attempt_region"),
+)
+
+
 type AlembicObjectType = Literal[
     "schema",
     "table",

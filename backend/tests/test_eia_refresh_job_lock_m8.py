@@ -50,7 +50,7 @@ def engine() -> Iterator[Engine]:
 
         assert database == "routevalue_m8_eia_test"
         assert username == "routevalue_local"
-        assert revision == "a19d6e2c740b"
+        assert revision == "d41e7a902b63"
 
         yield database_engine
     finally:

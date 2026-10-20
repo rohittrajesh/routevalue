@@ -5,6 +5,7 @@ import { authenticatedV2Request } from "./authenticatedClient";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("authenticatedV2Request", () => {
@@ -174,4 +175,21 @@ describe("authenticatedV2Request", () => {
       }),
     ).resolves.toBeUndefined();
   });
+});
+
+it("calls the hosted API's actual V2 route rather than relying on Vite rewrites", async () => {
+  vi.stubEnv("VITE_API_BASE_URL", "https://routevalue-api.onrender.com");
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ user_id: "fixture-user" }), {
+      status: 200,
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  await authenticatedV2Request("/me", { token: "synthetic-token" });
+  expect(fetchMock).toHaveBeenCalledWith(
+    "https://routevalue-api.onrender.com/api/v2/me",
+    expect.objectContaining({
+      headers: { Authorization: "Bearer synthetic-token" },
+    }),
+  );
 });
