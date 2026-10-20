@@ -1,0 +1,50 @@
+{
+  "application_commit": "b2f102ddbeb97c86399f596cdc8a7db4fd17f07f",
+  "owner_created_and_signed_into_production_account": true,
+  "authenticated_profile_and_crud": true,
+  "reload_retained_session_preferences_default_vehicle_and_manual_mass_provenance": true,
+  "sample_preferences": {
+    "value_of_time_per_hour": "24",
+    "electricity_rate": "0.25"
+  },
+  "preferred_market_saved_and_reloaded": "Denver, CO",
+  "preferred_market_quote": "EIA United States, regular, displayed $4.28/gallon, observed 2026-10-19",
+  "clearing_market_restored_origin_quote": "EIA California, regular, displayed $6.03/gallon, observed 2026-10-19",
+  "gasoline": {
+    "vehicle": "2023 Toyota Camry LE/SE, 32 combined MPG",
+    "automatic_baseline_without_mass": true,
+    "manual_mass_kg_for_terrain": "1600",
+    "terrain_applied": true,
+    "manual_price_override": "4.50",
+    "manual_override_baseline_after_clear": true,
+    "temporary_mass_cleared": true
+  },
+  "electricity": {
+    "vehicle": "2021 Tesla Model 3 Standard Range Plus RWD, 23.7 kWh/100 miles",
+    "saved_rate_baseline_without_mass": true,
+    "manual_mass_add_kg": "1800",
+    "manual_mass_update_kg": "1810",
+    "updated_user_provided_provenance_observed": true,
+    "terrain_applied_with_saved_rate": true,
+    "temporary_mass_cleared": true,
+    "trip_override_rate": "0.30",
+    "saved_rate_unchanged": "0.25",
+    "baseline_after_clear": true
+  },
+  "viewport_check": {
+    "requested_width": 390,
+    "effective_width": 662,
+    "horizontal_overflow": false,
+    "override_reset": true,
+    "limitation": "Hosted narrow viewport check is 662 CSS pixels, not a certified 390-pixel mobile session; separate synthetic Pixel 7 suites passed."
+  },
+  "remaining": [
+    "custom SMTP production hardening",
+    "unattended EIA publication boundary and notification delivery"
+  ],
+  "sign_out_removed_private_workspace_and_peer_tab": true,
+  "production_reset_email_receipt_confirmed_by_owner": true,
+  "production_password_change_and_new_password_signin": "Owner explicitly chose not to perform; not claimed tested",
+  "recovery_status": "Owner confirmed receipt at production account after controlled HTTP 200 reset request; no cause established for earlier missing email",
+  "owner_return_signin_restored_profile_and_settings": true
+}

@@ -1,0 +1,19 @@
+{
+  "application_commit": "b2f102ddbeb97c86399f596cdc8a7db4fd17f07f",
+  "main_ci_run": 39506411626,
+  "v2_ci_run": 39505854957,
+  "render_deployment": "dep-dbbue02fngtc73a81p30",
+  "cloudflare_deployment": "1e11e3aa-de27-4010-baa0-3326b6dba30e",
+  "production_url": "https://routevalue.pages.dev",
+  "v2_homepage_observed": true,
+  "v2_compatibility_route_observed": true,
+  "v1_live_trip_observed": true,
+  "reset_deep_link_observed": true,
+  "synthetic_reset_token_removed_from_url": true,
+  "reset_reload_invalid_message_observed": true,
+  "owner_production_auth_acceptance": "signup, authenticated persistence, hosted gas/EV, sign-out and return sign-in passed; reset email receipt owner-confirmed",
+  "unattended_publication_and_alert_delivery": "unobserved",
+  "paid_upgrade": false,
+  "production_password_change": "explicitly declined by owner; not claimed tested",
+  "custom_smtp": "not configured; production hardening follow-up"
+}

@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-10-20T22:30:54.718490+00:00",
+  "endpoint": "email-otp/request-password-reset",
+  "http_status": 200,
+  "provider_error_code": null,
+  "retry_after": null,
+  "success_field": true,
+  "address_source": "observed authenticated production profile; omitted",
+  "delivery_confirmed": true,
+  "shared_email_provider": true,
+  "delivery_evidence": "owner confirmed reset email receipt after controlled request",
+  "password_change": "owner explicitly declined repeating; not tested in production",
+  "earlier_missing_email_cause": "not established"
+}

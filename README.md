@@ -23,7 +23,11 @@ https://routevalue-api.onrender.com
 **Health check:**  
 https://routevalue-api.onrender.com/health
 
-RouteValue V1 is deployed as a production web application with a React frontend on Cloudflare Pages and a containerized FastAPI backend on Render.
+RouteValue V2 is deployed at the homepage, with the legacy V1 planner available at
+[/v1](https://routevalue.pages.dev/v1). Hosting uses Cloudflare Pages and a
+containerized FastAPI backend on Render, with isolated Neon production accounts
+and data. See [M11 release acceptance](docs/m11-release-acceptance.md) for executed
+checks and the remaining owner/operating acceptance gates.
 
 ---
 

@@ -1,0 +1,17 @@
+{
+  "status": "ready",
+  "provider_calls": 0,
+  "quota_writes": 0,
+  "daily_limit": 900,
+  "requests_per_trip": 6,
+  "minimum_interval_seconds": 1.1,
+  "active_reservations": 52,
+  "remaining_requests": 848,
+  "checked_at": "2026-10-20T22:25:34.979313+00:00",
+  "latest_reservation_at": "2026-10-20T22:24:11.531781+00:00",
+  "saved_vehicle_count": 2,
+  "vehicles_with_stored_mass": 0,
+  "can_change_public_schema": false,
+  "can_access_auth_schema": false,
+  "can_update_migration_tracking": false
+}

@@ -1,0 +1,71 @@
+{
+  "release_commit": "b2f102ddbeb97c86399f596cdc8a7db4fd17f07f",
+  "workflow_run": 39506620290,
+  "workflow_job": 118917043317,
+  "status": "healthy",
+  "checked_at": "2026-10-20T22:14:43.102877+00:00",
+  "expected_observation_date": "2026-10-19",
+  "attempted_regions": [],
+  "throttled_regions": [],
+  "failed_regions": [],
+  "before": {
+    "healthy": true,
+    "checked_at": "2026-10-20T22:14:40.966125+00:00",
+    "regions": [
+      {
+        "region_id": "SCA",
+        "status": "healthy",
+        "unusable_grades": [],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-19T00:00:00+00:00",
+          "midgrade": "2026-10-19T00:00:00+00:00",
+          "premium": "2026-10-19T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T22:00:11.864699+00:00"
+      },
+      {
+        "region_id": "NUS",
+        "status": "healthy",
+        "unusable_grades": [],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-19T00:00:00+00:00",
+          "midgrade": "2026-10-19T00:00:00+00:00",
+          "premium": "2026-10-19T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T22:00:12.678488+00:00"
+      }
+    ]
+  },
+  "after": {
+    "healthy": true,
+    "checked_at": "2026-10-20T22:14:42.566097+00:00",
+    "regions": [
+      {
+        "region_id": "SCA",
+        "status": "healthy",
+        "unusable_grades": [],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-19T00:00:00+00:00",
+          "midgrade": "2026-10-19T00:00:00+00:00",
+          "premium": "2026-10-19T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T22:00:11.864699+00:00"
+      },
+      {
+        "region_id": "NUS",
+        "status": "healthy",
+        "unusable_grades": [],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-19T00:00:00+00:00",
+          "midgrade": "2026-10-19T00:00:00+00:00",
+          "premium": "2026-10-19T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T22:00:12.678488+00:00"
+      }
+    ]
+  }
+}
