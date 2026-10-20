@@ -96,8 +96,10 @@ automatic switch to unmetered access when accounting fails.
 
 Trip evaluation reads EIA snapshots; it never refreshes them. Refresh operations
 preserve source observation dates. The read-only health monitor uses the same
-publication-aware expiry policy as the resolver. Production scheduling/monitoring
-provisioning remains deployment work.
+publication-aware expiry policy as the resolver. M10 batch 4 installed pinned-development-only local hourly monitoring/conditional
+refresh with advisory locking, durable local retry throttling and safe status output.
+See [EIA operations validation](m10-batch-4-eia-operations.md). Hosted scheduling,
+alert delivery and unattended future weekly observation remain release checks.
 
 ## Milestone boundaries
 

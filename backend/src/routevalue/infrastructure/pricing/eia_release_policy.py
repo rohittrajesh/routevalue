@@ -78,3 +78,21 @@ def is_eia_weekly_quote_fresh(quote: GasolinePriceQuote, as_of: datetime) -> boo
     )
     expires = datetime.combine(release_day, _PUBLICATION_CUTOFF, tzinfo=_EASTERN)
     return as_of < expires
+
+
+def latest_expected_eia_observation(as_of: datetime) -> date:
+    """Expected Monday observation after the existing holiday-aware 10 a.m. release.
+
+    This schedules acquisition; it never fabricates a source date or extends the
+    resolver's noon freshness deadline. Unpublished data remains unusable.
+    """
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise ValueError("publication clock must be timezone aware")
+    local = as_of.astimezone(_EASTERN)
+    monday = local.date() - timedelta(days=local.weekday())
+    tuesday = monday + timedelta(days=1)
+    release_day = monday + timedelta(
+        days=2 if _is_release_holiday(monday) or _is_release_holiday(tuesday) else 1
+    )
+    release = datetime.combine(release_day, time(10), tzinfo=_EASTERN)
+    return monday if local >= release else monday - timedelta(days=7)

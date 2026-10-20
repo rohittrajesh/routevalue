@@ -1,0 +1,207 @@
+{
+  "environment": "local macOS scheduler and pinned Neon V2 development",
+  "before": {
+    "healthy": false,
+    "checked_at": "2026-10-20T20:48:38.778063+00:00",
+    "regions": [
+      {
+        "region_id": "SCA",
+        "status": "unusable",
+        "unusable_grades": [
+          "regular",
+          "midgrade",
+          "premium"
+        ],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-12T00:00:00+00:00",
+          "midgrade": "2026-10-12T00:00:00+00:00",
+          "premium": "2026-10-12T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T00:26:38.748862+00:00"
+      },
+      {
+        "region_id": "NUS",
+        "status": "unusable",
+        "unusable_grades": [
+          "regular",
+          "midgrade",
+          "premium"
+        ],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-12T00:00:00+00:00",
+          "midgrade": "2026-10-12T00:00:00+00:00",
+          "premium": "2026-10-12T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T00:26:39.580295+00:00"
+      }
+    ]
+  },
+  "after": {
+    "healthy": true,
+    "checked_at": "2026-10-20T20:52:48.107176+00:00",
+    "regions": [
+      {
+        "region_id": "SCA",
+        "status": "healthy",
+        "unusable_grades": [],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-19T00:00:00+00:00",
+          "midgrade": "2026-10-19T00:00:00+00:00",
+          "premium": "2026-10-19T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T20:48:42.015354+00:00"
+      },
+      {
+        "region_id": "NUS",
+        "status": "healthy",
+        "unusable_grades": [],
+        "future_refresh": false,
+        "observed_at": {
+          "regular": "2026-10-19T00:00:00+00:00",
+          "midgrade": "2026-10-19T00:00:00+00:00",
+          "premium": "2026-10-19T00:00:00+00:00"
+        },
+        "refreshed_at": "2026-10-20T20:48:42.553401+00:00"
+      }
+    ]
+  },
+  "automatic_pricing_checks": [
+    {
+      "area": "California",
+      "grade": "regular",
+      "automatic_regional_price_available": true,
+      "observed_at": "2026-10-19T00:00:00+00:00"
+    },
+    {
+      "area": "California",
+      "grade": "midgrade",
+      "automatic_regional_price_available": true,
+      "observed_at": "2026-10-19T00:00:00+00:00"
+    },
+    {
+      "area": "California",
+      "grade": "premium",
+      "automatic_regional_price_available": true,
+      "observed_at": "2026-10-19T00:00:00+00:00"
+    },
+    {
+      "area": "national",
+      "grade": "regular",
+      "automatic_regional_price_available": true,
+      "observed_at": "2026-10-19T00:00:00+00:00"
+    },
+    {
+      "area": "national",
+      "grade": "midgrade",
+      "automatic_regional_price_available": true,
+      "observed_at": "2026-10-19T00:00:00+00:00"
+    },
+    {
+      "area": "national",
+      "grade": "premium",
+      "automatic_regional_price_available": true,
+      "observed_at": "2026-10-19T00:00:00+00:00"
+    }
+  ],
+  "nonpricing_tables_unchanged": {
+    "users": true,
+    "auth_identities": true,
+    "saved_vehicles": true,
+    "user_preferences": true,
+    "elevation_call_reservations": true
+  },
+  "scheduled_job": {
+    "registered": true,
+    "monitor": {
+      "status": "healthy",
+      "checked_at": "2026-10-20T20:52:09.908184+00:00"
+    },
+    "last_exit_code": 0
+  },
+  "scheduled_no_download_run": {
+    "status": "healthy",
+    "checked_at": "2026-10-20T20:52:09.908184+00:00",
+    "expected_observation_date": "2026-10-19",
+    "attempted_regions": [],
+    "throttled_regions": [],
+    "failed_regions": [],
+    "before": {
+      "healthy": true,
+      "checked_at": "2026-10-20T20:52:07.557975+00:00",
+      "regions": [
+        {
+          "region_id": "SCA",
+          "status": "healthy",
+          "unusable_grades": [],
+          "future_refresh": false,
+          "observed_at": {
+            "regular": "2026-10-19T00:00:00+00:00",
+            "midgrade": "2026-10-19T00:00:00+00:00",
+            "premium": "2026-10-19T00:00:00+00:00"
+          },
+          "refreshed_at": "2026-10-20T20:48:42.015354+00:00"
+        },
+        {
+          "region_id": "NUS",
+          "status": "healthy",
+          "unusable_grades": [],
+          "future_refresh": false,
+          "observed_at": {
+            "regular": "2026-10-19T00:00:00+00:00",
+            "midgrade": "2026-10-19T00:00:00+00:00",
+            "premium": "2026-10-19T00:00:00+00:00"
+          },
+          "refreshed_at": "2026-10-20T20:48:42.553401+00:00"
+        }
+      ]
+    },
+    "after": {
+      "healthy": true,
+      "checked_at": "2026-10-20T20:52:09.279998+00:00",
+      "regions": [
+        {
+          "region_id": "SCA",
+          "status": "healthy",
+          "unusable_grades": [],
+          "future_refresh": false,
+          "observed_at": {
+            "regular": "2026-10-19T00:00:00+00:00",
+            "midgrade": "2026-10-19T00:00:00+00:00",
+            "premium": "2026-10-19T00:00:00+00:00"
+          },
+          "refreshed_at": "2026-10-20T20:48:42.015354+00:00"
+        },
+        {
+          "region_id": "NUS",
+          "status": "healthy",
+          "unusable_grades": [],
+          "future_refresh": false,
+          "observed_at": {
+            "regular": "2026-10-19T00:00:00+00:00",
+            "midgrade": "2026-10-19T00:00:00+00:00",
+            "premium": "2026-10-19T00:00:00+00:00"
+          },
+          "refreshed_at": "2026-10-20T20:48:42.553401+00:00"
+        }
+      ]
+    }
+  },
+  "hourly_interval_seconds": 3600,
+  "disable_enable_retained_state": true,
+  "live_initial_refresh_regions": [
+    "SCA",
+    "NUS"
+  ],
+  "live_initial_workbook_downloads": 2,
+  "credentials_in_plist": false,
+  "external_notifications_configured": false,
+  "production_changes": false,
+  "limitations": [
+    "Local login/Mac availability required; no hosted scheduler.",
+    "Future unattended weekly release and end-to-end alert delivery remain unverified.",
+    "Failure and partial recovery were injected only in disposable local SQL tests."
+  ]
+}

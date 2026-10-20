@@ -144,6 +144,10 @@ refresh requires explicit pinned-branch confirmation; do not repurpose it for
 production. Preserve coordinator/advisory locking in a deployment scheduler. Never
 refresh during a trip request.
 
-No scheduler or production job was registered. Provisioning the intended job and
-secrets and observing a subsequent weekly release remain release checks. A monitor
+M10 batch 4 installed a guarded hourly local development LaunchAgent and verified
+actual no-download execution after restoring current source observations. See
+[M10 EIA operations](m10-batch-4-eia-operations.md) for commands, status/staleness,
+retry, disable/re-enable and evidence. No hosted/production scheduler or outbound
+alert delivery is configured. Provisioning that target, secrets/alerts and
+observing a subsequent unattended weekly release remain release checks. A monitor
 detects failed refreshes; it cannot manufacture unpublished source observations.

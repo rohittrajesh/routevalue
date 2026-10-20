@@ -717,3 +717,7 @@ hosted-origin and account-recovery release checks.
 [Batch 3 shared terrain validation](docs/m10-batch-3-shared-terrain.md) records
 development quota activation, bounded live US route evidence, restart/failure
 checks and the read-only quota health command.
+
+[Batch 4 EIA operations](docs/m10-batch-4-eia-operations.md) documents the guarded
+local hourly maintenance job, real pricing recovery and remaining hosted scheduling
+and alert-delivery checks.
