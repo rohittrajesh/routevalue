@@ -23,6 +23,7 @@ import "./PersonalizationDashboard.css";
 
 interface PersonalizationDashboardProps {
   onProfileChanged: () => void;
+  view?: "all" | "garage" | "settings";
 }
 
 interface PersonalizationData {
@@ -64,6 +65,7 @@ function getVehicleSaveError(error: unknown): string {
 
 export default function PersonalizationDashboard({
   onProfileChanged,
+  view = "all",
 }: PersonalizationDashboardProps) {
   const [data, setData] = useState<PersonalizationData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,7 @@ export default function PersonalizationDashboard({
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [feedbackView, setFeedbackView] = useState(view);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const mutationInFlight = useRef(false);
@@ -140,6 +143,7 @@ export default function PersonalizationDashboard({
 
     mutationInFlight.current = true;
     setBusyAction(name);
+    setFeedbackView(view);
     setActionError(null);
     setNotice(null);
 
@@ -179,6 +183,7 @@ export default function PersonalizationDashboard({
     );
 
     if (alreadySaved) {
+      setFeedbackView(view);
       setNotice(null);
       setActionError(
         "This exact vehicle configuration is already in your garage.",
@@ -221,6 +226,7 @@ export default function PersonalizationDashboard({
 
     const normalized = valueOfTime.trim();
 
+    setFeedbackView(view);
     if (normalized !== "" && !/^\d+(?:\.\d+)?$/.test(normalized)) {
       setActionError(
         "Enter a non-negative decimal value of time, or leave it blank to clear it.",
@@ -272,202 +278,207 @@ export default function PersonalizationDashboard({
 
   return (
     <div className="m9-dashboard">
-      <section className="m9-section" aria-labelledby="m9-preferences-title">
-        <div className="m9-section-heading">
-          <div>
-            <p className="eyebrow">Personal settings</p>
-            <h3 id="m9-preferences-title">Your value of time</h3>
-          </div>
-        </div>
-
-        <p className="muted">
-          RouteValue uses this amount to convert time spent driving into a
-          monetary cost when comparing routes.
-        </p>
-
-        <form
-          className="m9-preferences-form"
-          onSubmit={(event) => void handleSavePreferences(event)}
-        >
-          <label className="field field-medium">
-            <span>Value of time ($/hour)</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={valueOfTime}
-              onChange={(event) => setValueOfTime(event.target.value)}
-              placeholder="e.g. 25.00"
-              disabled={busy}
-            />
-          </label>
-
-          <button className="v2-primary-button" type="submit" disabled={busy}>
-            Save preferences
-          </button>
-        </form>
-
-        <p className="m9-note">
-          Leave the field blank and save to clear this preference. Decimal
-          values are sent directly to the backend without JavaScript
-          floating-point conversion.
-        </p>
-      </section>
-
-      <EnergyPreferencesEditor
-        key={JSON.stringify([
-          data.preferences.electricity_price_per_kwh,
-          data.preferences.preferred_fuel_market,
-        ])}
-        preferences={data.preferences}
-        busy={busy}
-        onSave={(changes, message) =>
-          performMutation(
-            "energy-preferences",
-            () => updateUserPreferences(changes),
-            message,
-            "Could not save your energy preferences. Please try again.",
-          )
-        }
-      />
-
-      <section className="m9-section" aria-labelledby="m9-saved-vehicles-title">
-        <div className="m9-section-heading">
-          <div>
-            <p className="eyebrow">Your garage</p>
-            <h3 id="m9-saved-vehicles-title">Saved vehicles</h3>
+      <div className="rv-settings-grid" hidden={view === "garage"}>
+        <section className="m9-section" aria-labelledby="m9-preferences-title">
+          <div className="m9-section-heading">
+            <div>
+              <p className="eyebrow">Personal settings</p>
+              <h3 id="m9-preferences-title">Your value of time</h3>
+            </div>
           </div>
 
-          <span className="m9-vehicle-count">{data.vehicles.length} saved</span>
-        </div>
-
-        {data.vehicles.length === 0 ? (
-          <p className="m9-note">
-            No vehicles saved yet. Add your first vehicle below.
+          <p className="muted">
+            What is an hour of your time worth? Use this to balance faster
+            routes against driving costs.
           </p>
-        ) : (
-          <ul className="m9-vehicle-list">
-            {data.vehicles.map((vehicle) => {
-              const isDefault = vehicle.id === defaultVehicleId;
-              const confirming = confirmDeleteId === vehicle.id;
 
-              return (
-                <li className="m9-vehicle-item" key={vehicle.id}>
-                  <div className="m9-vehicle-details">
-                    <div className="m9-vehicle-heading">
-                      <strong>{vehicleTitle(vehicle)}</strong>
-                      {isDefault && (
-                        <span className="m9-default-label">Default</span>
-                      )}
+          <form
+            className="m9-preferences-form"
+            onSubmit={(event) => void handleSavePreferences(event)}
+          >
+            <label className="field field-medium">
+              <span>Value of time ($/hour)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={valueOfTime}
+                onChange={(event) => setValueOfTime(event.target.value)}
+                placeholder="e.g. 25.00"
+                disabled={busy}
+              />
+            </label>
+
+            <button className="v2-primary-button" type="submit" disabled={busy}>
+              Save preferences
+            </button>
+          </form>
+
+          <p className="m9-note">
+            Leave blank and save to clear this preference.
+          </p>
+        </section>
+
+        <EnergyPreferencesEditor
+          key={JSON.stringify([
+            data.preferences.electricity_price_per_kwh,
+            data.preferences.preferred_fuel_market,
+          ])}
+          preferences={data.preferences}
+          busy={busy}
+          onSave={(changes, message) =>
+            performMutation(
+              "energy-preferences",
+              () => updateUserPreferences(changes),
+              message,
+              "Could not save your energy preferences. Please try again.",
+            )
+          }
+        />
+      </div>
+      <div className="rv-garage-grid" hidden={view === "settings"}>
+        <section
+          className="m9-section"
+          aria-labelledby="m9-saved-vehicles-title"
+        >
+          <div className="m9-section-heading">
+            <div>
+              <p className="eyebrow">Your garage</p>
+              <h3 id="m9-saved-vehicles-title">Saved vehicles</h3>
+            </div>
+
+            <span className="m9-vehicle-count">
+              {data.vehicles.length} saved
+            </span>
+          </div>
+
+          {data.vehicles.length === 0 ? (
+            <p className="m9-note">
+              No vehicles saved yet. Add your first vehicle below.
+            </p>
+          ) : (
+            <ul className="m9-vehicle-list">
+              {data.vehicles.map((vehicle) => {
+                const isDefault = vehicle.id === defaultVehicleId;
+                const confirming = confirmDeleteId === vehicle.id;
+
+                return (
+                  <li className="m9-vehicle-item" key={vehicle.id}>
+                    <div className="m9-vehicle-details">
+                      <div className="m9-vehicle-heading">
+                        <strong>{vehicleTitle(vehicle)}</strong>
+                        {isDefault && (
+                          <span className="m9-default-label">Default</span>
+                        )}
+                      </div>
+
+                      <p>{formatVehicleConfiguration(vehicle.configuration)}</p>
+
+                      <p className="m9-efficiency">
+                        {formatVehicleEfficiency(vehicle.specification)}
+                      </p>
+
+                      <VehicleMassEditor
+                        vehicle={vehicle}
+                        disabled={busy}
+                        onUpdated={async () => {
+                          setFeedbackView(view);
+                          onProfileChanged();
+
+                          try {
+                            await reloadData();
+                          } catch {
+                            setActionError(
+                              "Vehicle mass was saved, but the updated garage could not be reloaded.",
+                            );
+                          }
+                        }}
+                      />
                     </div>
 
-                    <p>{formatVehicleConfiguration(vehicle.configuration)}</p>
-
-                    <p className="m9-efficiency">
-                      {formatVehicleEfficiency(vehicle.specification)}
-                    </p>
-
-                    <VehicleMassEditor
-                      vehicle={vehicle}
-                      disabled={busy}
-                      onUpdated={async () => {
-                        onProfileChanged();
-
-                        try {
-                          await reloadData();
-                        } catch {
-                          setActionError(
-                            "Vehicle mass was saved, but the updated garage could not be reloaded.",
-                          );
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="m9-vehicle-actions">
-                    {!isDefault && (
-                      <button
-                        type="button"
-                        className="v2-secondary-button"
-                        disabled={busy}
-                        onClick={() => void handleSetDefault(vehicle.id)}
-                      >
-                        Set as default
-                      </button>
-                    )}
-
-                    {confirming ? (
-                      <div className="m9-confirm-actions">
-                        <span>Delete this vehicle?</span>
+                    <div className="m9-vehicle-actions">
+                      {!isDefault && (
                         <button
                           type="button"
                           className="v2-secondary-button"
                           disabled={busy}
-                          onClick={() => void handleDeleteVehicle(vehicle.id)}
+                          onClick={() => void handleSetDefault(vehicle.id)}
                         >
-                          Confirm delete
+                          Set as default
                         </button>
+                      )}
+
+                      {confirming ? (
+                        <div className="m9-confirm-actions">
+                          <span>Delete this vehicle?</span>
+                          <button
+                            type="button"
+                            className="v2-secondary-button"
+                            disabled={busy}
+                            onClick={() => void handleDeleteVehicle(vehicle.id)}
+                          >
+                            Confirm delete
+                          </button>
+                          <button
+                            type="button"
+                            className="v2-secondary-button"
+                            disabled={busy}
+                            onClick={() => setConfirmDeleteId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           className="v2-secondary-button"
                           disabled={busy}
-                          onClick={() => setConfirmDeleteId(null)}
+                          onClick={() => setConfirmDeleteId(vehicle.id)}
+                          aria-label={`Delete ${vehicleTitle(vehicle)}`}
                         >
-                          Cancel
+                          Delete
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="v2-secondary-button"
-                        disabled={busy}
-                        onClick={() => setConfirmDeleteId(vehicle.id)}
-                        aria-label={`Delete ${vehicleTitle(vehicle)}`}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-        {defaultVehicleId !== null && (
-          <button
-            type="button"
-            className="v2-secondary-button"
-            disabled={busy}
-            onClick={() => void handleSetDefault(null)}
-          >
-            Clear default vehicle
-          </button>
-        )}
-      </section>
+          {defaultVehicleId !== null && (
+            <button
+              type="button"
+              className="v2-secondary-button"
+              disabled={busy}
+              onClick={() => void handleSetDefault(null)}
+            >
+              Clear default vehicle
+            </button>
+          )}
+        </section>
 
-      <section className="m9-section" aria-labelledby="m9-add-vehicle-title">
-        <div className="m9-section-heading">
-          <div>
-            <p className="eyebrow">Vehicle catalog</p>
-            <h3 id="m9-add-vehicle-title">Add a vehicle</h3>
+        <section className="m9-section" aria-labelledby="m9-add-vehicle-title">
+          <div className="m9-section-heading">
+            <div>
+              <p className="eyebrow">Vehicle catalog</p>
+              <h3 id="m9-add-vehicle-title">Add a vehicle</h3>
+            </div>
           </div>
-        </div>
 
-        <p className="muted">
-          Choose the exact vehicle configuration so RouteValue can retrieve the
-          correct gasoline or electric specification.
-        </p>
+          <p className="muted">
+            Find your model and configuration to get the right energy estimates.
+          </p>
 
-        <VehicleCatalogPicker onSave={handleSaveVehicle} disabled={busy} />
-      </section>
-
-      {notice && (
+          <VehicleCatalogPicker onSave={handleSaveVehicle} disabled={busy} />
+        </section>
+      </div>
+      {notice && feedbackView === view && (
         <p role="status" className="m9-feedback m9-success">
           {notice}
         </p>
       )}
 
-      {actionError && (
+      {actionError && feedbackView === view && (
         <div className="m9-feedback m9-error">
           <p role="alert">{actionError}</p>
           <button

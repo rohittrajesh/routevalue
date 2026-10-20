@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -93,6 +93,18 @@ describe("EnergyPreferencesEditor", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(
         "non-negative electricity rate",
       );
+      expect(
+        within(
+          screen.getByRole("region", { name: "Energy preferences" }),
+        ).getByRole("alert"),
+      ).toHaveTextContent("non-negative electricity rate");
+      expect(
+        within(
+          screen.getByRole("region", {
+            name: "Preferred fuel market",
+          }),
+        ).queryByRole("alert"),
+      ).not.toBeInTheDocument();
       expect(onSave).not.toHaveBeenCalled();
     },
   );

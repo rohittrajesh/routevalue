@@ -19,7 +19,7 @@ export default function RouteValueRoot() {
   }
 
   return (
-    <Suspense fallback={<p role="status">Loading RouteValue V2...</p>}>
+    <Suspense fallback={<p role="status">Loading RouteValue...</p>}>
       {recovery ? <ResetPasswordPanel /> : <V2App />}
     </Suspense>
   );

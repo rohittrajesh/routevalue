@@ -194,3 +194,66 @@ describe("createPlacesAutocompleteSession", () => {
     );
   });
 });
+
+it.each([
+  {
+    name: "123 Example Lane",
+    address: "123 Example Lane, Example City, CA 90000, USA",
+    expected: "123 Example Lane, Example City, CA 90000, USA",
+  },
+  {
+    name: "123 Example Lane, Example City, CA 90000, USA",
+    address: "123 Example Lane, Example City, CA 90000, USA",
+    expected: "123 Example Lane, Example City, CA 90000, USA",
+  },
+  {
+    name: "  123   EXAMPLE Lane  ",
+    address: "123 Example Lane , Example City, CA 90000, USA",
+    expected: "123 Example Lane , Example City, CA 90000, USA",
+  },
+  {
+    name: "Example Museum",
+    address: "123 Example Lane, Example City, CA 90000, USA",
+    expected: "Example Museum, 123 Example Lane, Example City, CA 90000, USA",
+  },
+  {
+    name: "Example",
+    address: "Example Lane, Example City, CA 90000, USA",
+    expected: "Example, Example Lane, Example City, CA 90000, USA",
+  },
+  {
+    name: undefined,
+    address: "123 Example Lane, Example City, CA 90000, USA",
+    expected: "123 Example Lane, Example City, CA 90000, USA",
+  },
+  { name: "Example Museum", address: undefined, expected: "Example Museum" },
+])(
+  "formats a resolved place without repeating its address: $name",
+  async ({ name, address, expected }) => {
+    const place = buildFakePlace({
+      id: "synthetic-address-id",
+      displayName: name,
+      formattedAddress: address,
+      latitude: 34.05,
+      longitude: -118.25,
+    });
+    configurePlacesLibrary([
+      buildPrediction({
+        placeId: "synthetic-address-id",
+        primaryText: "123 Example Lane",
+        secondaryText: "Example City, CA",
+        place,
+      }),
+    ]);
+    const { createPlacesAutocompleteSession } = await import("./googlePlaces");
+    const session = await createPlacesAutocompleteSession();
+    await session.fetchSuggestions("123 Ex");
+    expect(await session.resolveSuggestion("synthetic-address-id")).toEqual({
+      display_name: expected,
+      latitude: 34.05,
+      longitude: -118.25,
+      source: "google_places",
+      source_id: "synthetic-address-id",
+    });
+  },
+);

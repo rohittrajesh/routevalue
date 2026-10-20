@@ -1,0 +1,1020 @@
+/* RouteValue's application theme is scoped so the V1 route keeps its own design. */
+.v2-app {
+  --rv-ink: #272139;
+  --rv-muted: #70677f;
+  --rv-accent: #7439d8;
+  --rv-border: #e6dfed;
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  color: var(--rv-ink);
+  background: #f8f6fb;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.v2-app [hidden] {
+  display: none !important;
+}
+.v2-app .muted,
+.v2-app .m9-note {
+  color: var(--rv-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.v2-app .eyebrow {
+  margin: 0 0 8px;
+  color: #80639b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.v2-app h1,
+.v2-app h2,
+.v2-app h3 {
+  color: var(--rv-ink);
+  line-height: 1.2;
+}
+.v2-app .field {
+  min-width: 0;
+  gap: 7px;
+}
+.v2-app .field span,
+.v2-app .field > label {
+  color: #554a63;
+  font-size: 12px;
+  font-weight: 650;
+}
+.v2-app .field input,
+.v2-app .field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid #dcd3e6;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--rv-ink);
+  font: inherit;
+}
+.v2-app .field input::placeholder {
+  color: #786b85;
+}
+.v2-app input[type="radio"] {
+  accent-color: var(--rv-accent);
+}
+.v2-app :is(button, a, input, select):focus-visible {
+  outline: 3px solid #9e67e5;
+  outline-offset: 3px;
+}
+.v2-app .v2-primary-button,
+.v2-app .v2-secondary-button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.v2-app .v2-primary-button {
+  background: #7439d8;
+  border-color: #7439d8;
+  box-shadow: 0 4px 12px #7439d823;
+}
+.v2-app .v2-primary-button:hover:not(:disabled) {
+  background: #6128c0;
+  box-shadow: 0 5px 16px #7439d840;
+}
+.v2-app .v2-secondary-button {
+  border-color: #ded4e9;
+  color: #604281;
+  background: #fff;
+}
+.v2-app .v2-secondary-button:hover:not(:disabled) {
+  background: #f4eefc;
+}
+.v2-app button:disabled {
+  opacity: 0.5;
+}
+.rv-icon {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  vertical-align: middle;
+}
+.rv-logo {
+  width: 34px;
+  height: 36px;
+}
+.rv-brand,
+.v2-app .brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 21px;
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: -0.7px;
+}
+.rv-workspace {
+  display: grid;
+  grid-template-columns: 222px minmax(0, 1fr);
+  min-height: 100dvh;
+}
+.rv-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px 24px;
+  background: #231b30;
+  color: #e4daee;
+}
+.rv-sidebar .rv-brand {
+  color: #fff;
+  padding: 0 8px;
+}
+.rv-nav-label {
+  margin: 52px 12px 16px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #a99aba;
+  letter-spacing: 0.18em;
+}
+.rv-sidebar nav {
+  display: grid;
+  gap: 7px;
+}
+.rv-sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 47px;
+  padding: 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #bfb0cf;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.rv-sidebar nav button > span {
+  margin-left: auto;
+  opacity: 0;
+}
+.rv-sidebar nav button[aria-current="page"] {
+  color: white;
+  background: #7543b8;
+  box-shadow: inset 3px 0 #c884ff;
+}
+.rv-sidebar nav button[aria-current="page"] > span {
+  opacity: 1;
+}
+.rv-sidebar nav button:hover {
+  color: white;
+  background: #49315f;
+}
+.rv-sidebar-note {
+  margin-top: auto;
+  padding: 24px 12px;
+}
+.rv-sidebar-note > .rv-icon {
+  display: block;
+  margin-bottom: 12px;
+}
+.rv-sidebar-note strong {
+  color: #e4d4f2;
+  font-size: 13px;
+}
+.rv-sidebar-note p {
+  color: #aa9bb9;
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 7px 0 0;
+}
+.rv-account {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding-top: 22px;
+  border-top: 1px solid #463750;
+  font-size: 11px;
+}
+.rv-account > span:last-child {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #51405f;
+  color: #ead9ff;
+  font-weight: 700;
+}
+.rv-signout {
+  align-self: flex-start;
+  margin: 12px 0 0 39px;
+  padding: 3px 0;
+  border: none;
+  background: none;
+  color: #c7b7d5;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.rv-main {
+  min-width: 0;
+  width: 100%;
+  max-width: 1430px;
+  margin: 0 auto;
+  align-self: start;
+  padding: 36px clamp(24px, 4vw, 64px) 56px;
+}
+.rv-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.rv-page-header h1 {
+  margin: 0;
+  font-size: clamp(25px, 2.6vw, 34px);
+  letter-spacing: -1.2px;
+}
+.rv-page-header .muted {
+  margin: 9px 0 0;
+}
+.rv-header-badge {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #72647e;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.rv-header-badge > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9562ca;
+}
+.rv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.v2-app .v2-profile-content {
+  gap: 22px;
+}
+.v2-app .v2-profile-summary {
+  grid-template-columns: 1fr 1.6fr;
+  gap: 0;
+  padding: 15px 20px;
+  border: 1px solid var(--rv-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.v2-app .v2-profile-summary > div {
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+}
+.v2-app .v2-profile-summary > div:first-child {
+  padding-left: 0;
+  border-right: 1px solid var(--rv-border);
+}
+.v2-app .v2-profile-summary dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: #7a6989;
+  font-size: 10px;
+}
+.v2-app .v2-profile-summary dt svg {
+  width: 14px;
+  height: 14px;
+}
+.v2-app .v2-profile-summary dd {
+  font-size: 12px;
+}
+.rv-trip-intro {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 20px;
+  padding: 27px 32px;
+  border-radius: 16px;
+  background: #f1eaf8;
+  background-image: radial-gradient(
+    ellipse at 100% 0%,
+    #f6d6ec88,
+    transparent 65%
+  );
+}
+.rv-kicker {
+  color: #79539e;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+}
+.rv-trip-intro h2 {
+  margin: 10px 0;
+  font-size: clamp(23px, 2.2vw, 30px);
+  letter-spacing: -0.8px;
+}
+.rv-trip-intro em {
+  color: #7d3ec2;
+  font-style: normal;
+}
+.rv-trip-intro p {
+  max-width: 330px;
+  margin: 0;
+  font-size: 12px;
+  color: #705a83;
+}
+.rv-route-art {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  transform: rotate(-8deg);
+}
+.rv-route-art svg {
+  flex: 1;
+  min-width: 0;
+  height: 130px;
+  width: 100%;
+  overflow: visible;
+}
+.rv-route-art path {
+  fill: none;
+  stroke: #af7ae0;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 1 10;
+}
+.rv-art-pin {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 50% 50% 50% 5px;
+  background: #803ed0;
+  color: white;
+  box-shadow: 0 0 0 8px #b27de126;
+  font-size: 11px;
+  font-weight: 800;
+}
+.rv-art-pin:last-child {
+  background: #c653a2;
+}
+.rv-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0 24px;
+}
+.rv-quick-actions button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 16px;
+  border: 1px solid var(--rv-border);
+  border-radius: 10px;
+  background: #fff;
+  color: #635073;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rv-quick-actions button > span {
+  margin-left: auto;
+  color: #9965bd;
+}
+.v2-app .m9-dashboard {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 20px;
+}
+.rv-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.rv-garage-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+.v2-app .m9-section,
+.v2-app .m9-trip-panel {
+  min-width: 0;
+  margin: 0;
+  padding: 25px;
+  border: 1px solid var(--rv-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 12px #36224403;
+}
+.v2-app .m9-section h3,
+.v2-app .m9-trip-panel h3 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.55px;
+}
+.v2-app .m9-section-heading {
+  margin-bottom: 10px;
+}
+.v2-app .m9-preferences-form {
+  gap: 12px;
+  margin-top: 18px;
+}
+.v2-app .m9-preferences-form .field {
+  flex: 1 1 100%;
+  max-width: none;
+}
+.v2-app .m9-preferences-form small {
+  color: var(--rv-muted);
+  font-size: 11px;
+}
+.v2-app .rv-fuel-market {
+  grid-column: 1 / -1;
+  border-color: #d7bde9;
+  background: linear-gradient(110deg, #f7f0ff, #fff9fc);
+  padding: 28px;
+}
+.rv-market-current {
+  display: inline-block;
+  padding: 6px 11px;
+  border: 1px solid #e3cdec;
+  border-radius: 6px;
+  color: #70448a;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 650;
+}
+.v2-app .m9-fuel-market-form fieldset {
+  margin-top: 20px;
+  border: 0;
+  padding: 0;
+}
+.v2-app .m9-fuel-market-form legend {
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: #7c648d;
+}
+.v2-app .m9-fuel-market-form .field {
+  max-width: 600px;
+}
+.v2-app .m9-energy-actions {
+  gap: 10px;
+}
+.v2-app .m9-vehicle-list {
+  margin: 20px 0;
+}
+.v2-app .m9-vehicle-item {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 18px;
+  gap: 15px;
+  border-color: #e7dfef;
+  background: #fbf9fd;
+}
+.v2-app .m9-vehicle-heading strong {
+  font-size: 14px;
+}
+.v2-app .m9-vehicle-details p,
+.v2-app .m9-mass-editor p {
+  font-size: 12px;
+}
+.v2-app .m9-vehicle-actions {
+  justify-content: flex-start;
+  padding-top: 14px;
+  border-top: 1px solid var(--rv-border);
+}
+.v2-app .m9-default-label {
+  background: #eee2fb;
+  color: #763aa6;
+}
+.v2-app .m9-trip-form {
+  gap: 20px;
+  margin-top: 22px;
+}
+.v2-app .m9-trip-profile-summary {
+  padding: 10px 16px;
+  border-radius: 9px;
+  background: #f7f2fc;
+  gap: 3px;
+  font-size: 11px;
+}
+.v2-app .m9-trip-profile-summary strong {
+  color: #744391;
+  font-size: 15px;
+}
+.v2-app .m9-trip-profile-summary small {
+  font-size: 10px;
+}
+.v2-app .m9-trip-price-section {
+  padding: 16px;
+  border-color: #e4d9ee;
+  background: #fcfaff;
+  gap: 10px;
+}
+.v2-app .m9-trip-price-section legend {
+  font-size: 12px;
+  color: #65437e;
+}
+.v2-app .m9-trip-choice {
+  font-size: 12px;
+}
+.v2-app .m9-trip-price-section .m9-note {
+  margin-top: 0;
+  font-size: 11px;
+}
+.v2-app .m9-trip-actions .m9-note {
+  flex: 1;
+  margin: 0;
+  min-width: 170px;
+  font-size: 11px;
+}
+.v2-app .m9-trip-actions .v2-primary-button {
+  padding-inline: 26px;
+}
+.v2-app .m9-trip-result {
+  margin-top: 28px;
+}
+.v2-app .m9-trip-recommendation {
+  background: #f3ebfc;
+  border-color: #d7bae9;
+  color: #653b84;
+}
+.v2-app .m9-trip-notice {
+  background: #f7f2fc;
+  border-color: #e3d3ed;
+  color: #6b527c;
+  font-size: 12px;
+}
+.v2-app .m9-trip-notice p {
+  margin-bottom: 0;
+}
+.v2-app .m9-v2-result-recommended {
+  border-color: #b792db !important;
+  background: #fcf9ff;
+}
+.v2-app .m9-v2-best-label {
+  background: #efe0fb;
+  color: #743da1;
+}
+.v2-app .m9-v2-result-selected {
+  outline-color: #8d55c4;
+}
+.v2-app .m9-v2-terrain-panel {
+  padding: 18px;
+  background: #faf8fc;
+}
+.v2-app .m9-v2-terrain-panel h5 {
+  font-size: 15px;
+}
+.v2-app .m9-v2-terrain-panel p,
+.v2-app .m9-v2-terrain-reasons,
+.v2-app .m9-v2-terrain-routes {
+  font-size: 12px;
+}
+.v2-app .route-map-panel {
+  border-color: var(--rv-border);
+  border-radius: 12px;
+}
+.v2-app .route-map-heading h3 {
+  font-size: 19px;
+}
+.rv-signed-out {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: clamp(24px, 6vw, 80px);
+  gap: clamp(30px, 7vw, 100px);
+  background:
+    radial-gradient(ellipse at 5% 0%, #e8d7fb, transparent 60%), #faf7fc;
+}
+.rv-signed-out .v2-hero {
+  padding: 0;
+}
+.rv-signed-out .brand {
+  margin: 0 0 70px;
+  color: #30233e;
+}
+.rv-signed-out .hero-copy h1 {
+  font-size: clamp(38px, 4.5vw, 64px);
+  line-height: 1.06;
+  letter-spacing: -2.8px;
+  margin: 18px 0;
+}
+.rv-signed-out h1 em {
+  color: #8442c9;
+  font-style: normal;
+}
+.rv-signed-out .hero-description {
+  max-width: 380px;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #7a688a;
+}
+.rv-auth-features {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 45px;
+  padding-top: 20px;
+  border-top: 1px solid #e3d5ed;
+  font-size: 10px;
+  color: #78618a;
+}
+.v2-app .v2-auth-card {
+  width: 100%;
+  max-width: 450px;
+  padding: 32px;
+  border-color: var(--rv-border);
+  border-radius: 18px;
+  box-shadow: 0 18px 60px #54316d0a;
+}
+.v2-app .v2-auth-card h2 {
+  font-size: 25px;
+  margin: 0 0 10px;
+}
+.v2-app .v2-auth-form {
+  gap: 17px;
+  margin-top: 24px;
+}
+.v2-app .v2-auth-switch {
+  margin-top: 18px;
+  font-size: 12px;
+}
+.v2-app .v2-auth-switch button {
+  color: #7943a3;
+}
+.v2-app .v2-feedback {
+  font-size: 12px;
+}
+@media (min-width: 1600px) {
+  .rv-main {
+    padding-top: 50px;
+  }
+}
+@media (max-width: 1050px) {
+  .rv-workspace {
+    grid-template-columns: 185px minmax(0, 1fr);
+  }
+  .rv-sidebar {
+    padding-inline: 12px;
+  }
+  .rv-main {
+    padding-inline: 24px;
+  }
+  .rv-garage-grid {
+    grid-template-columns: 1fr;
+  }
+  .rv-route-art {
+    opacity: 0.7;
+  }
+}
+@media (max-width: 760px) {
+  .rv-workspace {
+    display: block;
+  }
+  .rv-sidebar {
+    position: static;
+    height: auto;
+    padding: 16px 20px 0;
+  }
+  .rv-sidebar .rv-brand {
+    font-size: 18px;
+    padding: 0;
+  }
+  .rv-sidebar .rv-logo {
+    width: 28px;
+    height: 30px;
+  }
+  .rv-nav-label,
+  .rv-sidebar-note,
+  .rv-account {
+    display: none;
+  }
+  .rv-sidebar nav {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .rv-sidebar nav button {
+    flex: 1;
+    justify-content: center;
+    font-size: 12px;
+    min-height: 42px;
+    padding: 10px 8px;
+    border-radius: 8px 8px 0 0;
+  }
+  .rv-sidebar nav button > span {
+    display: none;
+  }
+  .rv-sidebar nav button .rv-icon {
+    width: 17px;
+    height: 17px;
+  }
+  .rv-signout {
+    position: absolute;
+    right: 20px;
+    top: 19px;
+    margin: 0;
+    font-size: 12px;
+  }
+  .rv-main {
+    padding: 24px 18px 36px;
+  }
+  .rv-page-header {
+    margin-bottom: 20px;
+  }
+  .rv-page-header h1 {
+    font-size: 27px;
+  }
+  .rv-header-badge {
+    display: none;
+  }
+  .rv-settings-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .rv-trip-intro {
+    grid-template-columns: 1fr 0.65fr;
+    padding: 22px;
+    gap: 12px;
+  }
+  .rv-trip-intro h2 {
+    font-size: 24px;
+  }
+  .rv-route-art {
+    min-width: 0;
+  }
+  .rv-art-pin {
+    width: 24px;
+    height: 24px;
+    font-size: 9px;
+    box-shadow: 0 0 0 5px #b27de126;
+  }
+  .v2-app .m9-section,
+  .v2-app .m9-trip-panel {
+    padding: 20px;
+  }
+  .rv-quick-actions {
+    gap: 10px;
+    margin: 12px 0 20px;
+  }
+  .rv-quick-actions button {
+    padding: 12px;
+    font-size: 11px;
+    gap: 7px;
+    text-align: left;
+  }
+  .rv-quick-actions .rv-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .v2-app .m9-trip-fields {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .v2-app .m9-preferences-form {
+    align-items: flex-start;
+  }
+  .rv-signed-out {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 28px 22px 40px;
+  }
+  .rv-signed-out .brand {
+    margin-bottom: 35px;
+  }
+  .rv-signed-out .hero-copy h1 {
+    font-size: 40px;
+    letter-spacing: -1.8px;
+  }
+  .rv-signed-out .hero-description {
+    font-size: 13px;
+    margin-bottom: 0;
+  }
+  .rv-auth-features {
+    display: none;
+  }
+  .v2-app .v2-auth-card {
+    max-width: none;
+    padding: 24px;
+  }
+}
+@media (max-width: 380px) {
+  .rv-route-art {
+    display: none;
+  }
+  .rv-trip-intro {
+    grid-template-columns: 1fr;
+  }
+  .rv-sidebar nav button {
+    gap: 5px;
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-app *,
+  .v2-app *::before,
+  .v2-app *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+.v2-app.rv-reset {
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: radial-gradient(ellipse at top, #ebddfb, #faf7fc 65%);
+}
+.v2-app.rv-reset h1 {
+  font-size: 26px;
+  letter-spacing: -0.8px;
+}
+.v2-app .field {
+  display: flex;
+  flex-direction: column;
+}
+.v2-app .rv-market-current {
+  margin: 12px 0 0;
+}
+
+/* On small screens, give the planner priority over introductory artwork. */
+@media (max-width: 760px) {
+  .rv-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .rv-trip-intro,
+  .rv-workspace[data-view="trip"] .v2-profile-summary {
+    display: none;
+  }
+  .rv-quick-actions {
+    margin-top: 0;
+  }
+  .rv-page-header .muted {
+    font-size: 12px;
+  }
+}
+
+.v2-app .m9-vehicle-details {
+  overflow-wrap: anywhere;
+}
+/* Keep the map and cost comparison together on wider workspaces. */
+@media (min-width: 1100px) {
+  .v2-app .m9-trip-result {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 18px;
+  }
+  .v2-app .m9-trip-result > .eyebrow,
+  .v2-app .m9-trip-result > h4,
+  .v2-app .m9-trip-result > .m9-note,
+  .v2-app .m9-trip-result > .m9-v2-terrain-panel {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .v2-app .m9-trip-result > .eyebrow {
+    margin-bottom: -12px;
+  }
+  .v2-app .m9-trip-result > .m9-trip-notice,
+  .v2-app .m9-trip-recommendation {
+    align-self: stretch;
+    margin: 0;
+  }
+  .v2-app .m9-v2-result-list {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+  }
+  .v2-app .route-map-panel {
+    min-width: 0;
+    margin: 0;
+  }
+  .v2-app .route-map-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 18px;
+  }
+  .v2-app .route-map-context {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+/* Quiet violet surfaces give every card a shared identity without competing with data. */
+.v2-app .m9-section,
+.v2-app .m9-trip-panel,
+.v2-app .v2-auth-card,
+.v2-app .v2-profile-summary,
+.v2-app .rv-quick-actions button,
+.v2-app .m9-trip-route-list li,
+.v2-app .route-map-panel {
+  border-color: #e5dbef;
+  background: linear-gradient(125deg, #fcf9ff, #fffdfef5);
+  box-shadow:
+    inset 0 1px 0 #f4edfb,
+    0 3px 14px #4c2b6604;
+}
+.v2-app .rv-fuel-market {
+  border-color: #dac8e9;
+  background: linear-gradient(125deg, #f9f5fd, #fefbfe);
+}
+.v2-app .m9-vehicle-item,
+.v2-app .m9-v2-terrain-panel {
+  background: #faf7fd;
+  border-color: #e6dced;
+}
+.rv-signed-out .hero-copy h1 {
+  font-size: clamp(36px, 4vw, 56px);
+  letter-spacing: -2px;
+}
+.rv-signed-out .hero-description {
+  max-width: 420px;
+  font-size: 14px;
+}
+.rv-trip-intro h2 {
+  font-size: clamp(22px, 2vw, 28px);
+}
+@media (max-width: 760px) {
+  .rv-sidebar nav button {
+    gap: 8px;
+  }
+  .rv-sidebar nav button .rv-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .rv-signed-out .hero-copy h1 {
+    font-size: 36px;
+    letter-spacing: -1.5px;
+  }
+  .rv-signed-out .hero-description {
+    font-size: 13px;
+  }
+}
+@media (max-width: 380px) {
+  .rv-sidebar nav button {
+    gap: 5px;
+    font-size: 11px;
+  }
+}
+
+/* Final hierarchy and readability polish. */
+.rv-account > span:last-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.rv-trip-intro {
+  padding: 20px 26px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  align-items: center;
+}
+.rv-trip-intro h2 {
+  margin: 7px 0;
+  font-size: 23px;
+}
+.rv-route-art svg {
+  height: 78px;
+}
+.v2-app .rv-market-hint {
+  font-size: 11px;
+  margin-top: 10px;
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  .rv-trip-intro {
+    grid-template-columns: minmax(0, 1fr) 150px;
+  }
+  .rv-trip-intro h2 {
+    font-size: 21px;
+  }
+}

@@ -18,16 +18,32 @@ test.beforeEach(async ({ page }) => {
 
 test("the production V2 bundle loads at root, survives reload and retains /v2", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/");
   await expect(
     page.getByRole("heading", {
-      name: "Drive smarter, with your own preferences.",
+      name: "Know the cost. Choose what matters.",
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Forgot password?" }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".rv-logo")
+        .evaluate(
+          (node) =>
+            node instanceof HTMLImageElement &&
+            node.complete &&
+            node.naturalWidth > 0,
+        ),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("sign-in.png"),
+    fullPage: true,
+  });
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Sign in", exact: true }),

@@ -11,7 +11,18 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText("Profile connected.")).toBeVisible();
 });
 
+async function navigate(
+  page: Page,
+  name: "Plan a trip" | "Garage" | "Preferences",
+) {
+  await page
+    .getByRole("navigation", { name: "Workspace" })
+    .getByRole("button", { name, exact: true })
+    .click();
+}
+
 async function addVehicle(page: Page, model: "Gasoline" | "Electric") {
+  await navigate(page, "Garage");
   await page
     .getByRole("combobox", { name: "Model year", exact: true })
     .selectOption("2025");
@@ -38,6 +49,7 @@ async function configure(
   page: Page,
   model: "Gasoline" | "Electric" = "Gasoline",
 ) {
+  await navigate(page, "Preferences");
   await page.getByLabel("Value of time ($/hour)").fill("24");
   await page.getByRole("button", { name: "Save preferences" }).click();
   await expect(page.getByText("Value of time saved.")).toBeVisible();
@@ -48,6 +60,7 @@ async function configure(
 }
 
 async function locations(page: Page) {
+  await navigate(page, "Plan a trip");
   await page
     .getByRole("combobox", { name: "Origin", exact: true })
     .fill("UC San");
@@ -59,6 +72,7 @@ async function locations(page: Page) {
 }
 
 async function compare(page: Page) {
+  await navigate(page, "Plan a trip");
   const response = page.waitForResponse(
     (r) =>
       r.url().endsWith("/api/v2/trip-evaluations") &&
@@ -72,7 +86,7 @@ async function compare(page: Page) {
 
 test("gasoline onboarding, automatic pricing, mass add/clear and real API terrain calculations", async ({
   page,
-}) => {
+}, testInfo) => {
   const vehicle = await configure(page);
   await locations(page);
   const baselineResponse = await compare(page);
@@ -92,6 +106,7 @@ test("gasoline onboarding, automatic pricing, mass add/clear and real API terrai
     "gasoline",
   );
 
+  await navigate(page, "Garage");
   await vehicle.getByRole("button", { name: "Add vehicle weight" }).click();
   await vehicle.getByLabel("Curb weight", { exact: true }).fill("1800");
   await vehicle
@@ -102,7 +117,9 @@ test("gasoline onboarding, automatic pricing, mass add/clear and real API terrai
     .fill("Synthetic browser fixture");
   await vehicle.getByRole("button", { name: "Save vehicle weight" }).click();
   await expect(vehicle.getByText("Vehicle mass saved.")).toBeVisible();
+  await navigate(page, "Plan a trip");
   // Saved personalization changed: old results must disappear, locations stay.
+  await navigate(page, "Plan a trip");
   await expect(
     page.getByRole("heading", { name: "Your route comparison" }),
   ).toHaveCount(0);
@@ -121,6 +138,10 @@ test("gasoline onboarding, automatic pricing, mass add/clear and real API terrai
     page.locator('.route-map-canvas[data-e2e-map-ready="true"]'),
   ).toBeVisible();
 
+  await page
+    .getByRole("region", { name: "Your route comparison", exact: true })
+    .screenshot({ path: testInfo.outputPath("route-comparison.png") });
+  await navigate(page, "Garage");
   await vehicle.getByRole("button", { name: "Clear vehicle weight" }).click();
   await vehicle.getByRole("button", { name: "Confirm clear" }).click();
   await expect(vehicle.getByText("Vehicle mass cleared.")).toBeVisible();
@@ -165,6 +186,7 @@ test("EV selection, terrain fallback, preference invalidation and delete/default
 }) => {
   const vehicle = await configure(page, "Electric");
   await locations(page);
+  await navigate(page, "Plan a trip");
   await page.getByRole("radio", { name: "Enter a rate for this trip" }).check();
   await page.getByLabel("Electricity price ($/kWh)").fill("0.275");
   await context.addCookies([
@@ -184,16 +206,20 @@ test("EV selection, terrain fallback, preference invalidation and delete/default
     page.getByText("Your electricity rate supplied for this trip."),
   ).toBeVisible();
   await expect(page.getByText(/Energy used: .* kWh/).first()).toBeVisible();
+  await navigate(page, "Preferences");
   await page.getByLabel("Value of time ($/hour)").fill("30");
   await page.getByRole("button", { name: "Save preferences" }).click();
   await expect(page.getByText("Value of time saved.")).toBeVisible();
+  await navigate(page, "Plan a trip");
   await expect(
     page.getByRole("heading", { name: "Your route comparison" }),
   ).toHaveCount(0);
+  await navigate(page, "Garage");
   await vehicle
     .getByRole("button", { name: "Delete 2025 Example Electric" })
     .click();
   await vehicle.getByRole("button", { name: "Confirm delete" }).click();
+  await navigate(page, "Plan a trip");
   await expect(
     page.getByRole("button", { name: "Compare routes", exact: true }),
   ).toBeDisabled();
@@ -206,6 +232,7 @@ test("saved EV rate survives reload, drives trips, permits override and clears s
   page,
 }, testInfo) => {
   await configure(page, "Electric");
+  await navigate(page, "Preferences");
   await page.getByLabel("Saved electricity rate ($/kWh)").fill("0.2875");
   await page
     .getByRole("button", { name: "Save electricity rate", exact: true })
@@ -214,6 +241,7 @@ test("saved EV rate survives reload, drives trips, permits override and clears s
     page.getByText("Electricity rate saved.", { exact: true }),
   ).toBeVisible();
   await page.reload();
+  await navigate(page, "Preferences");
   await expect(page.getByLabel("Saved electricity rate ($/kWh)")).toHaveValue(
     "0.2875",
   );
@@ -233,6 +261,7 @@ test("saved EV rate survives reload, drives trips, permits override and clears s
   await expect(
     page.getByText("Your saved electricity rate.", { exact: true }),
   ).toBeVisible();
+  await navigate(page, "Plan a trip");
   await page.getByRole("radio", { name: "Enter a rate for this trip" }).check();
   await page.getByLabel("Electricity price ($/kWh)", { exact: true }).fill("0");
   const override = await compare(page);
@@ -240,10 +269,13 @@ test("saved EV rate survives reload, drives trips, permits override and clears s
     source: "user_input",
     price_per_kilowatt_hour: "0",
   });
+  await navigate(page, "Preferences");
   await expect(page.getByLabel("Saved electricity rate ($/kWh)")).toHaveValue(
     "0.2875",
   );
+  await navigate(page, "Plan a trip");
   await page.getByRole("radio", { name: "Use saved electricity rate" }).check();
+  await navigate(page, "Preferences");
   await page.getByLabel("Saved electricity rate ($/kWh)").fill("");
   await page
     .getByRole("button", { name: "Save electricity rate", exact: true })
@@ -251,9 +283,11 @@ test("saved EV rate survives reload, drives trips, permits override and clears s
   await expect(
     page.getByText("Electricity rate cleared.", { exact: true }),
   ).toBeVisible();
+  await navigate(page, "Plan a trip");
   await expect(
     page.getByRole("heading", { name: "Your route comparison" }),
   ).toHaveCount(0);
+  await navigate(page, "Plan a trip");
   await expect(
     page.getByRole("button", { name: "Compare routes", exact: true }),
   ).toBeDisabled();
@@ -269,6 +303,7 @@ test("preferred market survives reload and clearing restores trip-origin pricing
   await locations(page);
   const initial = await compare(page);
   expect((await initial.json()).energy_price.price_per_gallon).toBe("4.125");
+  await navigate(page, "Preferences");
   await page
     .getByRole("combobox", { name: "Fuel purchasing area", exact: true })
     .fill("Raleigh");
@@ -279,6 +314,7 @@ test("preferred market survives reload and clearing restores trip-origin pricing
   await expect(
     page.getByText("Fuel market saved.", { exact: true }),
   ).toBeVisible();
+  await navigate(page, "Plan a trip");
   await expect(
     page.getByRole("heading", { name: "Your route comparison" }),
   ).toHaveCount(0);
@@ -288,9 +324,11 @@ test("preferred market survives reload and clearing restores trip-origin pricing
   );
   expect((await preferred.json()).energy_price.price_per_gallon).toBe("3.125");
   await page.reload();
+  await navigate(page, "Preferences");
   await expect(
     page.getByText("Fuel market: Raleigh, NC", { exact: true }),
   ).toBeVisible();
+  await navigate(page, "Preferences");
   await page.getByLabel("Value of time ($/hour)").fill("30");
   await page
     .getByRole("button", { name: "Save preferences", exact: true })
@@ -302,6 +340,7 @@ test("preferred market survives reload and clearing restores trip-origin pricing
     page.getByText("Fuel market: Raleigh, NC", { exact: true }),
   ).toBeVisible();
   await locations(page);
+  await navigate(page, "Preferences");
   await page
     .getByRole("button", { name: "Clear fuel market", exact: true })
     .click();
@@ -312,6 +351,70 @@ test("preferred market survives reload and clearing restores trip-origin pricing
   ).toBeVisible();
   const cleared = await compare(page);
   expect((await cleared.json()).energy_price.price_per_gallon).toBe("4.125");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("workspace navigation preserves trip and settings drafts and keeps views distinct", async ({
+  page,
+}, testInfo) => {
+  await configure(page);
+  await locations(page);
+  await page
+    .getByRole("radio", { name: "Enter my price", exact: true })
+    .check();
+  await page.getByLabel("Gasoline price ($/gallon)").fill("4.875");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("workspace-trip.png"),
+    fullPage: true,
+  });
+  await navigate(page, "Preferences");
+  await expect(
+    page.getByRole("heading", { name: "Plan a trip", exact: true }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("region", { name: "Preferred fuel market", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Energy preferences", exact: true }),
+  ).not.toContainText("Fuel market:");
+  await page.getByLabel("Value of time ($/hour)").fill("32.75");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("workspace-settings.png"),
+    fullPage: true,
+  });
+  await navigate(page, "Garage");
+  await expect(
+    page.getByRole("heading", { name: "Saved vehicles", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Value of time ($/hour)")).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("workspace-garage.png"),
+    fullPage: true,
+  });
+  await navigate(page, "Preferences");
+  await expect(page.getByLabel("Value of time ($/hour)")).toHaveValue("32.75");
+  await navigate(page, "Plan a trip");
+  await expect(
+    page.getByRole("combobox", { name: "Origin", exact: true }),
+  ).toHaveValue("UC San Diego, La Jolla, CA");
+  await expect(
+    page.getByRole("combobox", { name: "Destination", exact: true }),
+  ).toHaveValue("Balboa Park, San Diego, CA");
+  await expect(page.getByLabel("Gasoline price ($/gallon)")).toHaveValue(
+    "4.875",
+  );
+  await expect(
+    page
+      .getByRole("navigation", { name: "Workspace" })
+      .getByRole("button", { name: "Plan a trip", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

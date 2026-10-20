@@ -30,6 +30,8 @@ import { getNeonAuthClient } from "./auth/neonClient";
 import { useAuthSession } from "./auth/useAuthSession";
 import PersonalizationDashboard from "./components/PersonalizationDashboard";
 import V2TripPlanner from "./components/V2TripPlanner";
+import AppIcon from "./components/AppIcon";
+import "./WorkspaceTheme.css";
 
 type ProfileState =
   | { status: "loading" }
@@ -46,7 +48,10 @@ function getProfileErrorMessage(error: unknown): string {
     return "Your session has expired. Please sign in again.";
   }
   if (error instanceof ApiRequestError && error.status === 503) {
-    return "Authentication or the API is temporarily unavailable.";
+    return "Your account is temporarily unavailable. Please try again shortly.";
+  }
+  if (error instanceof ApiRequestError && error.code === "network_error") {
+    return "We could not reach your account. Check your connection and retry.";
   }
   return "Could not load your RouteValue profile. Please try again.";
 }
@@ -68,6 +73,7 @@ function AuthenticatedWorkspace({ userEmail }: AuthenticatedWorkspaceProps) {
   const [profileState, setProfileState] = useState<ProfileState>({
     status: "loading",
   });
+  const [view, setView] = useState<"trip" | "garage" | "settings">("trip");
   const [retryVersion, setRetryVersion] = useState(0);
   const [profileRefreshError, setProfileRefreshError] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -106,6 +112,11 @@ function AuthenticatedWorkspace({ userEmail }: AuthenticatedWorkspaceProps) {
       active = false;
     };
   }, [retryVersion]);
+
+  function navigate(next: "trip" | "garage" | "settings") {
+    setView(next);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
 
   function retryProfile() {
     setProfileState({ status: "loading" });
@@ -166,91 +177,196 @@ function AuthenticatedWorkspace({ userEmail }: AuthenticatedWorkspaceProps) {
 
   return (
     <section
-      className="v2-auth-card v2-workspace-card"
-      aria-labelledby="v2-profile-title"
+      className="rv-workspace"
+      aria-label="Your workspace"
+      data-view={view}
     >
-      <div className="v2-account-header">
-        <div>
-          <p className="eyebrow">Authenticated account</p>
-          <h2 id="v2-profile-title">Your RouteValue profile</h2>
-          <p className="muted">{userEmail}</p>
+      <aside className="rv-sidebar">
+        <a className="rv-brand" href="/" aria-label="RouteValue home">
+          <AppIcon name="brand" />
+          RouteValue
+        </a>
+        <p className="rv-nav-label">YOUR WORKSPACE</p>
+        <nav aria-label="Workspace">
+          {(["trip", "garage", "settings"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              aria-current={view === item ? "page" : undefined}
+              onClick={() => navigate(item)}
+            >
+              <AppIcon name={item} />
+              {item === "trip"
+                ? "Plan a trip"
+                : item === "garage"
+                  ? "Garage"
+                  : "Preferences"}
+              <span aria-hidden="true">↗</span>
+            </button>
+          ))}
+        </nav>
+        <div className="rv-sidebar-note">
+          <strong>Your drive, in dollars.</strong>
+          <p>
+            Compare energy, tolls and your value of time. Decide what the drive
+            is worth to you.
+          </p>
         </div>
-
+        <div className="rv-account">
+          <span className="rv-avatar" aria-hidden="true">
+            {userEmail.charAt(0).toUpperCase() || "R"}
+          </span>
+          <span title={userEmail}>{userEmail}</span>
+        </div>
         <button
           type="button"
-          className="v2-secondary-button"
+          className="rv-signout"
           disabled={isSigningOut}
           onClick={() => void handleSignOut()}
         >
           {isSigningOut ? "Signing out..." : "Sign out"}
         </button>
-      </div>
-
-      {signOutError && (
-        <p role="alert" className="v2-feedback v2-error">
-          {signOutError}
-        </p>
-      )}
-
-      {profileState.status === "loading" && (
-        <p role="status">Loading your saved profile...</p>
-      )}
-
-      {profileState.status === "error" && (
-        <div className="v2-feedback v2-error">
-          <p role="alert">{profileState.message}</p>
-          <button
-            type="button"
-            className="v2-secondary-button"
-            onClick={retryProfile}
-          >
-            Retry profile
-          </button>
-        </div>
-      )}
-
-      {profileState.status === "ready" && (
-        <div className="v2-profile-content">
-          <p role="status" className="v2-success">
-            Profile connected.
-          </p>
-
-          <dl className="v2-profile-summary">
-            <div>
-              <dt>Preferences</dt>
-              <dd>
-                {profileState.profile.preferences_configured
-                  ? "Configured"
-                  : "Not configured yet"}
-              </dd>
-            </div>
-            <div>
-              <dt>Default vehicle</dt>
-              <dd>
-                {defaultVehicle
-                  ? `${defaultVehicle.year} ${defaultVehicle.make} ${defaultVehicle.model}`
-                  : profileState.profile.default_vehicle_id
-                    ? "Saved vehicle selected"
-                    : "Not selected"}
-              </dd>
-            </div>
-          </dl>
-
-          {profileRefreshError && (
-            <p role="alert" className="m9-note">
-              Your account summary could not refresh. The settings below remain
-              available.
+      </aside>
+      <div className="rv-main">
+        <header className="rv-page-header">
+          <div>
+            <p className="eyebrow">
+              {view === "trip" ? "PERSONALIZED DRIVING COSTS" : "MAKE IT YOURS"}
             </p>
-          )}
+            <h1>
+              {view === "trip"
+                ? "Compare your driving costs."
+                : view === "garage"
+                  ? "Your garage."
+                  : "Your preferences."}
+            </h1>
+            <p className="muted">
+              {view === "trip"
+                ? "See the cost of each route, with your priorities built in."
+                : view === "garage"
+                  ? "Your vehicles, ready for the road."
+                  : "Set it once. Bring it on every trip."}
+            </p>
+          </div>
+          <span className="rv-header-badge">
+            <span />
+            Personal workspace
+          </span>
+        </header>
 
-          <PersonalizationDashboard onProfileChanged={refreshProfileSummary} />
+        {signOutError && (
+          <p role="alert" className="v2-feedback v2-error">
+            {signOutError}
+          </p>
+        )}
 
-          <V2TripPlanner
-            vehicles={profileState.vehicles}
-            preferences={profileState.preferences}
-          />
-        </div>
-      )}
+        {profileState.status === "loading" && (
+          <p role="status">Loading your saved profile...</p>
+        )}
+
+        {profileState.status === "error" && (
+          <div className="v2-feedback v2-error">
+            <p role="alert">{profileState.message}</p>
+            <button
+              type="button"
+              className="v2-secondary-button"
+              onClick={retryProfile}
+            >
+              Retry profile
+            </button>
+          </div>
+        )}
+
+        {profileState.status === "ready" && (
+          <div className="v2-profile-content">
+            <p role="status" className="rv-sr-only">
+              Profile connected.
+            </p>
+
+            <dl className="v2-profile-summary">
+              <div>
+                <dt>
+                  <AppIcon name="settings" />
+                  Preferences
+                </dt>
+                <dd>
+                  {profileState.profile.preferences_configured
+                    ? "Configured"
+                    : "Not configured yet"}
+                </dd>
+              </div>
+              <div>
+                <dt>
+                  <AppIcon name="garage" />
+                  Default vehicle
+                </dt>
+                <dd>
+                  {defaultVehicle
+                    ? `${defaultVehicle.year} ${defaultVehicle.make} ${defaultVehicle.model}`
+                    : profileState.profile.default_vehicle_id
+                      ? "Saved vehicle selected"
+                      : "Not selected"}
+                </dd>
+              </div>
+            </dl>
+
+            {profileRefreshError && (
+              <p role="alert" className="m9-note">
+                Your account summary could not refresh. The settings below
+                remain available.
+              </p>
+            )}
+
+            <div className="rv-view" hidden={view === "trip"}>
+              <PersonalizationDashboard
+                view={view === "garage" ? "garage" : "settings"}
+                onProfileChanged={refreshProfileSummary}
+              />
+            </div>
+            <div className="rv-view" hidden={view !== "trip"}>
+              <div className="rv-trip-intro">
+                <div>
+                  <span className="rv-kicker">
+                    COST INSIGHTS FOR YOUR DRIVE
+                  </span>
+                  <h2>
+                    Energy. Tolls. <em>Your time.</em>
+                  </h2>
+                  <p>One cost breakdown, built around your priorities.</p>
+                </div>
+                <div className="rv-route-art" aria-hidden="true">
+                  <span className="rv-art-pin">A</span>
+                  <svg viewBox="0 0 320 140">
+                    <path d="M25 110C90 110 30 25 125 25S210 125 295 35" />
+                  </svg>
+                  <span className="rv-art-pin">B</span>
+                </div>
+              </div>
+              <div className="rv-quick-actions">
+                <button type="button" onClick={() => navigate("garage")}>
+                  <AppIcon name="garage" />
+                  {profileState.vehicles.length
+                    ? "Manage vehicles"
+                    : "Add your first vehicle"}
+                  <span aria-hidden="true">↗</span>
+                </button>
+                <button type="button" onClick={() => navigate("settings")}>
+                  <AppIcon name="settings" />
+                  {profileState.preferences.value_of_time_per_hour == null
+                    ? "Set your value of time"
+                    : "Adjust your preferences"}
+                  <span aria-hidden="true">↗</span>
+                </button>
+              </div>
+
+              <V2TripPlanner
+                vehicles={profileState.vehicles}
+                preferences={profileState.preferences}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -267,21 +383,36 @@ export default function V2App() {
   const needsSignIn = boundary.reason !== null;
 
   return (
-    <main className="app-shell v2-app">
-      <header className="hero v2-hero">
-        <a className="brand" href="/" aria-label="RouteValue home">
-          RouteValue
-        </a>
+    <main
+      className={`app-shell v2-app ${session.status === "authenticated" && !needsSignIn ? "rv-signed-in" : "rv-signed-out"}`}
+    >
+      {(session.status !== "authenticated" || needsSignIn) && (
+        <header className="hero v2-hero">
+          <a className="brand" href="/" aria-label="RouteValue home">
+            <AppIcon name="brand" />
+            RouteValue
+          </a>
 
-        <div className="hero-copy">
-          <p className="eyebrow">RouteValue V2</p>
-          <h1>Drive smarter, with your own preferences.</h1>
-          <p className="hero-description">
-            Save your vehicle, personalize the value of your time, and compare
-            routes using total driving cost.
-          </p>
-        </div>
-      </header>
+          <div className="hero-copy">
+            <p className="eyebrow">PERSONALIZED DRIVING COSTS</p>
+            <h1>
+              Know the cost.
+              <br />
+              Choose <em>what matters.</em>
+            </h1>
+            <p className="hero-description">
+              Compare fuel or charging, tolls and travel time in one
+              personalized cost breakdown. Set what your time is worth, then see
+              when a longer drive could cost you less.
+            </p>
+          </div>
+          <div className="rv-auth-features">
+            <span>01 / Your vehicle</span>
+            <span>02 / Your value of time</span>
+            <span>03 / Your cost breakdown</span>
+          </div>
+        </header>
+      )}
 
       {session.status === "loading" && (
         <section className="v2-auth-card" role="status">
@@ -298,12 +429,12 @@ export default function V2App() {
       )}
 
       {(session.status === "unauthenticated" || needsSignIn) && (
-        <>
+        <div className="rv-auth-entry">
           {boundary.reason === "expired" && (
             <p role="alert">Your session has expired. Please sign in again.</p>
           )}
           <AuthPanel onSignedIn={confirmSignIn} />
-        </>
+        </div>
       )}
 
       {session.status === "authenticated" &&

@@ -108,7 +108,7 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
 
   return (
     <section className="v2-auth-card" aria-labelledby="v2-auth-title">
-      <p className="eyebrow">RouteValue account</p>
+      <p className="eyebrow">YOUR COSTS. YOUR PRIORITIES.</p>
 
       <h2 id="v2-auth-title">
         {mode === "sign-in" ? "Sign in" : "Create your account"}

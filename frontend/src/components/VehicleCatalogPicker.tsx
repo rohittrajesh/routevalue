@@ -344,8 +344,8 @@ export default function VehicleCatalogPicker({
       </button>
 
       <p className="m9-note">
-        Vehicle efficiency is retrieved and verified by the RouteValue backend.
-        You cannot override these specifications.
+        Energy estimates use the published efficiency for your selected
+        configuration.
       </p>
     </form>
   );

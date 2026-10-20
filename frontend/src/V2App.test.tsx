@@ -8,6 +8,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import V2App from "./V2App";
+import { ApiRequestError } from "./api/tripEvaluations";
 
 const { sessionMock, profileMock, vehiclesMock, preferencesMock, signOutMock } =
   vi.hoisted(() => ({
@@ -62,6 +63,7 @@ const profile = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   setSessionPrincipal(null);
   confirmSignIn();
   sessionMock.mockReturnValue({
@@ -154,6 +156,7 @@ describe("V2App", () => {
     const user = userEvent.setup();
     render(<V2App />);
     await screen.findByText("2021 Audi A6 quattro");
+    await user.click(screen.getByRole("button", { name: "Garage" }));
     await user.click(
       screen.getByRole("button", { name: "Refresh profile summary" }),
     );
@@ -211,3 +214,48 @@ it("unmounts private state on expiry and reloads it after signing in again", asy
   expect(await screen.findByText("Profile connected.")).toBeInTheDocument();
   expect(profileMock).toHaveBeenCalledTimes(2);
 });
+
+it("opens the trip workspace and keeps the planner mounted when navigating", async () => {
+  authenticated();
+  const user = userEvent.setup();
+  render(<V2App />);
+  const planner = await screen.findByText("Authenticated trip planner");
+  const trip = screen
+    .getByRole("navigation", { name: "Workspace" })
+    .querySelector('[aria-current="page"]');
+  expect(trip).toHaveTextContent("Plan a trip");
+  expect(planner).toBeVisible();
+  expect(screen.getAllByRole("link", { name: "RouteValue home" })).toHaveLength(
+    1,
+  );
+  expect(screen.queryByText("RouteValue V2")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Preferences" }));
+  expect(planner).not.toBeVisible();
+  expect(
+    screen.getByRole("heading", { name: "Your preferences." }),
+  ).toBeVisible();
+  await user.click(screen.getByRole("button", { name: /^Plan a trip/ }));
+  expect(screen.getByText("Authenticated trip planner")).toBe(planner);
+  expect(planner).toBeVisible();
+});
+
+it.each([
+  [
+    new ApiRequestError("private network detail", null, "network_error"),
+    "Check your connection and retry",
+  ],
+  [
+    new ApiRequestError("private upstream detail", 503, "unknown_error"),
+    "temporarily unavailable",
+  ],
+])(
+  "explains profile availability failures without exposing upstream detail",
+  async (error, message) => {
+    authenticated();
+    profileMock.mockRejectedValueOnce(error);
+    render(<V2App />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("button", { name: "Retry profile" })).toBeEnabled();
+    expect(screen.queryByText(/private .* detail/)).not.toBeInTheDocument();
+  },
+);

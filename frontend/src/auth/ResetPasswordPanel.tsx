@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState, type FormEvent } from "react";
 
 import "../V2App.css";
+import "../WorkspaceTheme.css";
 
 import { getNeonAuthClient } from "./neonClient";
 import { isSuccessfulAuthResult } from "./authResult";
@@ -84,7 +85,7 @@ export default function ResetPasswordPanel() {
   }
 
   return (
-    <main className="v2-app">
+    <main className="v2-app rv-reset">
       <section className="v2-auth-card" aria-labelledby="reset-title">
         <p className="eyebrow">RouteValue account</p>
         <h1 id="reset-title">Reset your password</h1>

@@ -58,7 +58,7 @@ function tripErrorMessage(error: unknown): string {
     error.code === "default_vehicle_unavailable" ||
     error.code === "saved_vehicle_not_found"
   ) {
-    return `${error.message} Check your saved profile above.`;
+    return `${error.message} Check your saved preferences in Preferences.`;
   }
 
   if (error.code === "energy_input_mismatch") {
@@ -203,11 +203,11 @@ export default function V2TripPlanner({
 
   return (
     <section className="m9-trip-panel" aria-labelledby="m9-trip-heading">
-      <p className="eyebrow">Authenticated trip evaluation</p>
+      <p className="eyebrow">LET’S GET GOING</p>
       <h3 id="m9-trip-heading">Plan a trip</h3>
       <p className="muted">
-        Compare routes using your saved vehicle and value of travel time. The
-        backend calculates energy consumption and personalized costs.
+        Choose your starting point and destination. We’ll compare routes using
+        your vehicle and preferences.
       </p>
 
       {vehicles.length === 0 && (
@@ -218,7 +218,7 @@ export default function V2TripPlanner({
 
       {!hasValueOfTime && (
         <p role="alert" className="m9-trip-notice">
-          Save your value of time in Personal settings before comparing routes.
+          Save your value of time in Preferences before comparing routes.
         </p>
       )}
 
@@ -274,7 +274,7 @@ export default function V2TripPlanner({
                 ? "Not configured"
                 : `${formatMoney(preferences.value_of_time_per_hour)}/hour`}
             </strong>
-            <small>Manage this in Personal settings above.</small>
+            <small>Update anytime in Preferences.</small>
           </div>
         </div>
 
@@ -354,7 +354,7 @@ export default function V2TripPlanner({
             </label>
             <p className="m9-note">
               {preferences.electricity_price_per_kwh == null
-                ? "Save your electricity rate in Personal settings above, or enter a rate for this trip."
+                ? "Save your electricity rate in Preferences, or enter a rate for this trip."
                 : `$${preferences.electricity_price_per_kwh}/kWh from your saved preferences.`}
             </p>
             <label className="m9-trip-choice">

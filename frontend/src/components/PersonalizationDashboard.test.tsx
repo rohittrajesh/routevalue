@@ -382,3 +382,47 @@ describe("PersonalizationDashboard", () => {
     ).toBeInTheDocument();
   });
 });
+
+it("keeps garage save feedback out of Settings while retaining its drafts", async () => {
+  const user = userEvent.setup();
+  const onProfileChanged = vi.fn();
+  const { rerender } = render(
+    <PersonalizationDashboard
+      view="garage"
+      onProfileChanged={onProfileChanged}
+    />,
+  );
+  await screen.findByText(
+    "No vehicles saved yet. Add your first vehicle below.",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Save example vehicle" }),
+  );
+  expect(
+    await screen.findByText("Vehicle saved to your account."),
+  ).toBeVisible();
+  rerender(
+    <PersonalizationDashboard
+      view="settings"
+      onProfileChanged={onProfileChanged}
+    />,
+  );
+  expect(
+    screen.queryByText("Vehicle saved to your account."),
+  ).not.toBeInTheDocument();
+  await user.type(screen.getByLabelText("Value of time ($/hour)"), "32.75");
+  rerender(
+    <PersonalizationDashboard
+      view="garage"
+      onProfileChanged={onProfileChanged}
+    />,
+  );
+  expect(screen.getByLabelText("Value of time ($/hour)")).not.toBeVisible();
+  rerender(
+    <PersonalizationDashboard
+      view="settings"
+      onProfileChanged={onProfileChanged}
+    />,
+  );
+  expect(screen.getByLabelText("Value of time ($/hour)")).toHaveValue("32.75");
+});

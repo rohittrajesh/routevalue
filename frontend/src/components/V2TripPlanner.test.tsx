@@ -158,7 +158,7 @@ describe("V2TripPlanner", () => {
       screen.getByRole("button", { name: "Compare routes" }),
     ).toBeDisabled();
     expect(
-      screen.getByText(/Save your electricity rate in Personal settings/),
+      screen.getByText(/Save your electricity rate in Preferences/),
     ).toBeVisible();
   });
 

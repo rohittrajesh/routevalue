@@ -10,6 +10,10 @@ test.beforeEach(async ({ page }) => {
   }, randomUUID());
   await page.goto("/v2");
   await expect(page.getByText("Profile connected.")).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Workspace" })
+    .getByRole("button", { name: "Preferences", exact: true })
+    .click();
   await page.getByLabel("Value of time ($/hour)").fill("24");
   await page
     .getByRole("button", { name: "Save preferences", exact: true })
@@ -22,6 +26,10 @@ async function signIn(page: Page) {
   await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText("Profile connected.")).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Workspace" })
+    .getByRole("button", { name: "Preferences", exact: true })
+    .click();
   await expect(page.getByLabel("Value of time ($/hour)")).toHaveValue("24");
 }
 
@@ -56,6 +64,10 @@ test("API expiry removes the workspace and permits same-account reauthentication
       });
     } else await route.continue();
   });
+  await page
+    .getByRole("navigation", { name: "Workspace" })
+    .getByRole("button", { name: "Preferences", exact: true })
+    .click();
   await page.getByLabel("Value of time ($/hour)").fill("99");
   await page
     .getByRole("button", { name: "Save preferences", exact: true })
@@ -83,6 +95,10 @@ test("another tab changing account removes the previous user's preferences", asy
     (id) => localStorage.setItem("browser-test-user", id),
     randomUUID(),
   );
+  await page
+    .getByRole("navigation", { name: "Workspace" })
+    .getByRole("button", { name: "Preferences", exact: true })
+    .click();
   await expect(page.getByLabel("Value of time ($/hour)")).toHaveValue("");
   await expect(page.getByText("Profile connected.")).toBeVisible();
   await other.close();

@@ -12,6 +12,32 @@ export interface PlacesAutocompleteSession {
   resolveSuggestion(id: string): Promise<ResolvedLocationInput>;
 }
 
+function formatPlaceDisplayName(
+  name: string | undefined,
+  address: string | undefined,
+): string | undefined {
+  if (!name || !address) return name || address;
+
+  // Google can use the street address itself as the place name. Compare whole
+  // comma-delimited prefixes so a distinct business name is never dropped just
+  // because it shares the first few characters of an address.
+  const normalize = (value: string): string =>
+    value
+      .replace(/\s+/g, " ")
+      .replace(/\s*,\s*/g, ",")
+      .toLowerCase();
+  const normalizedName = normalize(name);
+  const normalizedAddress = normalize(address);
+  if (
+    normalizedAddress === normalizedName ||
+    normalizedAddress.startsWith(`${normalizedName},`)
+  ) {
+    return address;
+  }
+
+  return `${name}, ${address}`;
+}
+
 export async function createPlacesAutocompleteSession(): Promise<PlacesAutocompleteSession> {
   const { AutocompleteSessionToken, AutocompleteSuggestion } =
     await loadPlacesLibrary();
@@ -87,8 +113,7 @@ export async function createPlacesAutocompleteSession(): Promise<PlacesAutocompl
       const name = place.displayName?.trim();
       const address = place.formattedAddress?.trim();
 
-      const displayName =
-        name && address ? `${name}, ${address}` : name || address;
+      const displayName = formatPlaceDisplayName(name, address);
 
       if (!displayName) {
         throw new Error("Selected place does not have a display name");
