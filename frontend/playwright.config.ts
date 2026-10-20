@@ -36,7 +36,7 @@ export default defineConfig({
     },
     {
       name: "mobile-chromium",
-      testMatch: "**/v2-workflow.spec.ts",
+      testMatch: "**/v2-*.spec.ts",
       use: { ...devices["Pixel 7"] },
     },
   ],

@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import "./App.css";
 import "./V2App.css";
@@ -12,6 +17,14 @@ import {
   type UserPreferences,
   type UserProfile,
 } from "./api/v2Resources";
+import {
+  confirmSignIn,
+  getSessionBoundary,
+  isCurrentSessionPrincipal,
+  requireSignIn,
+  setSessionPrincipal,
+  subscribeToSessionBoundary,
+} from "./auth/sessionBoundary";
 import AuthPanel from "./auth/AuthPanel";
 import { getNeonAuthClient } from "./auth/neonClient";
 import { useAuthSession } from "./auth/useAuthSession";
@@ -136,6 +149,7 @@ function AuthenticatedWorkspace({ userEmail }: AuthenticatedWorkspaceProps) {
       if (isFailedAuthResult(result)) {
         throw new Error("Sign-out rejected");
       }
+      requireSignIn("signed-out");
     } catch {
       setSignOutError("Could not sign out. Please try again.");
     } finally {
@@ -243,6 +257,14 @@ function AuthenticatedWorkspace({ userEmail }: AuthenticatedWorkspaceProps) {
 
 export default function V2App() {
   const session = useAuthSession();
+  const boundary = useSyncExternalStore(
+    subscribeToSessionBoundary,
+    getSessionBoundary,
+  );
+  useLayoutEffect(() => {
+    setSessionPrincipal(session.userId);
+  }, [session.userId]);
+  const needsSignIn = boundary.reason !== null;
 
   return (
     <main className="app-shell v2-app">
@@ -275,14 +297,23 @@ export default function V2App() {
         </section>
       )}
 
-      {session.status === "unauthenticated" && <AuthPanel />}
-
-      {session.status === "authenticated" && (
-        <AuthenticatedWorkspace
-          key={session.userId}
-          userEmail={session.userEmail ?? ""}
-        />
+      {(session.status === "unauthenticated" || needsSignIn) && (
+        <>
+          {boundary.reason === "expired" && (
+            <p role="alert">Your session has expired. Please sign in again.</p>
+          )}
+          <AuthPanel onSignedIn={confirmSignIn} />
+        </>
       )}
+
+      {session.status === "authenticated" &&
+        !needsSignIn &&
+        isCurrentSessionPrincipal(session.userId) && (
+          <AuthenticatedWorkspace
+            key={session.userId}
+            userEmail={session.userEmail ?? ""}
+          />
+        )}
     </main>
   );
 }

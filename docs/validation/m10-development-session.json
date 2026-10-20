@@ -1,0 +1,20 @@
+{
+  "environment": "local frontend and backend; pinned Neon V2 development branch",
+  "hosted_staging_available": false,
+  "target_guard_passed": true,
+  "existing_real_session_restored": true,
+  "saved_profile_restored_on_reload": true,
+  "real_neon_sign_out_returned_to_sign_in": true,
+  "private_workspace_removed_after_sign_out": true,
+  "sign_in_completed_by_user": true,
+  "profile_and_saved_vehicles_returned_unchanged": true,
+  "new_session_survived_reload": true,
+  "passwords_or_tokens_recorded": false,
+  "real_account_settings_mutated_by_agent": false,
+  "live_registration_performed": false,
+  "email_verification_delivery_tested": false,
+  "password_recovery_delivery_tested": false,
+  "natural_live_session_expiry_waited_for": false,
+  "production_configuration_changed": false,
+  "final_implementation_real_session_recheck_passed": true
+}

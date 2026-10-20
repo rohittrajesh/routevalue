@@ -709,3 +709,7 @@ Cloudflare Pages
 M10 integration hardening is tracked in the
 [batch 1 acceptance matrix](docs/m10-batch-1-acceptance.md), including concurrency
 fixes, executed evidence and remaining release checks.
+
+[Batch 2 session acceptance](docs/m10-batch-2-sessions.md) records real Neon
+development sign-in/out evidence, expiry/account-switch hardening, and remaining
+hosted-origin and account-recovery release checks.

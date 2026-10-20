@@ -62,6 +62,21 @@ services or production configuration were enabled by this reconciliation.
   successful transaction's value. See [M10 acceptance](m10-batch-1-acceptance.md).
   Ownership validation and default-vehicle deletion preserve unrelated preferences.
 
+## Session lifecycle and release limits
+
+API authentication rejection removes private UI and requires sign-in. Detected
+principal changes invalidate pending token retrieval/old responses, and successful
+sign-out clears the workspace even before a cached SDK view updates. No mutation
+is automatically retried across a session boundary. Backend signature/issuer/expiry
+verification and user ownership remain authoritative. Signed JWT verification does
+not provide per-request session revocation introspection.
+
+[M10 session acceptance](m10-batch-2-sessions.md) records live local/Neon-development
+restore/sign-out/return-sign-in evidence. No dedicated hosted V2 staging exists.
+Password recovery UI is absent; recovery/verification delivery, provider policies,
+JWT lifetime expectations and hosted HTTPS origins remain explicit pre-release
+checks. These are not certified by SDK availability or a working local login.
+
 ## Terrain and pricing invariants
 
 All candidates in a comparison use a consistent energy-model tier. Missing manual

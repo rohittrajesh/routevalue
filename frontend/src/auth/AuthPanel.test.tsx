@@ -125,3 +125,21 @@ describe("AuthPanel", () => {
     );
   });
 });
+
+it("confirms successful reauthentication but never rejected credentials", async () => {
+  const signedIn = vi.fn();
+  signInMock.mockResolvedValueOnce({
+    error: { code: "invalid_credentials" },
+    data: null,
+  });
+  const user = userEvent.setup();
+  render(<AuthPanel onSignedIn={signedIn} />);
+  await user.type(screen.getByLabelText("Email"), "test@example.com");
+  await user.type(screen.getByLabelText("Password"), "password123");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await screen.findByRole("alert");
+  expect(signedIn).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await waitFor(() => expect(signedIn).toHaveBeenCalledOnce());
+  expect(screen.getByLabelText("Password")).toHaveValue("");
+});

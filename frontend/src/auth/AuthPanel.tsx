@@ -17,7 +17,7 @@ function isSuccessfulAuthResult(value: unknown): boolean {
   return "data" in value && value.data != null;
 }
 
-export default function AuthPanel() {
+export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -76,6 +76,7 @@ export default function AuthPanel() {
       }
 
       setPassword("");
+      if (mode === "sign-in") onSignedIn?.();
       setNotice(
         mode === "sign-in"
           ? "Request completed. Waiting for session confirmation..."

@@ -8,6 +8,7 @@ import { getApiBaseUrl } from "./config";
 
 export type ApiRequestErrorCode =
   | ApiErrorCode
+  | "session_changed"
   | "network_error"
   | "validation_error"
   | "unexpected_response"

@@ -4,6 +4,11 @@ import type {
   V2TripEvaluationResponse,
 } from "../types/api";
 
+import {
+  assertCurrentSession,
+  getSessionBoundary,
+  requireSignIn,
+} from "../auth/sessionBoundary";
 import { getNeonAuthClient } from "../auth/neonClient";
 import { authenticatedV2Request } from "./authenticatedClient";
 import { ApiRequestError } from "./tripEvaluations";
@@ -52,13 +57,32 @@ async function requestV2<T>(
   method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: unknown,
 ): Promise<T> {
-  const token = await getAuthenticatedToken();
-
-  return authenticatedV2Request<T>(path, {
-    token,
-    method,
-    body,
-  });
+  const started = getSessionBoundary();
+  try {
+    if (started.reason !== null) {
+      throw new ApiRequestError(
+        "Please sign in to continue.",
+        401,
+        "authentication_required",
+      );
+    }
+    const token = await getAuthenticatedToken();
+    assertCurrentSession(started);
+    const response = await authenticatedV2Request<T>(path, {
+      token,
+      method,
+      body,
+    });
+    assertCurrentSession(started);
+    return response;
+  } catch (error: unknown) {
+    // A late rejection from an old account must not invalidate a new session.
+    assertCurrentSession(started);
+    if (error instanceof ApiRequestError && error.status === 401) {
+      requireSignIn("expired");
+    }
+    throw error;
+  }
 }
 
 export async function getCurrentProfile(): Promise<UserProfile> {

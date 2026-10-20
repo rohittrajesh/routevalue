@@ -1,4 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  confirmSignIn,
+  requireSignIn,
+  setSessionPrincipal,
+} from "./auth/sessionBoundary";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,7 +20,11 @@ const { sessionMock, profileMock, vehiclesMock, preferencesMock, signOutMock } =
 
 vi.mock("./auth/useAuthSession", () => ({ useAuthSession: sessionMock }));
 vi.mock("./auth/AuthPanel", () => ({
-  default: () => <div>Authentication form</div>,
+  default: ({ onSignedIn }: { onSignedIn: () => void }) => (
+    <div>
+      Authentication form<button onClick={onSignedIn}>Confirm sign in</button>
+    </div>
+  ),
 }));
 vi.mock("./components/PersonalizationDashboard", () => ({
   default: ({ onProfileChanged }: { onProfileChanged: () => void }) => (
@@ -53,6 +62,8 @@ const profile = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  setSessionPrincipal(null);
+  confirmSignIn();
   sessionMock.mockReturnValue({
     status: "unauthenticated",
     userId: null,
@@ -158,4 +169,45 @@ describe("V2App", () => {
     await user.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOutMock).toHaveBeenCalledTimes(1);
   });
+});
+
+it("removes private content after successful sign-out even if SDK state is stale", async () => {
+  authenticated();
+  const user = userEvent.setup();
+  render(<V2App />);
+  await screen.findByText("Profile connected.");
+  await user.click(screen.getByRole("button", { name: "Sign out" }));
+  expect(await screen.findByText("Authentication form")).toBeInTheDocument();
+  expect(
+    screen.queryByText("Authenticated trip planner"),
+  ).not.toBeInTheDocument();
+});
+it("retains the workspace with a safe retry error if sign-out fails", async () => {
+  authenticated();
+  signOutMock.mockResolvedValueOnce({
+    error: { message: "private upstream detail" },
+  });
+  const user = userEvent.setup();
+  render(<V2App />);
+  await screen.findByText("Profile connected.");
+  await user.click(screen.getByRole("button", { name: "Sign out" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Could not sign out",
+  );
+  expect(screen.getByText("Authenticated trip planner")).toBeInTheDocument();
+  expect(screen.queryByText("private upstream detail")).not.toBeInTheDocument();
+});
+it("unmounts private state on expiry and reloads it after signing in again", async () => {
+  authenticated();
+  const user = userEvent.setup();
+  render(<V2App />);
+  await screen.findByText("Profile connected.");
+  act(() => requireSignIn("expired"));
+  expect(screen.getByRole("alert")).toHaveTextContent("session has expired");
+  expect(
+    screen.queryByText("Authenticated trip planner"),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Confirm sign in" }));
+  expect(await screen.findByText("Profile connected.")).toBeInTheDocument();
+  expect(profileMock).toHaveBeenCalledTimes(2);
 });
