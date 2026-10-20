@@ -60,3 +60,65 @@ it("maps recovery and verification methods to the managed Neon endpoint contract
     },
   ]);
 });
+
+it("maps the real SDK OTP request, verification and reset methods to distinct endpoints", async () => {
+  const fetchMock = vi.fn().mockImplementation(
+    async () =>
+      new Response(JSON.stringify({ success: true }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  const auth = createInternalNeonAuth("https://auth.example.test/neondb/auth", {
+    adapter: BetterAuthReactAdapter(),
+    allowAnonymous: false,
+  });
+  await auth.adapter.emailOtp.sendVerificationOtp({
+    email: "someone@example.test",
+    type: "email-verification",
+  });
+  await auth.adapter.emailOtp.verifyEmail({
+    email: "someone@example.test",
+    otp: "000000",
+  });
+  await auth.adapter.emailOtp.requestPasswordReset({
+    email: "someone@example.test",
+  });
+  await auth.adapter.emailOtp.resetPassword({
+    email: "someone@example.test",
+    otp: "000000",
+    password: "synthetic-password",
+  });
+  expect(
+    fetchMock.mock.calls.map(([url, init]: [string, RequestInit]) => ({
+      path: new URL(String(url)).pathname,
+      method: init.method,
+      body: JSON.parse(String(init.body)) as unknown,
+    })),
+  ).toEqual([
+    {
+      path: "/neondb/auth/email-otp/send-verification-otp",
+      method: "POST",
+      body: { email: "someone@example.test", type: "email-verification" },
+    },
+    {
+      path: "/neondb/auth/email-otp/verify-email",
+      method: "POST",
+      body: { email: "someone@example.test", otp: "000000" },
+    },
+    {
+      path: "/neondb/auth/email-otp/request-password-reset",
+      method: "POST",
+      body: { email: "someone@example.test" },
+    },
+    {
+      path: "/neondb/auth/email-otp/reset-password",
+      method: "POST",
+      body: {
+        email: "someone@example.test",
+        otp: "000000",
+        password: "synthetic-password",
+      },
+    },
+  ]);
+});

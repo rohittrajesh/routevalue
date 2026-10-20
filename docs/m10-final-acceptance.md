@@ -7,13 +7,29 @@ there is no hosted V2 staging deployment. No production deployment is certified.
 
 ## Final implementation batch: account recovery
 
-The sign-in panel now offers password-reset requests and verification-email
-resends through the existing real Neon Better Auth React adapter. Both callbacks
-are fixed to the current app origin and V2 routes; there is no user-supplied
-redirect destination. Email-only modes discard any previously entered password.
-Unknown-account responses use the same eligibility notice as accepted requests;
-provider error details, addresses and tokens are never rendered as error text.
-Rate limits and availability failures remain retryable, safe failures.
+The original final batch implemented link recovery but missed this development
+branch's code-based email verification. Owner acceptance exposed the missing code
+entry. The follow-up adds distinct code verification and password-reset workflows
+through the existing real Neon Better Auth React adapter. Signup and unverified
+sign-in lead to verification code entry; existing codes can be entered without
+sending another email. Verification confirms email ownership and may establish a
+provider session; it never calls the password-reset endpoint.
+
+“Forgot password?” now requests an OTP with `emailOtp.requestPasswordReset`.
+The next step requires the email code, a new password and confirmation, and calls
+`emailOtp.resetPassword`. Existing reset codes are also supported. Success clears
+secret inputs, invalidates the private workspace boundary and attempts sign-out;
+a sign-out retry cannot replay the reset. Wrong/expired codes clear secret inputs
+and allow an explicit resend. Email edits clear codes/passwords; email validation
+also runs before code submission. Requests/submissions/back navigation are disabled
+while pending. Codes/passwords remain in component memory, outside URLs/storage.
+
+Email-only modes discard any previously entered sign-in password. Unknown-account
+responses use the same eligibility notice as accepted requests; provider error
+details, addresses and codes are never rendered as error text. Explicit false
+success/status responses cannot be mistaken for success. Rate limits and
+availability failures remain retryable, safe failures. No automatic email resend,
+provider policy change or code/password submission on behalf of the owner occurs.
 
 `/v2/reset-password` is a distinct lazy-loaded V2 screen. It accepts a single,
 bounded token, rejects missing/duplicate/error-bearing links and removes the
@@ -32,11 +48,15 @@ change. The reset route must be included in the eventual host's SPA fallback.
 
 The SDK methods and reset-link contract were checked against the installed
 package and [Better Auth email/password documentation](https://better-auth.com/docs/authentication/email-password).
+The distinct OTP endpoints were checked against the installed client and
+[Better Auth email OTP documentation](https://better-auth.com/docs/plugins/email-otp).
 Neon's [managed email documentation](https://github.com/neondatabase/website/blob/main/content/docs/auth/guides/customize-emails.md)
 describes provider email delivery. These establish interfaces, not successful
-inbox delivery for this branch. Link-versus-OTP verification policy has not been
-read from the Neon management API or changed. The app implements link recovery;
-a provider requiring an alternative flow must be validated before release.
+inbox delivery by themselves. The owner subsequently confirmed verification-email
+delivery, code acceptance and sign-in on October 20. A successful password reset
+and sign-in with the new password remain a separate owner acceptance check. The
+Neon management policy has not been changed. The retained link reset screen also
+remains covered; hosted policy/origins must be validated for the release target.
 
 ## Consolidated disposition
 
@@ -48,8 +68,8 @@ a provider requiring an alternative flow must be validated before release.
 | Gasoline and EV decisions | Backend domain/API suites, exact money/tie regressions and integrated browser workflows | Implemented and tested |
 | Automatic EIA pricing and override | Batch 4 actual regional downloads and six real grade resolutions; final read-only freshness and job checks | Implemented and healthy at recorded check time |
 | Shared terrain accounting and truthful fallback | Batch 3 bounded real CA/CO/NC routes, restart/lock failure evidence; final read-only shared-ledger health | Implemented and tested for representative routes; no universal coverage claim |
-| Recovery requests, reset screen and safe failures | Real SDK HTTP contract interception, unit and desktop/mobile browser tests; actual Neon random invalid-token rejection | Implementation complete; real inbox/reset/return-sign-in owner acceptance pending |
-| Registration and verification | Prior user-created development account and real sign-in; resend UI/SDK contract tests | Existing registration works for that account; new verification-email delivery/policy acceptance pending |
+| Recovery requests, reset screen and safe failures | Real SDK link/OTP HTTP contract interception, unit and desktop/mobile browser tests; actual Neon invalid-body OTP and random invalid-token rejection | Implementation complete; real reset/new-password return-sign-in owner acceptance pending |
+| Registration and verification | Prior development account/sign-in; owner-reported verification email delivery, code acceptance and sign-in; signup/unverified-sign-in code regressions | Development verification confirmed by owner; hosted policy remains a release check |
 | V1 compatibility, schema and CI gates | Full backend suite, V1 browser journeys, generated contract drift check and strict production build | Passed locally; exact pushed commit CI tracked separately |
 | Provider scope | `v2-architecture-decisions.md` reconciles original freeze | Google Routes/OpenTopoData/EIA/Neon email-password supported; Google Elevation, station-price aggregation and Google OAuth deferred |
 | Hosted HTTPS staging, production rollout and operations | No V2 hosted target exists | M11 provisioning/release gates, explicitly unverified |
@@ -65,9 +85,9 @@ a provider requiring an alternative flow must be validated before release.
 | `npm run api:generate` | Passed; no generated contract/type diff |
 | `npm run lint` | Passed |
 | `npm run format:check` | Passed after correcting formatting in the new SDK contract test |
-| `npm test -- --run` | 220 passed, 36 files |
+| `npm test -- --run` | 231 passed, 37 files |
 | `npm run build` | Passed, strict TypeScript and production bundling |
-| `npm run test:e2e` | 26 passed, desktop and mobile Chromium, test-only identity/provider fixtures |
+| `npm run test:e2e` | 30 passed, desktop and mobile Chromium, test-only identity/provider fixtures |
 
 The sole backend skip is the existing opt-in live Google Routes test, not a passed
 test. Live route evidence from batch 3 is separate and was not rerun in this final
@@ -90,11 +110,21 @@ On October 20, 2026 at approximately 21:06 UTC, read-only development checks sho
 ## Closure and M11 handoff
 
 All identified remaining M10 code is implemented. **M10 acceptance remains open
-only for owner-observed development recovery/verification delivery and the return
-sign-in journey.** The owner was asked to exercise the finished UI without sharing
+only for owner-observed development password reset and sign-in with the new
+password. Verification-email delivery and code acceptance were confirmed by the
+owner; this must not be misclassified as a completed password reset.** The owner was asked to exercise the finished UI without sharing
 credentials or reset links. Automated transport/browser fixtures cannot certify
 that provider policy or mailbox journey. No unattended email or account mutation
-was performed to manufacture acceptance.
+was performed to manufacture acceptance. The user-provided screenshot/code was
+not copied into tests, documentation, commits or provider requests.
+
+Empty invalid-body live probes returned 400 from `email-otp/verify-email`,
+`email-otp/request-password-reset` and `email-otp/reset-password`; the older
+`email-otp/passcode` entry in the SDK's server endpoint map returned 404. The real
+installed React client maps the currently supported methods to the modern paths,
+verified by intercepted transport tests. These live probes sent no email or code
+and changed no account. [Follow-up evidence](validation/m10-email-code-acceptance.json)
+keeps owner-observed verification distinct from unverified real password reset.
 
 Once that check passes, the local/pinned-development M10 scope can close and M11
 can begin. Until then, do not label all M10 acceptance complete or claim launch
@@ -115,8 +145,9 @@ No paid service, hosted staging, production config change, migration or `main`
 merge is included. Terrain quality/availability remains route-dependent; the
 six-call budget is an allowance, not proof of universal coverage or a paid SLA.
 
-Changed files add the reset screen, safe shared result helper, SDK contract and
-recovery regressions/browser journeys; extend auth panel/errors and the test-only
-Neon fixture; and update V2 routing, architecture and this acceptance record.
+Changed files across the final batch and follow-up add reset/link and email-code
+screens, a safe shared result helper, SDK contract and recovery regressions/browser
+journeys; extend auth panel/errors and the test-only Neon fixture; and update V2
+routing, architecture and this acceptance record.
 No files were deleted. All tracked changes are in the user's RouteValue project
 folder and visible in VS Code; private environment/runtime files remain ignored.

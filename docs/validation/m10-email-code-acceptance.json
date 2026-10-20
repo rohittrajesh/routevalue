@@ -1,0 +1,17 @@
+{
+  "reported_date": "2026-10-20",
+  "scope": "local app / pinned Neon development",
+  "owner_confirmed_verification_email_delivery": true,
+  "owner_confirmed_verification_code_accepted_and_signed_in": true,
+  "owner_confirmed_password_reset": false,
+  "owner_confirmed_new_password_sign_in": false,
+  "agent_submitted_owner_code_or_password": false,
+  "empty_body_probe_statuses": {
+    "email-otp/verify-email": 400,
+    "email-otp/request-password-reset": 400,
+    "email-otp/reset-password": 400,
+    "email-otp/passcode": 404
+  },
+  "probe_email_requests": 0,
+  "probe_account_mutations": 0
+}

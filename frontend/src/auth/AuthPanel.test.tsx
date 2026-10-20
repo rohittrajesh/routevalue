@@ -18,8 +18,10 @@ vi.mock("./neonClient", () => ({
     adapter: {
       signIn: { email: signInMock },
       signUp: { email: signUpMock },
-      requestPasswordReset: resetRequestMock,
-      sendVerificationEmail: verifyMock,
+      emailOtp: {
+        requestPasswordReset: resetRequestMock,
+        sendVerificationOtp: verifyMock,
+      },
     },
   }),
 }));
@@ -84,6 +86,10 @@ describe("AuthPanel", () => {
         password: "password123",
       });
     });
+    expect(await screen.findByLabelText("Email code")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Verify your email" }),
+    ).toBeInTheDocument();
   });
 
   it("shows a safe error for rejected credentials", async () => {
@@ -172,12 +178,11 @@ it.each([
     if (kind === "reset")
       expect(resetRequestMock).toHaveBeenCalledWith({
         email: "someone@example.test",
-        redirectTo: `${window.location.origin}/v2/reset-password`,
       });
     else
       expect(verifyMock).toHaveBeenCalledWith({
         email: "someone@example.test",
-        callbackURL: `${window.location.origin}/v2`,
+        type: "email-verification",
       });
     expect(signInMock).not.toHaveBeenCalled();
     expect(signedIn).not.toHaveBeenCalled();
@@ -219,4 +224,24 @@ it("does not distinguish an unknown email from an eligible recovery request", as
     "If this account is eligible",
   );
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+it("takes an unverified sign-in to code entry without claiming sign-in or using the reset endpoint", async () => {
+  signInMock.mockResolvedValueOnce({
+    data: null,
+    error: { code: "EMAIL_NOT_VERIFIED" },
+  });
+  const signedIn = vi.fn();
+  const user = userEvent.setup();
+  render(<AuthPanel onSignedIn={signedIn} />);
+  await user.type(screen.getByLabelText("Email"), "someone@example.test");
+  await user.type(screen.getByLabelText("Password"), "synthetic-password");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByLabelText("Email code")).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Verify your email" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+  expect(signedIn).not.toHaveBeenCalled();
+  expect(resetRequestMock).not.toHaveBeenCalled();
 });

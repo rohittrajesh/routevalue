@@ -7,5 +7,11 @@ export function isSuccessfulAuthResult(value: unknown): boolean {
     return false;
   }
 
-  return "data" in value && value.data != null;
+  if (!("data" in value) || value.data == null) return false;
+  const data: unknown = value.data;
+  if (typeof data === "object" && data !== null) {
+    if ("success" in data && data.success === false) return false;
+    if ("status" in data && data.status === false) return false;
+  }
+  return true;
 }

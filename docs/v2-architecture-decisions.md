@@ -73,11 +73,15 @@ not provide per-request session revocation introspection.
 
 [M10 session acceptance](m10-batch-2-sessions.md) records live local/Neon-development
 restore/sign-out/return-sign-in evidence. No dedicated hosted V2 staging exists.
-The final M10 batch adds real SDK reset requests, verification resends and the
-`/v2/reset-password` link screen, with URL-token removal, no persistent token
-storage, confirmation and explicit post-reset sign-out recovery. See
-[final M10 acceptance](m10-final-acceptance.md). Owner-observed recovery and
-verification email delivery remain pending; provider policy, JWT lifetime
+The final M10 batch and code-flow correction add real SDK OTP reset requests,
+verification resends/code entry, and the retained `/v2/reset-password` link screen.
+Signup/unverified sign-in lead to verification code entry; verification may create
+a provider session but cannot change a password. Password reset requires a distinct
+reset code plus matching new password/confirmation. Tokens/codes are not persisted;
+link tokens are removed from URLs. Reset success attempts explicit sign-out with
+safe retry recovery. See
+[final M10 acceptance](m10-final-acceptance.md). Owner-observed verification email delivery, code acceptance and sign-in are
+confirmed. Real password reset/new-password sign-in remain pending; provider policy, JWT lifetime
 expectations and hosted HTTPS origins remain explicit pre-release checks. These
 are not certified by SDK availability or a working local login.
 

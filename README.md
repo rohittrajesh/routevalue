@@ -724,5 +724,5 @@ and alert-delivery checks.
 
 [Final M10 acceptance](docs/m10-final-acceptance.md) consolidates the completed
 integration batches, account-recovery implementation and final regression gates.
-The remaining owner check is real development recovery/verification email delivery
-and return sign-in. Hosted provisioning and production release remain M11 work.
+Verification email/code acceptance is confirmed by the owner. The remaining owner
+check is real development password reset and sign-in with the new password. Hosted provisioning and production release remain M11 work.

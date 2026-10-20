@@ -22,6 +22,30 @@ export function getNeonAuthClient() {
   return {
     getJWTToken: async () => (identity() ? `browser-test:${identity()}` : null),
     adapter: {
+      emailOtp: {
+        requestPasswordReset: async () => ({
+          data: { success: true },
+          error: null,
+        }),
+        sendVerificationOtp: async () => ({
+          data: { success: true },
+          error: null,
+        }),
+        verifyEmail: async ({ otp }: { email: string; otp: string }) =>
+          otp === "000000"
+            ? { data: { status: true }, error: null }
+            : { data: null, error: { code: "INVALID_OTP" } },
+        resetPassword: async ({
+          otp,
+        }: {
+          email: string;
+          otp: string;
+          password: string;
+        }) =>
+          otp === "000000"
+            ? { data: { success: true }, error: null }
+            : { data: null, error: { code: "INVALID_OTP" } },
+      },
       useSession: () => {
         const userId = useSyncExternalStore(subscribe, identity);
         return {
