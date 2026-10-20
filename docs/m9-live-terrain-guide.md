@@ -12,6 +12,9 @@ not changed to fix this.
 values in an ignored local environment file. This session used the existing files
 in the older `/Users/roi29/Desktop/Project1/routevalue` checkout, read privately.
 Its uncommitted manufacturer-weight experiment and other changes were not edited.
+M10 batch 3 subsequently created the active ignored `backend/.env.v2.local` in this
+workspace with the same pinned development credentials and shared quota settings;
+the original file remains unchanged.
 The implementation lives in this chat's workspace.
 
 From `backend`, check an existing configuration without making external calls:

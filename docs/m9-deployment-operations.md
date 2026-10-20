@@ -63,6 +63,40 @@ previous EIA schema, additive quota schema and energy-preference schema. Deletin
 from shared to process mode mid-day requires review of the upstream allowance;
 it is not a recovery mechanism.
 
+## M10 development activation and read-only quota health
+
+M10 batch 3 activated shared mode only for the local V2 backend and pinned Neon
+V2 development database. Its private launch configuration is now the ignored
+`backend/.env.v2.local` in the project workspace; the older Desktop file is
+preserved. The settings are live=1, quota mode=postgres, six calls/trip and
+single-process confirmation=0. No production target was configured. See
+[M10 batch 3 validation](m10-batch-3-shared-terrain.md).
+
+Read shared accounting without reserving calls, pruning history or contacting any
+external elevation/routing provider:
+
+```sh
+PYTHONPATH=src uv run --env-file .env.v2.local \
+  python -m routevalue.api.terrain_quota_health
+```
+
+Exit 0 means shared mode was enabled, permissions were present and the observed
+quota snapshot was usable. Exit 1 covers disabled/process-only mode, exhaustion,
+future-clock state, missing table, permission failure or database unavailability;
+2 means invalid configuration. JSON distinguishes these states when detectable.
+It reports usage/remaining counts, limits and timestamps without credentials,
+connection URLs or account identifiers. It sets a five-second SQL statement
+timeout; engine connection/pool establishment retain their existing timeouts.
+“Ready” is an observation, not a reservation or guarantee against concurrent use.
+Provider IP limits can also include unrelated traffic outside this ledger.
+
+Never truncate/delete the ledger to recover quota. Disable live terrain while
+leaving PostgreSQL mode/history intact if acquisition needs to stop. Existing
+process-local history cannot be reconstructed by this command: migrations between
+modes need a usage review, and the first shared window is not proof of accounting
+for attempts made before activation. Multiple workers/instances must all use this
+same configuration/database; a process-mode worker would bypass shared accounting.
+
 ## Request budget and price
 
 Verified October 19, 2026:

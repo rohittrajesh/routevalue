@@ -1,0 +1,362 @@
+{
+  "environment": "pinned Neon V2 development",
+  "quota_mode": "postgres",
+  "requests_per_trip": 6,
+  "provider_calls": {
+    "google_routes": 6,
+    "opentopodata": 18
+  },
+  "diagnostic_inputs": {
+    "mass_kg": "1800",
+    "mpg": "30",
+    "gas_price": "4.50",
+    "kwh_per_mile": "0.30",
+    "electricity_price": "0.25",
+    "value_of_time": "24"
+  },
+  "cases": [
+    {
+      "name": "San Diego\u2013Julian",
+      "route_count": 2,
+      "geometry_points": [
+        5815,
+        6478
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1"
+          ]
+        },
+        "energy": [
+          {
+            "cost": "12.06741733181755612784430176",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "2.681648295959456917298733725"
+            }
+          },
+          {
+            "cost": "12.46354817962507033361491512",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "2.769677373250015629692203360"
+            }
+          }
+        ],
+        "baseline_costs": [
+          "8.619754384395132426628489620",
+          "9.079817615127654497733237890"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1"
+          ]
+        },
+        "energy": [
+          {
+            "cost": "7.152233529756785364508461718",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "28.60893411902714145803384687"
+            }
+          },
+          {
+            "cost": "7.400301018026938320132579455",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "29.60120407210775328053031782"
+            }
+          }
+        ],
+        "baseline_costs": [
+          "4.309877192197566213314244810",
+          "4.539908807563827248866618945"
+        ]
+      },
+      "missing_mass_offline_baseline_exact": true
+    },
+    {
+      "name": "Denver\u2013Idaho Springs",
+      "route_count": 2,
+      "geometry_points": [
+        3158,
+        3925
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1"
+          ]
+        },
+        "energy": [
+          {
+            "cost": "6.979394063798002603063133559",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "1.550976458621778356236251902"
+            }
+          },
+          {
+            "cost": "7.928180971455669370867641879",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "1.761817993656815415748364862"
+            }
+          }
+        ],
+        "baseline_costs": [
+          "4.836908703173466952994512050",
+          "5.752374880696731090431877834"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1"
+          ]
+        },
+        "energy": [
+          {
+            "cost": "4.167610576172923184632022425",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "16.67044230469169273852808970"
+            }
+          },
+          {
+            "cost": "4.675052309431043888991026778",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "18.70020923772417555596410711"
+            }
+          }
+        ],
+        "baseline_costs": [
+          "2.418454351586733476497256025",
+          "2.876187440348365545215938918"
+        ]
+      },
+      "missing_mass_offline_baseline_exact": true
+    },
+    {
+      "name": "Asheville\u2013Cherokee",
+      "route_count": 3,
+      "geometry_points": [
+        5657,
+        5215,
+        6287
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        "energy": [
+          {
+            "cost": "9.441129869753975359228736014",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "2.098028859945327857606385781"
+            }
+          },
+          {
+            "cost": "8.217326784510891097115914166",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "1.826072618780198021581314259"
+            }
+          },
+          {
+            "cost": "9.389291451280333977949450528",
+            "consumption": {
+              "energy_type": "gasoline",
+              "gallons": "2.086509211395629772877655673"
+            }
+          }
+        ],
+        "baseline_costs": [
+          "9.410604569315199236459078978",
+          "7.748654109997613934621808638",
+          "8.395128698401336196611787162"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        "energy": [
+          {
+            "cost": "5.348773495858056631969572448",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "21.39509398343222652787828979"
+            }
+          },
+          {
+            "cost": "4.822737419863697135634496915",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "19.29094967945478854253798766"
+            }
+          },
+          {
+            "cost": "5.507766119174604653876578532",
+            "consumption": {
+              "energy_type": "electricity",
+              "kilowatt_hours": "22.03106447669841861550631413"
+            }
+          }
+        ],
+        "baseline_costs": [
+          "4.705302284657599618229539490",
+          "3.874327054998806967310904320",
+          "4.197564349200668098305893582"
+        ]
+      },
+      "missing_mass_offline_baseline_exact": true
+    }
+  ],
+  "before": {
+    "status": "ready",
+    "provider_calls": 0,
+    "quota_writes": 0,
+    "daily_limit": 900,
+    "requests_per_trip": 6,
+    "minimum_interval_seconds": 1.1,
+    "active_reservations": 0,
+    "remaining_requests": 900,
+    "checked_at": "2026-10-20T19:53:06.143403+00:00",
+    "latest_reservation_at": null
+  },
+  "after_live": {
+    "status": "ready",
+    "provider_calls": 0,
+    "quota_writes": 0,
+    "daily_limit": 900,
+    "requests_per_trip": 6,
+    "minimum_interval_seconds": 1.1,
+    "active_reservations": 18,
+    "remaining_requests": 882,
+    "checked_at": "2026-10-20T19:53:33.419390+00:00",
+    "latest_reservation_at": "2026-10-20T19:53:32.581759+00:00"
+  },
+  "fresh_python_process_observed_committed_history": true,
+  "quota_lock_failure": {
+    "provider_calls": 0,
+    "new_reservations": 0,
+    "gasoline": {
+      "terrain_applied": false,
+      "fallback_reasons": [
+        "elevation_unavailable"
+      ],
+      "route_acquisition_statuses": [
+        "unavailable",
+        "unavailable",
+        "unavailable"
+      ],
+      "route_coverage_fractions": [
+        null,
+        null,
+        null
+      ]
+    },
+    "electricity": {
+      "terrain_applied": false,
+      "fallback_reasons": [
+        "elevation_unavailable"
+      ],
+      "route_acquisition_statuses": [
+        "unavailable",
+        "unavailable",
+        "unavailable"
+      ],
+      "route_coverage_fractions": [
+        null,
+        null,
+        null
+      ]
+    }
+  },
+  "after": {
+    "status": "ready",
+    "provider_calls": 0,
+    "quota_writes": 0,
+    "daily_limit": 900,
+    "requests_per_trip": 6,
+    "minimum_interval_seconds": 1.1,
+    "active_reservations": 18,
+    "remaining_requests": 882,
+    "checked_at": "2026-10-20T19:53:42.999746+00:00",
+    "latest_reservation_at": "2026-10-20T19:53:32.581759+00:00"
+  },
+  "business_data_unchanged": {
+    "users": true,
+    "auth_identities": true,
+    "saved_vehicles": true,
+    "user_preferences": true,
+    "eia_pricing_snapshots": true,
+    "eia_pricing_observations": true
+  },
+  "limitations": "Diagnostic mass/efficiency/prices are explicit illustrative inputs, not saved vehicle specifications. Raster coverage is not road-grade accuracy or universal terrain coverage. Process-local history before activation is not reconstructed.",
+  "local_application_restarted_after_live_reservations": true,
+  "post_restart_reservations": 18,
+  "post_restart_remaining_requests": 882,
+  "independent_python_workers_observed_history": [
+    true,
+    true
+  ],
+  "database_reservation_minimum_spacing_seconds": "1.250674",
+  "worker_probe_uses_conservative_daily_limit": 1
+}

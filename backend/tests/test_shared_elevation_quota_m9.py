@@ -331,3 +331,38 @@ def test_six_distinct_candidates_retained_and_sixth_call_can_complete(
     assert results[-1].unavailable_reason is (
         TerrainUnavailableReason.REQUEST_BUDGET_EXCEEDED if budget == 5 else None
     )
+
+
+def test_commit_acknowledgement_failure_never_calls_provider_and_keeps_reservation(
+    quota_engine: Engine,
+) -> None:
+    """A lost commit acknowledgement must waste quota rather than allow free HTTP."""
+    from contextlib import contextmanager
+    from unittest.mock import Mock
+
+    from sqlalchemy.engine import Connection
+    from sqlalchemy.exc import OperationalError
+
+    @contextmanager
+    def uncertain_commit() -> Iterator[Connection]:
+        with quota_engine.begin() as connection:
+            yield connection
+        # Model the transaction committed, but the client never received its ACK.
+        raise OperationalError("commit acknowledgement lost", None, RuntimeError("synthetic"))
+
+    uncertain = Mock(spec=Engine)
+    uncertain.begin.side_effect = uncertain_commit
+    provider = FailingProvider()
+    locations = (
+        TerrainSampleLocation(point=RoutePoint(latitude=32, longitude=-117), distance_meters=0),
+    )
+    protected = PostgresElevationCallGate(
+        engine_factory=lambda: uncertain,
+        policy=PublicElevationPolicy(),
+    ).new_trip(provider)
+    with pytest.raises(
+        ElevationProviderUnavailableError, match="shared elevation quota unavailable"
+    ):
+        protected.get_elevations(locations)
+    assert provider.requests == 0
+    assert count(quota_engine) == 1

@@ -713,3 +713,7 @@ fixes, executed evidence and remaining release checks.
 [Batch 2 session acceptance](docs/m10-batch-2-sessions.md) records real Neon
 development sign-in/out evidence, expiry/account-switch hardening, and remaining
 hosted-origin and account-recovery release checks.
+
+[Batch 3 shared terrain validation](docs/m10-batch-3-shared-terrain.md) records
+development quota activation, bounded live US route evidence, restart/failure
+checks and the read-only quota health command.

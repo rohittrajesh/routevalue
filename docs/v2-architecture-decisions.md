@@ -87,8 +87,11 @@ terrain calculations retain their separate models.
 
 The live terrain allowance is six calls/trip, with existing 100-point batches,
 900 calls per rolling day and 1.1-second spacing. Process mode is development-only.
-PostgreSQL accounting supports shared workers/restarts but must be migrated and
-enabled consistently before deployment. Failed attempts are counted. There is no
+PostgreSQL accounting supports shared workers/restarts. M10 batch 3 enabled it
+for the local app/pinned Neon development branch and verified bounded live routes,
+restart history and fail-closed operation. Hosted/production configuration still
+requires consistent activation before deployment. See
+[M10 shared-terrain validation](m10-batch-3-shared-terrain.md). Failed attempts are counted. There is no
 automatic switch to unmetered access when accounting fails.
 
 Trip evaluation reads EIA snapshots; it never refreshes them. Refresh operations
