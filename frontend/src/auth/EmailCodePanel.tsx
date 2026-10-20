@@ -132,7 +132,25 @@ export default function EmailCodePanel({
         await finishSignOut();
       }
     } catch (failure: unknown) {
+      // The installed SDK drops unmapped provider OTP codes and normalizes
+      // HTTP 400 to validation_failed. Never render its raw message.
+      const alreadyVerified =
+        !recovering &&
+        (failureCode(failure) === "email_already_verified" ||
+          (typeof failure === "object" &&
+            failure !== null &&
+            "message" in failure &&
+            ["Email is already verified", "Email already verified"].includes(
+              String(failure.message),
+            )));
+      if (alreadyVerified) {
+        setNotice(
+          "This email is already verified. Return to sign in; use Forgot password? to change your password.",
+        );
+        return;
+      }
       const invalid = [
+        "validation_failed",
         "invalid_otp",
         "otp_expired",
         "invalid_code",

@@ -158,10 +158,7 @@ it("confirms successful reauthentication but never rejected credentials", async 
   expect(screen.getByLabelText("Password")).toHaveValue("");
 });
 
-it.each([
-  ["Forgot password?", "Send reset email", "reset"],
-  ["Resend verification email", "Send verification email", "verify"],
-])(
+it.each([["Forgot password?", "Send reset email", "reset"]])(
   "requests %s through the SDK without signing in",
   async (link, submit, kind) => {
     const signedIn = vi.fn();
@@ -244,4 +241,14 @@ it("takes an unverified sign-in to code entry without claiming sign-in or using 
   expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
   expect(signedIn).not.toHaveBeenCalled();
   expect(resetRequestMock).not.toHaveBeenCalled();
+});
+
+it("keeps optional verification off the ordinary sign-in screen", () => {
+  render(<AuthPanel />);
+  expect(
+    screen.getByRole("button", { name: "Forgot password?" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Resend verification email" }),
+  ).not.toBeInTheDocument();
 });

@@ -214,13 +214,6 @@ export default function AuthPanel({ onSignedIn }: { onSignedIn?: () => void }) {
           >
             Forgot password?
           </button>{" "}
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => changeMode("verify")}
-          >
-            Resend verification email
-          </button>
         </p>
       )}
     </section>

@@ -221,3 +221,38 @@ it("clears a code when its target email changes and validates that email before 
   await user.click(screen.getByRole("button", { name: "Verify email" }));
   expect(verify).not.toHaveBeenCalled();
 });
+
+it("handles the SDK-normalized invalid OTP error without a misleading generic failure", async () => {
+  verify.mockRejectedValueOnce({
+    code: "validation_failed",
+    status: 400,
+    message: "Invalid OTP",
+  });
+  panel("verify");
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Email code"), "000000");
+  await user.click(screen.getByRole("button", { name: "Verify email" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "not accepted or has expired",
+  );
+});
+
+it("does not require an already-verified account to verify again", async () => {
+  verify.mockRejectedValueOnce({
+    code: "validation_failed",
+    status: 400,
+    message: "Email is already verified",
+  });
+  panel("verify");
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Email code"), "000000");
+  await user.click(screen.getByRole("button", { name: "Verify email" }));
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "already verified. Return to sign in",
+  );
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(reset).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("button", { name: "I have an account" }),
+  ).toBeInTheDocument();
+});

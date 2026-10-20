@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("requests reset and verification messages, then returns to sign in", async ({
+test("requests a password-reset message and returns to sign in", async ({
   page,
 }) => {
   await page.goto("/v2");
@@ -11,11 +11,6 @@ test("requests reset and verification messages, then returns to sign in", async 
     "If this account is eligible",
   );
   await page.getByRole("button", { name: "I have an account" }).click();
-  await page.getByRole("button", { name: "Resend verification email" }).click();
-  await page.getByRole("button", { name: "Send verification email" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "If this account is eligible",
-  );
   await expect(page.getByText("Profile connected.")).toHaveCount(0);
 });
 
@@ -69,7 +64,13 @@ test("verification codes confirm email while reset codes require a new password"
   page,
 }) => {
   await page.goto("/v2");
-  await page.getByRole("button", { name: "Resend verification email" }).click();
+  await page.getByRole("button", { name: "Create an account" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Browser fixture");
+  await page.getByLabel("Email", { exact: true }).fill("browser@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
+  await page
+    .getByRole("button", { name: "Create account", exact: true })
+    .click();
   await expect(page.getByText(/does not change your password/)).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill("browser@example.test");
   await page.getByLabel("Email code").fill("000000");

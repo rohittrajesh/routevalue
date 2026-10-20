@@ -724,5 +724,7 @@ and alert-delivery checks.
 
 [Final M10 acceptance](docs/m10-final-acceptance.md) consolidates the completed
 integration batches, account-recovery implementation and final regression gates.
-Verification email/code acceptance is confirmed by the owner. The remaining owner
-check is real development password reset and sign-in with the new password. Hosted provisioning and production release remain M11 work.
+The owner reports real password reset working. Ordinary sign-in keeps password
+recovery available; verification is limited to signup or Neon's unverified-email
+requirement. The record distinguishes an observed verification success from a
+later repeat failure and retains hosted/provider-policy acceptance checks. Hosted provisioning and production release remain M11 work.

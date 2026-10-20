@@ -81,7 +81,12 @@ reset code plus matching new password/confirmation. Tokens/codes are not persist
 link tokens are removed from URLs. Reset success attempts explicit sign-out with
 safe retry recovery. See
 [final M10 acceptance](m10-final-acceptance.md). Owner-observed verification email delivery, code acceptance and sign-in are
-confirmed. Real password reset/new-password sign-in remain pending; provider policy, JWT lifetime
+confirmed. The owner reports password reset fully working; new-password sign-in was not
+separately described step by step. Ordinary sign-in no longer offers an unnecessary
+verification action; signup and Neon unverified-email rejections retain code entry.
+A later repeat verification failure was reported; its specific provider cause was
+not captured. SDK-normalized OTP rejections now have actionable errors. Required
+verification/provider policy, JWT lifetime
 expectations and hosted HTTPS origins remain explicit pre-release checks. These
 are not certified by SDK availability or a working local login.
 

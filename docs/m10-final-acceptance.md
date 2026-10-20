@@ -53,8 +53,9 @@ The distinct OTP endpoints were checked against the installed client and
 Neon's [managed email documentation](https://github.com/neondatabase/website/blob/main/content/docs/auth/guides/customize-emails.md)
 describes provider email delivery. These establish interfaces, not successful
 inbox delivery by themselves. The owner subsequently confirmed verification-email
-delivery, code acceptance and sign-in on October 20. A successful password reset
-and sign-in with the new password remain a separate owner acceptance check. The
+delivery, code acceptance and sign-in on October 20. The owner subsequently reported that password reset fully works. This is owner
+acceptance of the recovery path, not an agent-observed credentials test; sign-in
+with the changed password was not separately described step by step. The
 Neon management policy has not been changed. The retained link reset screen also
 remains covered; hosted policy/origins must be validated for the release target.
 
@@ -68,7 +69,7 @@ remains covered; hosted policy/origins must be validated for the release target.
 | Gasoline and EV decisions | Backend domain/API suites, exact money/tie regressions and integrated browser workflows | Implemented and tested |
 | Automatic EIA pricing and override | Batch 4 actual regional downloads and six real grade resolutions; final read-only freshness and job checks | Implemented and healthy at recorded check time |
 | Shared terrain accounting and truthful fallback | Batch 3 bounded real CA/CO/NC routes, restart/lock failure evidence; final read-only shared-ledger health | Implemented and tested for representative routes; no universal coverage claim |
-| Recovery requests, reset screen and safe failures | Real SDK link/OTP HTTP contract interception, unit and desktop/mobile browser tests; actual Neon invalid-body OTP and random invalid-token rejection | Implementation complete; real reset/new-password return-sign-in owner acceptance pending |
+| Recovery requests, reset screen and safe failures | Real SDK link/OTP HTTP contract interception, unit and desktop/mobile browser tests; actual Neon invalid-body OTP and random invalid-token rejection | Implementation complete; owner reports real password reset fully working; agent did not handle credentials |
 | Registration and verification | Prior development account/sign-in; owner-reported verification email delivery, code acceptance and sign-in; signup/unverified-sign-in code regressions | Development verification confirmed by owner; hosted policy remains a release check |
 | V1 compatibility, schema and CI gates | Full backend suite, V1 browser journeys, generated contract drift check and strict production build | Passed locally; exact pushed commit CI tracked separately |
 | Provider scope | `v2-architecture-decisions.md` reconciles original freeze | Google Routes/OpenTopoData/EIA/Neon email-password supported; Google Elevation, station-price aggregation and Google OAuth deferred |
@@ -85,7 +86,7 @@ remains covered; hosted policy/origins must be validated for the release target.
 | `npm run api:generate` | Passed; no generated contract/type diff |
 | `npm run lint` | Passed |
 | `npm run format:check` | Passed after correcting formatting in the new SDK contract test |
-| `npm test -- --run` | 231 passed, 37 files |
+| `npm test -- --run` | 234 passed, 37 files |
 | `npm run build` | Passed, strict TypeScript and production bundling |
 | `npm run test:e2e` | 30 passed, desktop and mobile Chromium, test-only identity/provider fixtures |
 
@@ -109,14 +110,28 @@ On October 20, 2026 at approximately 21:06 UTC, read-only development checks sho
 
 ## Closure and M11 handoff
 
-All identified remaining M10 code is implemented. **M10 acceptance remains open
-only for owner-observed development password reset and sign-in with the new
-password. Verification-email delivery and code acceptance were confirmed by the
-owner; this must not be misclassified as a completed password reset.** The owner was asked to exercise the finished UI without sharing
-credentials or reset links. Automated transport/browser fixtures cannot certify
-that provider policy or mailbox journey. No unattended email or account mutation
-was performed to manufacture acceptance. The user-provided screenshot/code was
-not copied into tests, documentation, commits or provider requests.
+All identified remaining M10 code is implemented and the owner reports that
+password reset fully works. Earlier owner feedback confirmed verification-code
+acceptance and sign-in, followed by a failed repeat verification attempt. The
+specific reason for that later rejection was not captured and is not asserted to
+be expiry or an already-verified account.
+
+At the owner's request, the unnecessary general verification action was removed
+from ordinary sign-in. Verification remains available only through signup or an
+explicit unverified-email rejection from Neon; provider security requirements
+were not disabled. The SDK's normalization of unknown OTP errors into
+`validation_failed` was reproduced through the real installed client. Those
+rejections now receive actionable code feedback; known already-verified responses
+point back to sign-in. The new regression tests cover both cases without exposing
+raw provider text or treating arbitrary failures as successful verification.
+
+This finishes the selected local development recovery implementation and owner
+reset check. It does not certify every provider policy or declare production
+launch readiness. Required verification for genuinely new/unverified accounts,
+new-password sign-in and exact hosted callbacks remain explicit release acceptance
+checks; a repeat optional verification failure is not proof that those checks
+passed. No owner code/password was submitted by the agent, copied into tests,
+documentation, commits or provider probes.
 
 Empty invalid-body live probes returned 400 from `email-otp/verify-email`,
 `email-otp/request-password-reset` and `email-otp/reset-password`; the older
@@ -126,9 +141,9 @@ verified by intercepted transport tests. These live probes sent no email or code
 and changed no account. [Follow-up evidence](validation/m10-email-code-acceptance.json)
 keeps owner-observed verification distinct from unverified real password reset.
 
-Once that check passes, the local/pinned-development M10 scope can close and M11
-can begin. Until then, do not label all M10 acceptance complete or claim launch
-readiness. M11 must explicitly provide and validate:
+The implementation is ready for M11 deployment planning within these evidence
+limits. Hosted end-to-end authentication and provider-policy acceptance must not
+be inferred from this local reset result. M11 must explicitly provide and validate:
 
 1. An approved hosted V2 target, HTTPS auth origins/callbacks/cookies and SPA routes,
    including direct reset-link navigation, with provider verification/reset policy.

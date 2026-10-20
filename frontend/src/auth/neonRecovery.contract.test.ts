@@ -122,3 +122,35 @@ it("maps the real SDK OTP request, verification and reset methods to distinct en
     },
   ]);
 });
+
+it("exposes an unmapped OTP rejection as the SDK's normalized validation error", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ code: "INVALID_OTP", message: "Invalid OTP" }),
+          {
+            status: 400,
+            statusText: "Bad Request",
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+    ),
+  );
+  const auth = createInternalNeonAuth("https://auth.example.test/neondb/auth", {
+    adapter: BetterAuthReactAdapter(),
+    allowAnonymous: false,
+  });
+  let failure: unknown;
+  try {
+    const result = await auth.adapter.emailOtp.verifyEmail({
+      email: "someone@example.test",
+      otp: "000000",
+    });
+    failure = result.error;
+  } catch (error: unknown) {
+    failure = error;
+  }
+  expect(failure).toMatchObject({ code: "validation_failed", status: 400 });
+});
