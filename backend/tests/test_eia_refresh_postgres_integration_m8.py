@@ -56,7 +56,15 @@ FIXTURES = {
     "NUS": Path("/tmp/routevalue_eia_gasoline.xls"),
 }
 
-REFRESHED_AT = datetime(2026, 10, 13, 18, tzinfo=UTC)
+
+@pytest.fixture
+def refreshed_at() -> datetime:
+    """Freeze an actual retrieval time for current, externally supplied workbooks.
+
+    A historical constant eventually predates newly downloaded observations.
+    The real snapshot validator must still reject future observations.
+    """
+    return datetime.now(UTC)
 
 
 @pytest.fixture
@@ -177,7 +185,7 @@ def make_coordinator(
     *,
     client: httpx.Client,
     engine: Engine,
-    refreshed_at: datetime = REFRESHED_AT,
+    refreshed_at: datetime,
 ) -> EiaRefreshCoordinator:
     return EiaRefreshCoordinator(
         fetch_workbook=EiaWorkbookFetcher(client=client),
@@ -232,6 +240,7 @@ def assert_roundtrip_matches_workbook(
 def test_real_workbook_refresh_roundtrip(
     database_engine: Engine,
     workbook_bytes: dict[str, bytes],
+    refreshed_at: datetime,
     region: EiaGasolineRegion,
 ) -> None:
     """Real EIA parsing and PostgreSQL persistence succeed together."""
@@ -240,19 +249,20 @@ def test_real_workbook_refresh_roundtrip(
         coordinator = make_coordinator(
             client=client,
             engine=database_engine,
+            refreshed_at=refreshed_at,
         )
 
         result = coordinator.refresh(region)
 
     assert result.status is EiaRefreshStatus.SUCCEEDED
     assert result.failure_reason is None
-    assert result.refreshed_at == REFRESHED_AT
+    assert result.refreshed_at == refreshed_at
 
     assert_roundtrip_matches_workbook(
         region=region,
         workbook_bytes=workbook_bytes[region.geography.region_id],
         engine=database_engine,
-        refreshed_at=REFRESHED_AT,
+        refreshed_at=refreshed_at,
     )
 
     with database_engine.connect() as connection:
@@ -269,6 +279,7 @@ def test_real_workbook_refresh_roundtrip(
 def test_both_regions_can_be_persisted(
     database_engine: Engine,
     workbook_bytes: dict[str, bytes],
+    refreshed_at: datetime,
 ) -> None:
     """California and national prices coexist independently."""
 
@@ -276,6 +287,7 @@ def test_both_regions_can_be_persisted(
         coordinator = make_coordinator(
             client=client,
             engine=database_engine,
+            refreshed_at=refreshed_at,
         )
 
         california_result = coordinator.refresh(EIA_CALIFORNIA_REGION)
@@ -292,7 +304,7 @@ def test_both_regions_can_be_persisted(
             region=region,
             workbook_bytes=workbook_bytes[region.geography.region_id],
             engine=database_engine,
-            refreshed_at=REFRESHED_AT,
+            refreshed_at=refreshed_at,
         )
 
     with database_engine.connect() as connection:
@@ -311,6 +323,7 @@ def test_both_regions_can_be_persisted(
 def test_http_failure_preserves_existing_snapshot(
     database_engine: Engine,
     workbook_bytes: dict[str, bytes],
+    refreshed_at: datetime,
 ) -> None:
     """A failed download cannot erase previously persisted prices."""
 
@@ -320,6 +333,7 @@ def test_http_failure_preserves_existing_snapshot(
         original_result = make_coordinator(
             client=client,
             engine=database_engine,
+            refreshed_at=refreshed_at,
         ).refresh(EIA_CALIFORNIA_REGION)
 
     assert original_result.succeeded
@@ -334,7 +348,7 @@ def test_http_failure_preserves_existing_snapshot(
         failed_result = make_coordinator(
             client=client,
             engine=database_engine,
-            refreshed_at=REFRESHED_AT + timedelta(hours=1),
+            refreshed_at=refreshed_at + timedelta(hours=1),
         ).refresh(EIA_CALIFORNIA_REGION)
 
     assert failed_result.status is EiaRefreshStatus.FAILED
@@ -350,6 +364,7 @@ def test_http_failure_preserves_existing_snapshot(
 def test_invalid_xls_preserves_existing_snapshot(
     database_engine: Engine,
     workbook_bytes: dict[str, bytes],
+    refreshed_at: datetime,
 ) -> None:
     """Malformed HTTP content never replaces a valid snapshot."""
 
@@ -359,6 +374,7 @@ def test_invalid_xls_preserves_existing_snapshot(
         initial = make_coordinator(
             client=client,
             engine=database_engine,
+            refreshed_at=refreshed_at,
         ).refresh(EIA_US_REGION)
 
     assert initial.succeeded
@@ -373,6 +389,7 @@ def test_invalid_xls_preserves_existing_snapshot(
         result = make_coordinator(
             client=client,
             engine=database_engine,
+            refreshed_at=refreshed_at,
         ).refresh(EIA_US_REGION)
 
     assert result.status is EiaRefreshStatus.FAILED
@@ -388,6 +405,7 @@ def test_invalid_xls_preserves_existing_snapshot(
 def test_identical_workbook_can_refresh_timestamp(
     database_engine: Engine,
     workbook_bytes: dict[str, bytes],
+    refreshed_at: datetime,
 ) -> None:
     """Repeated publication refresh does not duplicate observations."""
 
@@ -395,9 +413,10 @@ def test_identical_workbook_can_refresh_timestamp(
         first = make_coordinator(
             client=client,
             engine=database_engine,
+            refreshed_at=refreshed_at,
         ).refresh(EIA_CALIFORNIA_REGION)
 
-        second_time = REFRESHED_AT + timedelta(hours=1)
+        second_time = refreshed_at + timedelta(hours=1)
 
         second = make_coordinator(
             client=client,

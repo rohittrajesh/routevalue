@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TypedDict
 
 from routevalue.application.models import ResolvedLocation
 from routevalue.domain.identity import SavedVehicleId
@@ -53,3 +54,12 @@ class UserPreferences:
             SavedVehicleId,
         ):
             raise TypeError("default_vehicle_id must be a SavedVehicleId")
+
+
+class UserPreferencesPatch(TypedDict, total=False):
+    """Explicit fields to change; absence preserves state and None clears it."""
+
+    value_of_time_per_hour: MoneyPerHour | None
+    default_vehicle_id: SavedVehicleId | None
+    electricity_price_per_kwh: MoneyPerKilowattHour | None
+    preferred_fuel_market: PreferredFuelMarket | None

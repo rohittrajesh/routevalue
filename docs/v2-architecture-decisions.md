@@ -56,6 +56,10 @@ services or production configuration were enabled by this reconciliation.
   saved areas fail honestly rather than silently pricing elsewhere. The user can
   clear the market to restore origin pricing or use a manual gasoline override.
 - Omitted PATCH fields remain unchanged; explicit null clears only that preference.
+  Sparse database writes preserve concurrent unrelated edits. Preference writes and
+  default-vehicle deletion share a per-user transaction lock; default ownership is
+  rechecked inside the write transaction. Same-field conflicts use the last
+  successful transaction's value. See [M10 acceptance](m10-batch-1-acceptance.md).
   Ownership validation and default-vehicle deletion preserve unrelated preferences.
 
 ## Terrain and pricing invariants

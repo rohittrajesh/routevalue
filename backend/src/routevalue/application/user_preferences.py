@@ -1,12 +1,12 @@
 """Application services for persistent RouteValue user preferences."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from routevalue.application.ports import (
     SavedVehicleRepository,
     UserPreferencesRepository,
 )
-from routevalue.application.preferences import UserPreferences
+from routevalue.application.preferences import UserPreferences, UserPreferencesPatch
 from routevalue.domain.identity import (
     SavedVehicleId,
     UserId,
@@ -56,17 +56,13 @@ class UserPreferencesService:
     ) -> UserPreferences:
         """Persist a new value of time while preserving other preferences."""
 
-        current = self.repository.get_preferences(user_id)
+        return self.update_preferences(user_id, {"value_of_time_per_hour": value_of_time_per_hour})
 
-        updated = replace(current, value_of_time_per_hour=value_of_time_per_hour)
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        """Validate and apply a sparse update without reading a stale snapshot."""
 
-        if updated == current:
-            return current
-
-        return self.repository.save_preferences(
-            user_id,
-            updated,
-        )
+        UserPreferences(**changes)
+        return self.repository.update_preferences(user_id, changes)
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,14 +105,6 @@ class UserDefaultVehicleService:
             vehicle_id,
         )
 
-        current = self.preferences_repository.get_preferences(user_id)
-
-        updated = replace(current, default_vehicle_id=vehicle_id)
-
-        if updated == current:
-            return current
-
-        return self.preferences_repository.save_preferences(
-            user_id,
-            updated,
+        return self.preferences_repository.update_preferences(
+            user_id, {"default_vehicle_id": vehicle_id}
         )

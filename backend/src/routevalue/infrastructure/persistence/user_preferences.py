@@ -3,17 +3,24 @@
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.engine import Engine, RowMapping
 
-from routevalue.application.preferences import PreferredFuelMarket, UserPreferences
+from routevalue.application.preferences import (
+    PreferredFuelMarket,
+    UserPreferences,
+    UserPreferencesPatch,
+)
+from routevalue.application.user_preferences import DefaultVehicleUnavailableError
 from routevalue.domain.identity import (
     SavedVehicleId,
     UserId,
 )
 from routevalue.infrastructure.persistence.schema import (
+    saved_vehicles,
     user_preferences,
+    users,
 )
 
 
@@ -58,45 +65,81 @@ class PostgresUserPreferencesRepository:
     ) -> UserPreferences:
         """Atomically insert or update the user's complete preference state."""
 
-        market = preferences.preferred_fuel_market
-        energy_values = {
+        changes: UserPreferencesPatch = {
+            "value_of_time_per_hour": preferences.value_of_time_per_hour,
+            "default_vehicle_id": preferences.default_vehicle_id,
             "electricity_price_per_kwh": preferences.electricity_price_per_kwh,
-            "fuel_market_name": market.display_name if market is not None else None,
-            "fuel_market_latitude": market.latitude if market is not None else None,
-            "fuel_market_longitude": market.longitude if market is not None else None,
+            "preferred_fuel_market": preferences.preferred_fuel_market,
         }
+        return self._write_preferences(user_id, changes, validate_default=False)
+
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        """Apply explicit fields in one transaction, including ownership validation."""
+
+        UserPreferences(**changes)
+        if not changes:
+            raise ValueError("preference update must contain at least one field")
+        return self._write_preferences(user_id, changes, validate_default=True)
+
+    def _write_preferences(
+        self, user_id: UserId, changes: UserPreferencesPatch, *, validate_default: bool
+    ) -> UserPreferences:
+        values: dict[str, object] = {}
+        if "value_of_time_per_hour" in changes:
+            values["value_of_time_per_hour"] = changes["value_of_time_per_hour"]
+        if "electricity_price_per_kwh" in changes:
+            values["electricity_price_per_kwh"] = changes["electricity_price_per_kwh"]
+        if "default_vehicle_id" in changes:
+            vehicle = changes["default_vehicle_id"]
+            values["default_vehicle_id"] = vehicle.value if vehicle is not None else None
+        if "preferred_fuel_market" in changes:
+            market = changes["preferred_fuel_market"]
+            values.update(
+                fuel_market_name=market.display_name if market is not None else None,
+                fuel_market_latitude=market.latitude if market is not None else None,
+                fuel_market_longitude=market.longitude if market is not None else None,
+            )
         statement = (
             postgresql_insert(user_preferences)
-            .values(
-                **energy_values,
-                user_id=user_id.value,
-                value_of_time_per_hour=(preferences.value_of_time_per_hour),
-                default_vehicle_id=(
-                    preferences.default_vehicle_id.value
-                    if preferences.default_vehicle_id is not None
-                    else None
-                ),
-            )
+            .values(user_id=user_id.value, **values)
             .on_conflict_do_update(
                 index_elements=[user_preferences.c.user_id],
-                set_={
-                    **energy_values,
-                    "value_of_time_per_hour": (preferences.value_of_time_per_hour),
-                    "default_vehicle_id": (
-                        preferences.default_vehicle_id.value
-                        if preferences.default_vehicle_id is not None
-                        else None
-                    ),
-                    "updated_at": (func.clock_timestamp()),
-                },
+                set_={**values, "updated_at": func.clock_timestamp()},
+                where=or_(
+                    *(
+                        user_preferences.c[name].is_distinct_from(value)
+                        for name, value in values.items()
+                    )
+                ),
             )
             .returning(user_preferences)
         )
-
         with self._engine.begin() as connection:
-            row = connection.execute(statement).mappings().one()
-
-        return _preferences_from_row(row)
+            # The same owner lock is acquired before default deletion. It covers
+            # first writes (no preference row yet) and closes validation/delete races.
+            connection.execute(
+                select(users.c.id).where(users.c.id == user_id.value).with_for_update()
+            ).scalar_one_or_none()
+            vehicle_id = changes.get("default_vehicle_id")
+            if validate_default and vehicle_id is not None:
+                owned = connection.execute(
+                    select(saved_vehicles.c.id).where(
+                        saved_vehicles.c.user_id == user_id.value,
+                        saved_vehicles.c.id == vehicle_id.value,
+                    )
+                ).scalar_one_or_none()
+                if owned is None:
+                    raise DefaultVehicleUnavailableError("default vehicle is unavailable")
+            row = connection.execute(statement).mappings().one_or_none()
+            if row is None:
+                row = (
+                    connection.execute(
+                        select(user_preferences).where(user_preferences.c.user_id == user_id.value)
+                    )
+                    .mappings()
+                    .one()
+                )
+            return _preferences_from_row(row)
 
 
 def _validated_value_of_time(

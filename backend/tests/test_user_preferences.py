@@ -1,5 +1,6 @@
 """Tests for provider-neutral persistent user preferences."""
 
+from dataclasses import replace as replace_preferences
 from decimal import Decimal
 from typing import cast
 from uuid import uuid4
@@ -12,6 +13,7 @@ from routevalue.application.ports import (
 )
 from routevalue.application.preferences import (
     UserPreferences,
+    UserPreferencesPatch,
 )
 from routevalue.application.saved_vehicles import (
     SavedVehicle,
@@ -56,6 +58,13 @@ class FakeUserPreferencesRepository:
             user_id,
             UserPreferences(),
         )
+
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        current = self.get_preferences(user_id)
+        updated = replace_preferences(current, **changes)
+        if updated == current:
+            return current
+        return self.save_preferences(user_id, updated)
 
     def save_preferences(
         self,

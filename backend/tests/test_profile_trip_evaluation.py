@@ -1,6 +1,7 @@
 """Application tests for authenticated profile-driven trip evaluation."""
 
 from collections.abc import Sequence
+from dataclasses import replace as replace_preferences
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
@@ -20,7 +21,7 @@ from routevalue.application.models import (
     VehicleCatalogConfiguration,
 )
 from routevalue.application.ports import EnergyCostEstimator
-from routevalue.application.preferences import UserPreferences
+from routevalue.application.preferences import UserPreferences, UserPreferencesPatch
 from routevalue.application.profile_resolution import (
     ProfileResolutionError,
     ProfileResolutionFailureReason,
@@ -63,6 +64,13 @@ class FakePreferencesRepository:
         user_id: UserId,
     ) -> UserPreferences:
         return self.preferences.get(user_id, UserPreferences())
+
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        current = self.get_preferences(user_id)
+        updated = replace_preferences(current, **changes)
+        if updated == current:
+            return current
+        return self.save_preferences(user_id, updated)
 
     def save_preferences(
         self,

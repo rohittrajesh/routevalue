@@ -705,3 +705,7 @@ Cloudflare Pages
 → personalized recommendation
 → Google route map
 ```
+
+M10 integration hardening is tracked in the
+[batch 1 acceptance matrix](docs/m10-batch-1-acceptance.md), including concurrency
+fixes, executed evidence and remaining release checks.

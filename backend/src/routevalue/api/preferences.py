@@ -1,6 +1,5 @@
 """Authenticated V2 API for persistent RouteValue preferences."""
 
-from dataclasses import replace
 from functools import lru_cache
 from typing import Annotated
 
@@ -32,6 +31,7 @@ from routevalue.application.ports import (
 from routevalue.application.preferences import (
     PreferredFuelMarket,
     UserPreferences,
+    UserPreferencesPatch,
 )
 from routevalue.application.user_preferences import (
     DefaultVehicleUnavailableError,
@@ -190,56 +190,32 @@ def update_preferences(
 ) -> UserPreferencesResponse:
     """Atomically apply explicit authenticated preference updates."""
 
-    current = preferences_service.get_preferences(user.user_id)
-
-    value_of_time_per_hour = (
-        request.value_of_time_per_hour
-        if "value_of_time_per_hour" in request.model_fields_set
-        else current.value_of_time_per_hour
-    )
-
-    default_vehicle_id = current.default_vehicle_id
-
+    changes: UserPreferencesPatch = {}
+    if "value_of_time_per_hour" in request.model_fields_set:
+        changes["value_of_time_per_hour"] = request.value_of_time_per_hour
     if "default_vehicle_id" in request.model_fields_set:
-        requested_default = (
-            SavedVehicleId(value=request.default_vehicle_id)
+        changes["default_vehicle_id"] = (
+            SavedVehicleId(request.default_vehicle_id)
             if request.default_vehicle_id is not None
             else None
         )
-
-        try:
-            default_vehicle_service.validate_default_vehicle(
-                user.user_id,
-                requested_default,
-            )
-
-        except DefaultVehicleUnavailableError as exc:
-            raise SavedVehicleNotFoundError from exc
-
-        default_vehicle_id = requested_default
-
-    updated = replace(
-        current,
-        value_of_time_per_hour=(value_of_time_per_hour),
-        default_vehicle_id=(default_vehicle_id),
-    )
     if "electricity_price_per_kwh" in request.model_fields_set:
-        updated = replace(updated, electricity_price_per_kwh=request.electricity_price_per_kwh)
+        changes["electricity_price_per_kwh"] = request.electricity_price_per_kwh
     if "preferred_fuel_market" in request.model_fields_set:
         market = request.preferred_fuel_market
-        updated = replace(
-            updated,
-            preferred_fuel_market=(
-                PreferredFuelMarket(market.display_name, market.latitude, market.longitude)
-                if market is not None
-                else None
-            ),
+        changes["preferred_fuel_market"] = (
+            PreferredFuelMarket(market.display_name, market.latitude, market.longitude)
+            if market is not None
+            else None
         )
-
-    preferences = preferences_service.save_preferences(
-        user.user_id,
-        updated,
-    )
+    try:
+        if "default_vehicle_id" in changes:
+            default_vehicle_service.validate_default_vehicle(
+                user.user_id, changes["default_vehicle_id"]
+            )
+        preferences = preferences_service.update_preferences(user.user_id, changes)
+    except DefaultVehicleUnavailableError as exc:
+        raise SavedVehicleNotFoundError from exc
 
     return _to_response(preferences)
 

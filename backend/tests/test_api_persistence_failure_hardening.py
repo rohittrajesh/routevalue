@@ -1,6 +1,7 @@
 """Persistence-failure hardening for authenticated RouteValue V2 APIs."""
 
 from collections.abc import Sequence
+from dataclasses import replace as replace_preferences
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -23,7 +24,7 @@ from routevalue.application.identity import (
     AuthenticatedUser,
     VerifiedExternalIdentity,
 )
-from routevalue.application.preferences import UserPreferences
+from routevalue.application.preferences import UserPreferences, UserPreferencesPatch
 from routevalue.application.saved_vehicles import (
     SavedVehicle,
     SavedVehicleSnapshot,
@@ -88,6 +89,13 @@ class FailingPreferencesRepository:
         del user_id
 
         raise UserPreferencesPersistenceError(_SENSITIVE_DATABASE_DETAIL)
+
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        current = self.get_preferences(user_id)
+        updated = replace_preferences(current, **changes)
+        if updated == current:
+            return current
+        return self.save_preferences(user_id, updated)
 
     def save_preferences(
         self,

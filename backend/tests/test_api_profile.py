@@ -1,5 +1,6 @@
 """Tests for the authenticated RouteValue profile resource."""
 
+from dataclasses import replace as replace_preferences
 from decimal import Decimal
 from uuid import uuid4
 
@@ -20,6 +21,7 @@ from routevalue.application.identity import (
 )
 from routevalue.application.preferences import (
     UserPreferences,
+    UserPreferencesPatch,
 )
 from routevalue.domain.identity import (
     SavedVehicleId,
@@ -43,6 +45,13 @@ class FakePreferencesRepository:
         del user_id
 
         return self._preferences
+
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        current = self.get_preferences(user_id)
+        updated = replace_preferences(current, **changes)
+        if updated == current:
+            return current
+        return self.save_preferences(user_id, updated)
 
     def save_preferences(
         self,

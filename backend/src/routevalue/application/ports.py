@@ -10,7 +10,7 @@ from routevalue.application.models import (
     VehicleCatalogConfiguration,
     VehicleSpecificationLookupResult,
 )
-from routevalue.application.preferences import UserPreferences
+from routevalue.application.preferences import UserPreferences, UserPreferencesPatch
 from routevalue.application.saved_vehicles import (
     SavedVehicle,
     SavedVehicleSnapshot,
@@ -127,6 +127,10 @@ class UserPreferencesRepository(Protocol):
         preferences: UserPreferences,
     ) -> UserPreferences:
         """Persist and return the complete preference state."""
+        ...
+
+    def update_preferences(self, user_id: UserId, changes: UserPreferencesPatch) -> UserPreferences:
+        """Atomically change explicit fields, preserving concurrent unrelated edits."""
         ...
 
 

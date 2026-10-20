@@ -23,6 +23,7 @@ from routevalue.domain.vehicle_mass import VehicleMass, VehicleMassSource
 from routevalue.infrastructure.persistence.schema import (
     saved_vehicles,
     user_preferences,
+    users,
 )
 
 
@@ -141,6 +142,10 @@ class PostgresSavedVehicleRepository:
         """Delete one owned vehicle and safely clear it as the user's default."""
 
         with self._engine.begin() as connection:
+            # Match preference-write lock ordering before clearing/deleting a default.
+            connection.execute(
+                select(users.c.id).where(users.c.id == user_id.value).with_for_update()
+            ).scalar_one_or_none()
             connection.execute(
                 update(user_preferences)
                 .where(
