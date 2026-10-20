@@ -341,6 +341,8 @@ def test_default_vehicle_cannot_cross_user_boundary_or_leak_existence(
             assert initial_update.json() == {
                 "value_of_time_per_hour": "37.50",
                 "default_vehicle_id": (str(owner_vehicle.id.value)),
+                "electricity_price_per_kwh": None,
+                "preferred_fuel_market": None,
             }
 
             foreign_default = client.patch(
@@ -376,6 +378,8 @@ def test_default_vehicle_cannot_cross_user_boundary_or_leak_existence(
             assert unchanged.json() == {
                 "value_of_time_per_hour": "37.50",
                 "default_vehicle_id": (str(owner_vehicle.id.value)),
+                "electricity_price_per_kwh": None,
+                "preferred_fuel_market": None,
             }
 
             deleted = client.delete(
@@ -395,6 +399,8 @@ def test_default_vehicle_cannot_cross_user_boundary_or_leak_existence(
             assert after_delete.json() == {
                 "value_of_time_per_hour": "37.50",
                 "default_vehicle_id": None,
+                "electricity_price_per_kwh": None,
+                "preferred_fuel_market": None,
             }
 
             foreign_vehicle_still_exists = client.get(

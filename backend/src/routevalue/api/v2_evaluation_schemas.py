@@ -34,7 +34,7 @@ class V2ElectricityPriceResponse(BaseModel):
 
     energy_type: Literal["electricity"] = "electricity"
     price_per_kilowatt_hour: Decimal
-    source: Literal["user_input"] = "user_input"
+    source: Literal["user_input", "user_preference"] = "user_input"
 
 
 V2EnergyPriceResponse = Annotated[

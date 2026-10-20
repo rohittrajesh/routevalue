@@ -53,6 +53,7 @@ function tripErrorMessage(error: unknown): string {
 
   if (
     error.code === "value_of_time_not_configured" ||
+    error.code === "electricity_price_not_configured" ||
     error.code === "default_vehicle_not_configured" ||
     error.code === "default_vehicle_unavailable" ||
     error.code === "saved_vehicle_not_found"
@@ -82,6 +83,7 @@ export default function V2TripPlanner({
     useState<GasolinePricingMode>("automatic");
   const [gasolinePrice, setGasolinePrice] = useState("");
   const [electricityPrice, setElectricityPrice] = useState("");
+  const [useElectricityOverride, setUseElectricityOverride] = useState(false);
   const [result, setResult] = useState<V2TripEvaluationResponse | null>(null);
   const [resultProfile, setResultProfile] = useState("");
   const [errorProfile, setErrorProfile] = useState("");
@@ -116,7 +118,9 @@ export default function V2TripPlanner({
   const hasValueOfTime = preferences.value_of_time_per_hour !== null;
   const priceIsValid =
     selectedVehicle?.specification.powertrain === "bev"
-      ? isValidNonnegativeDecimal(electricityPrice)
+      ? useElectricityOverride
+        ? isValidNonnegativeDecimal(electricityPrice)
+        : preferences.electricity_price_per_kwh != null
       : gasolinePricingMode === "automatic" ||
         isValidNonnegativeDecimal(gasolinePrice);
 
@@ -169,7 +173,7 @@ export default function V2TripPlanner({
         vehicle: selectedVehicle,
         gasolinePricingMode,
         gasolinePrice,
-        electricityPrice,
+        electricityPrice: useElectricityOverride ? electricityPrice : "",
       });
 
       const response = await evaluateV2Trip(request);
@@ -277,6 +281,12 @@ export default function V2TripPlanner({
         {selectedVehicle?.specification.powertrain === "gasoline" && (
           <fieldset className="m9-trip-price-section">
             <legend>Gasoline price</legend>
+            <p className="m9-note">
+              Pricing area:{" "}
+              {preferences.preferred_fuel_market?.display_name ?? "Trip origin"}
+              . EIA provides a regional observation, not a station-specific
+              price.
+            </p>
 
             <label className="m9-trip-choice">
               <input
@@ -327,22 +337,59 @@ export default function V2TripPlanner({
         )}
 
         {selectedVehicle?.specification.powertrain === "bev" && (
-          <label className="field field-medium m9-trip-electric-price">
-            <span>Electricity price ($/kWh)</span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={electricityPrice}
-              onChange={(event) => {
-                setElectricityPrice(event.target.value);
-                invalidateResult();
-              }}
-              placeholder="e.g. 0.25"
-              disabled={isSubmitting}
-              required
-            />
-            <small>Use your charging electricity rate.</small>
-          </label>
+          <fieldset className="m9-trip-price-section">
+            <legend>Electricity price</legend>
+            <label className="m9-trip-choice">
+              <input
+                type="radio"
+                name="electricity-pricing"
+                checked={!useElectricityOverride}
+                disabled={isSubmitting}
+                onChange={() => {
+                  setUseElectricityOverride(false);
+                  invalidateResult();
+                }}
+              />
+              Use saved electricity rate
+            </label>
+            <p className="m9-note">
+              {preferences.electricity_price_per_kwh == null
+                ? "Save your electricity rate in Personal settings above, or enter a rate for this trip."
+                : `$${preferences.electricity_price_per_kwh}/kWh from your saved preferences.`}
+            </p>
+            <label className="m9-trip-choice">
+              <input
+                type="radio"
+                name="electricity-pricing"
+                checked={useElectricityOverride}
+                disabled={isSubmitting}
+                onChange={() => {
+                  setUseElectricityOverride(true);
+                  invalidateResult();
+                }}
+              />
+              Enter a rate for this trip
+            </label>
+            {useElectricityOverride && (
+              <label className="field field-medium m9-trip-electric-price">
+                <span>Electricity price ($/kWh)</span>
+                <input
+                  aria-label="Electricity price ($/kWh)"
+                  type="text"
+                  inputMode="decimal"
+                  value={electricityPrice}
+                  onChange={(event) => {
+                    setElectricityPrice(event.target.value);
+                    invalidateResult();
+                  }}
+                  placeholder="e.g. 0.25"
+                  disabled={isSubmitting}
+                  required
+                />
+                <small>Use your charging electricity rate.</small>
+              </label>
+            )}
+          </fieldset>
         )}
 
         <div className="m9-trip-actions">

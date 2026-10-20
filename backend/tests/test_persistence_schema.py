@@ -289,7 +289,10 @@ def test_alembic_recognizes_exactly_one_current_head() -> None:
     config = Config(str(backend_root / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
 
-    assert scripts.get_heads() == ["f2b7c39a106d"]
+    assert scripts.get_heads() == ["a19d6e2c740b"]
+    preference_migration = scripts.get_revision("a19d6e2c740b")
+    assert preference_migration is not None
+    assert preference_migration.down_revision == "f2b7c39a106d"
     quota_migration = scripts.get_revision("f2b7c39a106d")
     assert quota_migration is not None
     assert quota_migration.down_revision == "e8a1d4c209bf"

@@ -1,6 +1,6 @@
 """Application services for persistent RouteValue user preferences."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from routevalue.application.ports import (
     SavedVehicleRepository,
@@ -58,10 +58,7 @@ class UserPreferencesService:
 
         current = self.repository.get_preferences(user_id)
 
-        updated = UserPreferences(
-            value_of_time_per_hour=value_of_time_per_hour,
-            default_vehicle_id=current.default_vehicle_id,
-        )
+        updated = replace(current, value_of_time_per_hour=value_of_time_per_hour)
 
         if updated == current:
             return current
@@ -114,10 +111,7 @@ class UserDefaultVehicleService:
 
         current = self.preferences_repository.get_preferences(user_id)
 
-        updated = UserPreferences(
-            value_of_time_per_hour=(current.value_of_time_per_hour),
-            default_vehicle_id=vehicle_id,
-        )
+        updated = replace(current, default_vehicle_id=vehicle_id)
 
         if updated == current:
             return current

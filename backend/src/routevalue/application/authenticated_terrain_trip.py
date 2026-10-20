@@ -18,7 +18,11 @@ from routevalue.application.models import (
 )
 from routevalue.application.ports import RouteProvider
 from routevalue.application.profile_resolution import ProfileResolutionService
-from routevalue.application.profile_trip_evaluation import EnergyInputMismatchError
+from routevalue.application.profile_trip_evaluation import (
+    ElectricityPriceNotConfiguredError,
+    EnergyInputMismatchError,
+    MissingEnergyPriceError,
+)
 from routevalue.application.terrain import (
     TerrainAcquisitionResult,
     TerrainUnavailableReason,
@@ -62,6 +66,7 @@ class AuthenticatedTerrainTripOutcome:
     acquisitions: tuple[TerrainAcquisitionResult, ...]
     geometry_decision: TerrainGeometryDecision
     energy_price_quote: EnergyPriceQuote | None = None
+    electricity_price_from_preferences: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,13 +124,6 @@ class AuthenticatedTerrainTripService:
         if fuel_price_per_gallon is not None and price_per_kilowatt_hour is not None:
             raise ValueError("exactly one energy price must be supplied")
 
-        if (
-            fuel_price_per_gallon is None
-            and price_per_kilowatt_hour is None
-            and self.automatic_gasoline_price_resolver is None
-        ):
-            raise ValueError("exactly one energy price must be supplied")
-
         profile = self.profile_resolution_service.resolve_profile(
             user_id,
             requested_vehicle_id=requested_vehicle_id,
@@ -134,6 +132,7 @@ class AuthenticatedTerrainTripService:
 
         gasoline_quote: GasolinePriceQuote | None = None
         electric_quote = None
+        electricity_price_from_preferences = False
 
         if isinstance(specification, GasolineVehicleSpecification):
             if price_per_kilowatt_hour is not None:
@@ -148,10 +147,12 @@ class AuthenticatedTerrainTripService:
                 resolver = self.automatic_gasoline_price_resolver
 
                 if resolver is None:
-                    raise EnergyInputMismatchError("automatic gasoline pricing is not configured")
+                    raise MissingEnergyPriceError("exactly one energy price must be supplied")
 
                 resolved_quote = resolver(
-                    request.origin,
+                    profile.preferred_fuel_market.to_location()
+                    if profile.preferred_fuel_market is not None
+                    else request.origin,
                     specification.fuel_grade,
                 )
 
@@ -174,9 +175,16 @@ class AuthenticatedTerrainTripService:
             gasoline_quote = context.fuel_price_quote
 
         elif isinstance(specification, ElectricVehicleSpecification):
-            if price_per_kilowatt_hour is None:
+            if fuel_price_per_gallon is not None:
                 raise EnergyInputMismatchError(
                     "selected saved vehicle requires electricity pricing"
+                )
+            if price_per_kilowatt_hour is None:
+                price_per_kilowatt_hour = profile.electricity_price_per_kwh
+                electricity_price_from_preferences = price_per_kilowatt_hour is not None
+            if price_per_kilowatt_hour is None:
+                raise ElectricityPriceNotConfiguredError(
+                    "exactly one energy price must be supplied or saved in preferences"
                 )
 
             context_electric = build_electric_evaluation_context(
@@ -232,4 +240,5 @@ class AuthenticatedTerrainTripService:
             acquisitions=acquisitions,
             geometry_decision=geometry_decision,
             energy_price_quote=gasoline_quote if gasoline_quote is not None else electric_quote,
+            electricity_price_from_preferences=electricity_price_from_preferences,
         )

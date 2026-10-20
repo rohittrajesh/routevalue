@@ -7,9 +7,10 @@ from routevalue.application.ports import (
     SavedVehicleRepository,
     UserPreferencesRepository,
 )
+from routevalue.application.preferences import PreferredFuelMarket
 from routevalue.application.saved_vehicles import SavedVehicle
 from routevalue.domain.identity import SavedVehicleId, UserId
-from routevalue.domain.units import MoneyPerHour
+from routevalue.domain.units import MoneyPerHour, MoneyPerKilowattHour
 
 
 class ProfileResolutionFailureReason(StrEnum):
@@ -38,6 +39,8 @@ class ResolvedEvaluationProfile:
 
     value_of_time_per_hour: MoneyPerHour
     saved_vehicle: SavedVehicle
+    electricity_price_per_kwh: MoneyPerKilowattHour | None = None
+    preferred_fuel_market: PreferredFuelMarket | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,4 +97,6 @@ class ProfileResolutionService:
         return ResolvedEvaluationProfile(
             value_of_time_per_hour=value_of_time,
             saved_vehicle=vehicle,
+            electricity_price_per_kwh=preferences.electricity_price_per_kwh,
+            preferred_fuel_market=preferences.preferred_fuel_market,
         )

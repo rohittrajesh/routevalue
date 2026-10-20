@@ -71,7 +71,9 @@ from routevalue.application.profile_resolution import (
     ProfileResolutionFailureReason,
 )
 from routevalue.application.profile_trip_evaluation import (
+    ElectricityPriceNotConfiguredError,
     EnergyInputMismatchError,
+    MissingEnergyPriceError,
     ProfileDrivenTripEvaluationService,
 )
 from routevalue.domain.identity import SavedVehicleId
@@ -309,19 +311,9 @@ def evaluate_profile_driven_trip(
         request.electricity.price_per_kilowatt_hour if request.electricity is not None else None
     )
 
-    if (
-        isinstance(service, ProfileDrivenTripEvaluationService)
-        and fuel_price_per_gallon is None
-        and price_per_kilowatt_hour is None
-    ):
-        return _error_response(
-            status_code=422,
-            code=ApiErrorCode.ENERGY_INPUT_MISMATCH,
-            detail="An energy price must be supplied for this evaluation.",
-        )
-
     terrain_status: V2TerrainStatusResponse | None = None
     energy_price_quote: EnergyPriceQuote | None = None
+    electricity_price_from_preferences = False
 
     try:
         search_request = _to_route_search_request(request)
@@ -337,6 +329,7 @@ def evaluate_profile_driven_trip(
 
             result = outcome.evaluation.trip
             energy_price_quote = outcome.energy_price_quote
+            electricity_price_from_preferences = outcome.electricity_price_from_preferences
 
             terrain_status = build_v2_terrain_status(
                 acquisitions=outcome.acquisitions,
@@ -355,6 +348,20 @@ def evaluate_profile_driven_trip(
 
     except ProfileResolutionError as exc:
         return _profile_failure_response(exc)
+
+    except ElectricityPriceNotConfiguredError:
+        return _error_response(
+            status_code=409,
+            code=ApiErrorCode.ELECTRICITY_PRICE_NOT_CONFIGURED,
+            detail="Save your electricity rate in Personal settings or supply a trip override.",
+        )
+
+    except MissingEnergyPriceError:
+        return _error_response(
+            status_code=422,
+            code=ApiErrorCode.ENERGY_INPUT_MISMATCH,
+            detail="An energy price must be supplied for this evaluation.",
+        )
 
     except EnergyInputMismatchError:
         return _error_response(
@@ -479,4 +486,5 @@ def evaluate_profile_driven_trip(
         result,
         terrain_status=terrain_status,
         energy_price_quote=energy_price_quote,
+        electricity_price_from_preferences=electricity_price_from_preferences,
     )

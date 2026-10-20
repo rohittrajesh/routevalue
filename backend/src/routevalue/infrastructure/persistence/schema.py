@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Double,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -180,6 +181,10 @@ user_preferences = Table(
         primary_key=True,
     ),
     Column("value_of_time_per_hour", Numeric(), nullable=True),
+    Column("electricity_price_per_kwh", Numeric(), nullable=True),
+    Column("fuel_market_name", Text(), nullable=True),
+    Column("fuel_market_latitude", Double(), nullable=True),
+    Column("fuel_market_longitude", Double(), nullable=True),
     Column("default_vehicle_id", Uuid(as_uuid=True), nullable=True),
     Column(
         "updated_at",
@@ -195,6 +200,18 @@ user_preferences = Table(
     CheckConstraint(
         "value_of_time_per_hour IS NULL OR value_of_time_per_hour >= 0",
         name="ck_user_preferences_nonnegative_value_of_time",
+    ),
+    CheckConstraint(
+        "electricity_price_per_kwh IS NULL OR (electricity_price_per_kwh >= 0 "
+        "AND electricity_price_per_kwh NOT IN ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric))",
+        name="ck_user_preferences_valid_electricity_price",
+    ),
+    CheckConstraint(
+        "(fuel_market_name IS NULL AND fuel_market_latitude IS NULL AND fuel_market_longitude IS NULL) "
+        "OR (fuel_market_name IS NOT NULL AND fuel_market_latitude IS NOT NULL AND fuel_market_longitude IS NOT NULL "
+        "AND length(btrim(fuel_market_name)) BETWEEN 1 AND 200 "
+        "AND fuel_market_latitude BETWEEN -90 AND 90 AND fuel_market_longitude BETWEEN -180 AND 180)",
+        name="ck_user_preferences_valid_fuel_market",
     ),
 )
 

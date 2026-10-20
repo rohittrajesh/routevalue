@@ -21,6 +21,7 @@
           "default_vehicle_unavailable",
           "unsupported_vehicle_energy_type",
           "energy_input_mismatch",
+          "electricity_price_not_configured",
           "profile_service_unavailable",
           "profile_state_invalid",
           "gasoline_price_unavailable",
@@ -320,6 +321,33 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PreferredFuelMarketInput": {
+        "additionalProperties": false,
+        "description": "A purchasing area; the server resolves its trusted pricing geography.",
+        "properties": {
+          "display_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          }
+        },
+        "required": ["display_name", "latitude", "longitude"],
+        "title": "PreferredFuelMarketInput",
         "type": "object"
       },
       "ResolvedLocationInput": {
@@ -689,6 +717,28 @@
             ],
             "title": "Default Vehicle Id"
           },
+          "electricity_price_per_kwh": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Electricity Price Per Kwh"
+          },
+          "preferred_fuel_market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferredFuelMarketInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "value_of_time_per_hour": {
             "anyOf": [
               {
@@ -721,6 +771,31 @@
               }
             ],
             "title": "Default Vehicle Id"
+          },
+          "electricity_price_per_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Electricity Price Per Kwh"
+          },
+          "preferred_fuel_market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreferredFuelMarketInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "value_of_time_per_hour": {
             "anyOf": [
@@ -824,8 +899,8 @@
             "type": "string"
           },
           "source": {
-            "const": "user_input",
             "default": "user_input",
+            "enum": ["user_input", "user_preference"],
             "title": "Source",
             "type": "string"
           }

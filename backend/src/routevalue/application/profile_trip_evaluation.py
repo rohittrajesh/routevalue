@@ -55,6 +55,14 @@ class EnergyInputMismatchError(UnsupportedVehicleEnergyTypeError):
     """
 
 
+class MissingEnergyPriceError(ValueError):
+    """No usable explicit or persisted energy price is configured."""
+
+
+class ElectricityPriceNotConfiguredError(MissingEnergyPriceError):
+    """An EV has neither a saved rate nor an explicit trip override."""
+
+
 @dataclass(frozen=True, slots=True)
 class ProfileDrivenTripEvaluationService:
     """Evaluate trips using stored personalization and an owned vehicle."""
@@ -80,7 +88,7 @@ class ProfileDrivenTripEvaluationService:
         before acquiring any routes.
         """
 
-        if (fuel_price_per_gallon is None) == (price_per_kilowatt_hour is None):
+        if fuel_price_per_gallon is not None and price_per_kilowatt_hour is not None:
             raise ValueError("exactly one energy price must be supplied")
 
         profile = self.profile_resolution_service.resolve_profile(
@@ -94,6 +102,8 @@ class ProfileDrivenTripEvaluationService:
 
         if isinstance(specification, GasolineVehicleSpecification):
             if fuel_price_per_gallon is None:
+                if price_per_kilowatt_hour is None:
+                    raise MissingEnergyPriceError("exactly one energy price must be supplied")
                 raise EnergyInputMismatchError("selected saved vehicle requires gasoline pricing")
 
             gasoline_context = build_gasoline_evaluation_context(
@@ -104,9 +114,15 @@ class ProfileDrivenTripEvaluationService:
             energy_estimator = self.gasoline_estimator_factory(gasoline_context)
 
         elif isinstance(specification, ElectricVehicleSpecification):
-            if price_per_kilowatt_hour is None:
+            if fuel_price_per_gallon is not None:
                 raise EnergyInputMismatchError(
                     "selected saved vehicle requires electricity pricing"
+                )
+            if price_per_kilowatt_hour is None:
+                price_per_kilowatt_hour = profile.electricity_price_per_kwh
+            if price_per_kilowatt_hour is None:
+                raise ElectricityPriceNotConfiguredError(
+                    "exactly one energy price must be supplied or saved in preferences"
                 )
 
             electric_context = build_electric_evaluation_context(

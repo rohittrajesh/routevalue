@@ -48,7 +48,7 @@ def engine() -> Iterator[Engine]:
             "routevalue_m8_eia_test",
             "routevalue_local",
         )
-        assert revision == "f2b7c39a106d"
+        assert revision == "a19d6e2c740b"
 
         yield database_engine
     finally:

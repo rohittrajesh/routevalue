@@ -1,5 +1,6 @@
 """Authenticated V2 API for persistent RouteValue preferences."""
 
+from dataclasses import replace
 from functools import lru_cache
 from typing import Annotated
 
@@ -13,6 +14,7 @@ from routevalue.api.saved_vehicles import (
 )
 from routevalue.api.schemas import (
     ApiErrorResponse,
+    PreferredFuelMarketInput,
     UserPreferencesResponse,
     UserPreferencesUpdateRequest,
 )
@@ -28,6 +30,7 @@ from routevalue.application.ports import (
     UserPreferencesRepository,
 )
 from routevalue.application.preferences import (
+    PreferredFuelMarket,
     UserPreferences,
 )
 from routevalue.application.user_preferences import (
@@ -98,6 +101,16 @@ def _to_response(
         default_vehicle_id=(
             preferences.default_vehicle_id.value
             if preferences.default_vehicle_id is not None
+            else None
+        ),
+        electricity_price_per_kwh=preferences.electricity_price_per_kwh,
+        preferred_fuel_market=(
+            PreferredFuelMarketInput(
+                display_name=preferences.preferred_fuel_market.display_name,
+                latitude=preferences.preferred_fuel_market.latitude,
+                longitude=preferences.preferred_fuel_market.longitude,
+            )
+            if preferences.preferred_fuel_market is not None
             else None
         ),
     )
@@ -205,10 +218,23 @@ def update_preferences(
 
         default_vehicle_id = requested_default
 
-    updated = UserPreferences(
+    updated = replace(
+        current,
         value_of_time_per_hour=(value_of_time_per_hour),
         default_vehicle_id=(default_vehicle_id),
     )
+    if "electricity_price_per_kwh" in request.model_fields_set:
+        updated = replace(updated, electricity_price_per_kwh=request.electricity_price_per_kwh)
+    if "preferred_fuel_market" in request.model_fields_set:
+        market = request.preferred_fuel_market
+        updated = replace(
+            updated,
+            preferred_fuel_market=(
+                PreferredFuelMarket(market.display_name, market.latitude, market.longitude)
+                if market is not None
+                else None
+            ),
+        )
 
     preferences = preferences_service.save_preferences(
         user.user_id,

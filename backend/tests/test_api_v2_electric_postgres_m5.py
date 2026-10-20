@@ -410,7 +410,7 @@ def test_invalid_electricity_contract_fails_before_google(
     assert response.status_code == expected_status
 
     if expected_status == 409:
-        assert response.json()["code"] == "energy_input_mismatch"
+        assert response.json()["code"] == "electricity_price_not_configured"
 
     assert harness.google_requests == []
 

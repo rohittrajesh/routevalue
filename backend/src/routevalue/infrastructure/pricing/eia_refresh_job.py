@@ -84,7 +84,7 @@ def _verify_database(engine: Engine) -> None:
     if (
         database != "routevalue_m8_eia_test"
         or username != "routevalue_local"
-        or version not in ("e8a1d4c209bf", "f2b7c39a106d")
+        or version not in ("e8a1d4c209bf", "f2b7c39a106d", "a19d6e2c740b")
     ):
         raise ValueError("isolated M8 database identity check failed")
 

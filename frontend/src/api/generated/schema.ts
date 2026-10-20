@@ -283,6 +283,7 @@ export interface components {
       | "default_vehicle_unavailable"
       | "unsupported_vehicle_energy_type"
       | "energy_input_mismatch"
+      | "electricity_price_not_configured"
       | "profile_service_unavailable"
       | "profile_state_invalid"
       | "gasoline_price_unavailable"
@@ -419,6 +420,18 @@ export interface components {
     HTTPValidationError: {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
+    };
+    /**
+     * PreferredFuelMarketInput
+     * @description A purchasing area; the server resolves its trusted pricing geography.
+     */
+    PreferredFuelMarketInput: {
+      /** Display Name */
+      display_name: string;
+      /** Latitude */
+      latitude: number;
+      /** Longitude */
+      longitude: number;
     };
     /**
      * ResolvedLocationInput
@@ -575,6 +588,10 @@ export interface components {
     UserPreferencesResponse: {
       /** Default Vehicle Id */
       default_vehicle_id: string | null;
+      /** Electricity Price Per Kwh */
+      electricity_price_per_kwh?: string | null;
+      preferred_fuel_market?:
+        components["schemas"]["PreferredFuelMarketInput"] | null;
       /** Value Of Time Per Hour */
       value_of_time_per_hour: string | null;
     };
@@ -585,6 +602,10 @@ export interface components {
     UserPreferencesUpdateRequest: {
       /** Default Vehicle Id */
       default_vehicle_id?: string | null;
+      /** Electricity Price Per Kwh */
+      electricity_price_per_kwh?: number | string | null;
+      preferred_fuel_market?:
+        components["schemas"]["PreferredFuelMarketInput"] | null;
       /** Value Of Time Per Hour */
       value_of_time_per_hour?: number | string | null;
     };
@@ -639,9 +660,9 @@ export interface components {
       /**
        * Source
        * @default user_input
-       * @constant
+       * @enum {string}
        */
-      source: "user_input";
+      source: "user_input" | "user_preference";
     };
     /**
      * V2EnergyEstimateResponse

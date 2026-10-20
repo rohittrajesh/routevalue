@@ -22,7 +22,9 @@ from routevalue.application.profile_resolution import (
     ProfileResolutionService,
     ResolvedEvaluationProfile,
 )
-from routevalue.application.profile_trip_evaluation import EnergyInputMismatchError
+from routevalue.application.profile_trip_evaluation import (
+    ElectricityPriceNotConfiguredError,
+)
 from routevalue.application.saved_vehicles import SavedVehicle
 from routevalue.application.terrain_normalization import NormalizedTerrainProfile
 from routevalue.application.terrain_trip_evaluation import (
@@ -278,7 +280,7 @@ def test_bev_without_electricity_price_is_rejected() -> None:
         automatic_resolver=resolver,
     )
 
-    with pytest.raises(EnergyInputMismatchError):
+    with pytest.raises(ElectricityPriceNotConfiguredError):
         service.evaluate_trip(USER_ID, make_request())
 
     assert routes.calls == 0

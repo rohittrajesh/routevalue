@@ -18,6 +18,7 @@ import {
 
 import VehicleCatalogPicker from "./VehicleCatalogPicker";
 import VehicleMassEditor from "./VehicleMassEditor";
+import EnergyPreferencesEditor from "./EnergyPreferencesEditor";
 import "./PersonalizationDashboard.css";
 
 interface PersonalizationDashboardProps {
@@ -311,6 +312,23 @@ export default function PersonalizationDashboard({
           floating-point conversion.
         </p>
       </section>
+
+      <EnergyPreferencesEditor
+        key={JSON.stringify([
+          data.preferences.electricity_price_per_kwh,
+          data.preferences.preferred_fuel_market,
+        ])}
+        preferences={data.preferences}
+        busy={busy}
+        onSave={(changes, message) =>
+          performMutation(
+            "energy-preferences",
+            () => updateUserPreferences(changes),
+            message,
+            "Could not save your energy preferences. Please try again.",
+          )
+        }
+      />
 
       <section className="m9-section" aria-labelledby="m9-saved-vehicles-title">
         <div className="m9-section-heading">

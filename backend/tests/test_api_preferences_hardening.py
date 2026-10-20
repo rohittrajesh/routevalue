@@ -45,6 +45,8 @@ def test_preferences_patch_contract_contains_no_user_id() -> None:
     assert set(request_schema["properties"]) == {
         "value_of_time_per_hour",
         "default_vehicle_id",
+        "electricity_price_per_kwh",
+        "preferred_fuel_market",
     }
 
     assert "user_id" not in request_schema["properties"]

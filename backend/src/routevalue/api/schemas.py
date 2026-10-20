@@ -41,6 +41,7 @@ class ApiErrorCode(StrEnum):
     DEFAULT_VEHICLE_UNAVAILABLE = "default_vehicle_unavailable"
     UNSUPPORTED_VEHICLE_ENERGY_TYPE = "unsupported_vehicle_energy_type"
     ENERGY_INPUT_MISMATCH = "energy_input_mismatch"
+    ELECTRICITY_PRICE_NOT_CONFIGURED = "electricity_price_not_configured"
     PROFILE_SERVICE_UNAVAILABLE = "profile_service_unavailable"
     PROFILE_STATE_INVALID = "profile_state_invalid"
 
@@ -313,11 +314,22 @@ class TripEvaluationResponse(BaseModel):
     decision: DecisionResponse
 
 
+class PreferredFuelMarketInput(BaseModel):
+    """A purchasing area; the server resolves its trusted pricing geography."""
+
+    model_config = {"extra": "forbid", "str_strip_whitespace": True}
+    display_name: str = Field(min_length=1, max_length=200)
+    latitude: float = Field(ge=-90, le=90, strict=True, allow_inf_nan=False)
+    longitude: float = Field(ge=-180, le=180, strict=True, allow_inf_nan=False)
+
+
 class UserPreferencesResponse(BaseModel):
     """Public V2 representation of persisted user preferences."""
 
     value_of_time_per_hour: Decimal | None
     default_vehicle_id: UUID | None
+    electricity_price_per_kwh: Decimal | None = None
+    preferred_fuel_market: PreferredFuelMarketInput | None = None
 
 
 class UserPreferencesUpdateRequest(BaseModel):
@@ -329,6 +341,15 @@ class UserPreferencesUpdateRequest(BaseModel):
 
     value_of_time_per_hour: Decimal | None = None
     default_vehicle_id: UUID | None = None
+    electricity_price_per_kwh: Decimal | None = None
+    preferred_fuel_market: PreferredFuelMarketInput | None = None
+
+    @field_validator("electricity_price_per_kwh")
+    @classmethod
+    def electricity_price_is_finite_nonnegative(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and (not value.is_finite() or value < 0):
+            raise ValueError("electricity_price_per_kwh must be finite and nonnegative")
+        return value
 
     @field_validator("value_of_time_per_hour")
     @classmethod

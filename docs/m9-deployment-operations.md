@@ -4,6 +4,13 @@ This runbook prepares deployment; it does not authorize production configuration
 changes. V1 production and its `main` deployment remain unchanged. Commands run
 from this workspace's `backend` directory, not the older Desktop checkout.
 
+The current schema head is `a19d6e2c740b`, which also adds nullable saved electricity
+rate/fuel-market fields. The final M9 batch applied both additive migrations to
+the pinned V2 development branch and verified existing business data unchanged.
+Production migrations remain a separate M11 release step. See
+[architecture decisions](v2-architecture-decisions.md) and
+[M9 closure validation](m9-closure-validation.md).
+
 ## Shared terrain accounting
 
 Migration `f2b7c39a106d` adds `public.elevation_call_reservations` and an index. It
@@ -22,8 +29,8 @@ Before enabling shared mode in a target environment:
    procedures. The application role needs SELECT/INSERT/DELETE on the quota table.
 3. Apply `uv run --env-file /path/to/target.env alembic upgrade head`, then
    `uv run --env-file /path/to/target.env alembic check`. Never paste connection
-   strings into commands/logs. This batch applied migrations only to the two
-   designated disposable local test databases.
+   strings into commands/logs. Initial quota validation migrated only disposable
+   local databases; the final preference batch also migrated pinned V2 development.
 4. Configure the target privately:
 
    ```dotenv
@@ -52,7 +59,7 @@ may have committed before its acknowledgement was lost.
 
 For application rollback, disable live terrain or roll back code while leaving
 the quota table/revision intact. Existing EIA refresh CLIs recognize both the
-previous EIA schema and additive quota schema. Deleting quota history or changing
+previous EIA schema, additive quota schema and energy-preference schema. Deleting quota history or changing
 from shared to process mode mid-day requires review of the upstream allowance;
 it is not a recovery mechanism.
 

@@ -138,6 +138,8 @@ def test_authenticated_preferences_round_trip_through_postgres(
         assert initial.json() == {
             "value_of_time_per_hour": None,
             "default_vehicle_id": None,
+            "electricity_price_per_kwh": None,
+            "preferred_fuel_market": None,
         }
 
         updated = client.patch(
@@ -153,6 +155,8 @@ def test_authenticated_preferences_round_trip_through_postgres(
         assert updated.json() == {
             "value_of_time_per_hour": ("33.123456789"),
             "default_vehicle_id": (str(vehicle_id)),
+            "electricity_price_per_kwh": None,
+            "preferred_fuel_market": None,
         }
 
         reloaded = client.get("/api/v2/preferences")

@@ -165,7 +165,11 @@ export default function V2TripResults({
               <strong>
                 Electricity: {formatMoney(price.price_per_kilowatt_hour)}/kWh
               </strong>
-              <p>Your electricity rate supplied for this trip.</p>
+              <p>
+                {price.source === "user_preference"
+                  ? "Your saved electricity rate."
+                  : "Your electricity rate supplied for this trip."}
+              </p>
             </>
           )}
         </section>

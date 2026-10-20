@@ -62,6 +62,7 @@ def to_v2_trip_evaluation_response(
     *,
     terrain_status: V2TerrainStatusResponse | None = None,
     energy_price_quote: EnergyPriceQuote | None = None,
+    electricity_price_from_preferences: bool = False,
 ) -> V2TripEvaluationResponse:
     """Map V2 evaluation without changing physical-energy semantics."""
 
@@ -105,7 +106,8 @@ def to_v2_trip_evaluation_response(
             )
             if isinstance(energy_price_quote, GasolinePriceQuote)
             else V2ElectricityPriceResponse(
-                price_per_kilowatt_hour=energy_price_quote.price_per_kilowatt_hour
+                price_per_kilowatt_hour=energy_price_quote.price_per_kilowatt_hour,
+                source="user_preference" if electricity_price_from_preferences else "user_input",
             )
             if energy_price_quote is not None
             else None

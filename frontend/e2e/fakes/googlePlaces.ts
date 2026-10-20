@@ -18,6 +18,13 @@ export interface PlacesAutocompleteSession {
 }
 
 const locations: Record<string, ResolvedE2ELocation> = {
+  "e2e-raleigh": {
+    display_name: "Raleigh, NC",
+    latitude: 35.7796,
+    longitude: -78.6382,
+    source: "google_places",
+    source_id: "e2e-raleigh",
+  },
   "e2e-ucsd": {
     display_name: "UC San Diego, La Jolla, CA",
     latitude: 32.8801,
@@ -39,6 +46,10 @@ export async function createPlacesAutocompleteSession(): Promise<PlacesAutocompl
   return {
     async fetchSuggestions(input: string): Promise<PlaceSuggestion[]> {
       const normalizedInput = input.trim().toLowerCase();
+      if (normalizedInput.includes("raleigh"))
+        return [
+          { id: "e2e-raleigh", primaryText: "Raleigh", secondaryText: "NC" },
+        ];
 
       if (normalizedInput.includes("uc san")) {
         return [

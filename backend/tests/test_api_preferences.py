@@ -178,6 +178,8 @@ def test_get_preferences_returns_unset_state_for_new_user() -> None:
     assert response.json() == {
         "value_of_time_per_hour": None,
         "default_vehicle_id": None,
+        "electricity_price_per_kwh": None,
+        "preferred_fuel_market": None,
     }
 
     assert repository.get_requests == [user_id]
@@ -203,6 +205,8 @@ def test_patch_preferences_persists_exact_decimal() -> None:
     assert response.json() == {
         "value_of_time_per_hour": "37.125",
         "default_vehicle_id": None,
+        "electricity_price_per_kwh": None,
+        "preferred_fuel_market": None,
     }
 
     assert repository.save_requests == [
@@ -235,6 +239,8 @@ def test_patch_preferences_can_clear_value() -> None:
     assert response.json() == {
         "value_of_time_per_hour": None,
         "default_vehicle_id": None,
+        "electricity_price_per_kwh": None,
+        "preferred_fuel_market": None,
     }
 
 
@@ -267,6 +273,8 @@ def test_patch_preferences_can_set_owned_default_vehicle() -> None:
     assert response.json() == {
         "value_of_time_per_hour": None,
         "default_vehicle_id": (str(vehicle_id.value)),
+        "electricity_price_per_kwh": None,
+        "preferred_fuel_market": None,
     }
 
     assert repository.preferences[user_id].default_vehicle_id == vehicle_id
@@ -299,6 +307,8 @@ def test_patch_preferences_can_clear_default_vehicle() -> None:
     assert response.json() == {
         "value_of_time_per_hour": "25",
         "default_vehicle_id": None,
+        "electricity_price_per_kwh": None,
+        "preferred_fuel_market": None,
     }
 
 

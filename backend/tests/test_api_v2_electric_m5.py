@@ -326,14 +326,15 @@ def test_price_powertrain_mismatch_returns_409_before_routing(
 
 
 @pytest.mark.parametrize(
-    "body",
+    "body,expected_status",
     [
-        _body(),
-        _body(electricity="0.31", gasoline="4.50"),
+        (_body(), 409),
+        (_body(electricity="0.31", gasoline="4.50"), 422),
     ],
 )
-def test_missing_or_duplicate_price_returns_422(
+def test_missing_saved_rate_and_duplicate_prices_are_rejected(
     body: dict[str, object],
+    expected_status: int,
 ) -> None:
     app, routes = _app(_bev())
 
@@ -343,7 +344,9 @@ def test_missing_or_duplicate_price_returns_422(
             json=body,
         )
 
-    assert response.status_code == 422
+    assert response.status_code == expected_status
+    if expected_status == 409:
+        assert response.json()["code"] == "electricity_price_not_configured"
     assert routes.calls == 0
 
 

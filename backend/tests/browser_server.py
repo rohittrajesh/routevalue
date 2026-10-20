@@ -197,7 +197,14 @@ class BrowserElevation:
 
 class BrowserJurisdiction:
     def resolve(self, location: ResolvedLocation) -> PricingJurisdictionResult:
-        return PricingJurisdictionResult(jurisdiction=PricingJurisdiction.CALIFORNIA)
+        # Controlled fixture geography for the CA-origin/NC-market browser case.
+        return PricingJurisdictionResult(
+            jurisdiction=(
+                PricingJurisdiction.CALIFORNIA
+                if location.longitude < -114
+                else PricingJurisdiction.OTHER_US
+            )
+        )
 
 
 class BrowserPrices:
@@ -208,7 +215,9 @@ class BrowserPrices:
         if self.missing:
             return None
         return GasolinePriceQuote(
-            price_per_gallon=Decimal("4.125"),
+            price_per_gallon=Decimal("4.125")
+            if request.geography.region_id == "SCA"
+            else Decimal("3.125"),
             fuel_grade=request.fuel_grade,
             source=GasolinePriceSource.REGIONAL_MARKET,
             observed_at=datetime(2026, 10, 19, tzinfo=UTC),

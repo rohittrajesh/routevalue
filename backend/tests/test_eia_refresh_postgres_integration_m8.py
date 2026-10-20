@@ -98,7 +98,7 @@ def database_engine() -> Iterator[Engine]:
                 text("SELECT version_num FROM public.alembic_version")
             ).scalar_one()
 
-            assert version == "f2b7c39a106d"
+            assert version == "a19d6e2c740b"
 
         clean()
         yield engine

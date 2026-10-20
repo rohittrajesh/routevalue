@@ -30,6 +30,8 @@ export function buildV2TripRequest(
 
   if (inputs.vehicle.specification.powertrain === "bev") {
     const price = inputs.electricityPrice.trim();
+    // No trip value means the server must resolve the authenticated saved rate.
+    if (price === "") return base;
     if (!isValidNonnegativeDecimal(price)) {
       throw new Error("Enter a valid non-negative electricity price per kWh.");
     }

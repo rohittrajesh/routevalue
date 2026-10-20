@@ -120,8 +120,8 @@ describe("buildV2TripRequest", () => {
         gasolinePrice: "-1",
       }),
     ).toThrow("gasoline price");
-    expect(() =>
-      buildV2TripRequest({ ...common, vehicle: electricVehicle }),
-    ).toThrow("electricity price");
+    expect(buildV2TripRequest({ ...common, vehicle: electricVehicle })).toEqual(
+      { origin, destination, saved_vehicle_id: electricVehicle.id },
+    );
   });
 });

@@ -103,6 +103,65 @@ async function selectLocations(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("V2TripPlanner", () => {
+  it("uses a persisted zero EV rate without sending browser economic inputs", async () => {
+    const user = userEvent.setup();
+    render(
+      <V2TripPlanner
+        vehicles={[electricVehicle]}
+        preferences={{
+          ...preferences,
+          default_vehicle_id: electricVehicle.id,
+          electricity_price_per_kwh: "0",
+        }}
+      />,
+    );
+    await selectLocations(user);
+    expect(
+      screen.getByRole("radio", { name: "Use saved electricity rate" }),
+    ).toBeChecked();
+    expect(
+      screen.queryByRole("textbox", { name: /Electricity price/ }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Compare routes" }));
+    await waitFor(() =>
+      expect(evaluateMock).toHaveBeenCalledWith({
+        origin,
+        destination,
+        saved_vehicle_id: electricVehicle.id,
+      }),
+    );
+  });
+
+  it("invalidates a result when saved energy preferences change without losing locations", async () => {
+    const user = userEvent.setup();
+    const saved = {
+      ...preferences,
+      default_vehicle_id: electricVehicle.id,
+      electricity_price_per_kwh: "0.25",
+    };
+    const { rerender } = render(
+      <V2TripPlanner vehicles={[electricVehicle]} preferences={saved} />,
+    );
+    await selectLocations(user);
+    await user.click(screen.getByRole("button", { name: "Compare routes" }));
+    await screen.findByRole("heading", { name: "Your route comparison" });
+    rerender(
+      <V2TripPlanner
+        vehicles={[electricVehicle]}
+        preferences={{ ...saved, electricity_price_per_kwh: null }}
+      />,
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Your route comparison" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Compare routes" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Save your electricity rate in Personal settings/),
+    ).toBeVisible();
+  });
+
   it("discards an in-flight response when saved personalization changes", async () => {
     let complete!: (value: unknown) => void;
     evaluateMock.mockReturnValueOnce(
@@ -201,7 +260,7 @@ describe("V2TripPlanner", () => {
     });
   });
 
-  it("requires electricity pricing when BEV is selected", async () => {
+  it("requires a saved electricity rate or an explicit trip override for a BEV", async () => {
     const user = userEvent.setup();
     render(
       <V2TripPlanner
@@ -220,6 +279,9 @@ describe("V2TripPlanner", () => {
     expect(
       screen.getByRole("button", { name: "Compare routes" }),
     ).toBeDisabled();
+    await user.click(
+      screen.getByRole("radio", { name: "Enter a rate for this trip" }),
+    );
     await user.type(
       screen.getByRole("textbox", { name: /Electricity price/ }),
       "0.275",

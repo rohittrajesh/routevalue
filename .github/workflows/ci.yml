@@ -144,7 +144,7 @@ jobs:
                       ).scalar_one()
 
                   assert name == expected_name
-                  assert revision == "f2b7c39a106d"
+                  assert revision == "a19d6e2c740b"
 
                   print(f"{label}: database and revision verified")
               finally:

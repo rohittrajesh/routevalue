@@ -133,6 +133,8 @@ def test_authenticated_profile_and_preferences_flow_persists_for_resolved_user(
             assert initial.json() == {
                 "value_of_time_per_hour": None,
                 "default_vehicle_id": None,
+                "electricity_price_per_kwh": None,
+                "preferred_fuel_market": None,
             }
 
             with postgres_engine.connect() as connection:
@@ -164,6 +166,8 @@ def test_authenticated_profile_and_preferences_flow_persists_for_resolved_user(
             assert updated.json() == {
                 "value_of_time_per_hour": ("41.375"),
                 "default_vehicle_id": (str(vehicle_id)),
+                "electricity_price_per_kwh": None,
+                "preferred_fuel_market": None,
             }
 
             reloaded = client.get(

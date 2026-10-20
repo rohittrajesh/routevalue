@@ -1,0 +1,17 @@
+{
+  "target": "pinned V2 development branch only",
+  "before_revision": "e8a1d4c209bf",
+  "after_revision": "a19d6e2c740b",
+  "existing_business_data_unchanged": true,
+  "tables_checked": [
+    "users",
+    "auth_identities",
+    "saved_vehicles",
+    "user_preferences",
+    "eia_pricing_snapshots",
+    "eia_pricing_observations"
+  ],
+  "schema_consistent": true,
+  "production_modified": false,
+  "no_user_preference_values_assumed": true
+}

@@ -635,6 +635,21 @@ Inputs are supplied per evaluation.
 
 ---
 
+## V2 development workflow
+
+V2 development remains on branch `v2`; the production V1 deployment stays on `main`.
+The `/v2` workflow includes real Neon email/password authentication, saved gasoline
+and EV vehicles, default vehicle/value-of-time settings, optional manual curb
+weight, saved electricity rates, preferred fuel markets, automatic EIA regional
+gasoline pricing, manual trip overrides and guarded terrain/baseline explanations.
+
+The [architecture decision record](docs/v2-architecture-decisions.md) reconciles
+the original provider plans with implemented behavior. Google Elevation, Places
+station fuel-price acquisition and Google OAuth are explicitly not delivered by
+the current workflow. See [M9 closure validation](docs/m9-closure-validation.md)
+and [deployment operations](docs/m9-deployment-operations.md) for tests and remaining
+M10/M11 release work. M9 completion does not mean V2 is deployed to production.
+
 ## Roadmap
 
 Potential post-V1 work includes:

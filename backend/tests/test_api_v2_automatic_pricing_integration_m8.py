@@ -457,7 +457,7 @@ def test_bev_without_electricity_rejected_before_routing() -> None:
         response = client.post(_PATH, json=make_body())
 
     assert response.status_code == 409
-    assert response.json()["code"] == "energy_input_mismatch"
+    assert response.json()["code"] == "electricity_price_not_configured"
     assert routes.calls == []
     assert reader.reads == []
     assert resolver.calls == []
