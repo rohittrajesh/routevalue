@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from math import isfinite
 from threading import Lock
 from time import monotonic, sleep
+from typing import Protocol
 
 from routevalue.application.terrain import ElevationSample
 from routevalue.application.terrain_batching import (
@@ -54,8 +55,8 @@ class PublicElevationPolicy:
             self.max_requests_per_trip, int
         ):
             raise TypeError("max_requests_per_trip must be an integer")
-        if not 1 <= self.max_requests_per_trip <= 5:
-            raise ValueError("max_requests_per_trip must be between 1 and 5")
+        if not 1 <= self.max_requests_per_trip <= 6:
+            raise ValueError("max_requests_per_trip must be between 1 and 6")
         if isinstance(self.max_requests_per_24_hours, bool) or not isinstance(
             self.max_requests_per_24_hours, int
         ):
@@ -146,9 +147,9 @@ class PublicElevationCallGate:
 
 
 class GuardedElevationTripProvider:
-    """Apply one trip's five-call limit before invoking the real provider."""
+    """Apply one trip's bounded allowance before invoking the real provider."""
 
-    def __init__(self, *, delegate: ElevationProvider, gate: PublicElevationCallGate) -> None:
+    def __init__(self, *, delegate: ElevationProvider, gate: "ElevationCallGate") -> None:
         self._delegate = delegate
         self._gate = gate
         self._calls = 0
@@ -182,3 +183,14 @@ class GuardedElevationTripProvider:
             self._calls += 1
 
         return self._delegate.get_elevations(plan.batches[0])
+
+
+class ElevationCallGate(Protocol):
+    """Infrastructure gate shared by process-local and durable compositions."""
+
+    @property
+    def policy(self) -> PublicElevationPolicy: ...
+
+    def reserve(self) -> None: ...
+
+    def new_trip(self, delegate: ElevationProvider) -> GuardedElevationTripProvider: ...

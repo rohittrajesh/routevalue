@@ -37,7 +37,12 @@ _MAXIMUM_MASS_KG = Decimal(6500)
 
 
 class VehicleMassUpdateRequest(BaseModel):
-    """Set or clear a user-reported curb weight."""
+    """Set or clear optional, user-entered curb weight.
+
+    No automatic weight lookup is performed. Non-null weight requires a
+    unit and source reference and is recorded with user_provided provenance.
+    Send weight=null alone to clear it; baseline evaluation remains available.
+    """
 
     model_config = ConfigDict(extra="forbid")
 

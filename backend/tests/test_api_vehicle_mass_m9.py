@@ -124,6 +124,13 @@ def test_mass_conversion_preserves_decimal_precision() -> None:
         {"weight": None, "unit": "lb"},
         {"weight": None, "source_reference": "manual"},
         {"weight": "3000", "unit": "lb", "source_reference": "manual", "mpg": 999},
+        {
+            "weight": "3000",
+            "unit": "lb",
+            "source_reference": "manual",
+            "source": "manufacturer_curb_weight",
+        },
+        {"weight": "3000", "unit": "lb", "source_reference": "manual", "auto_resolve": True},
     ],
 )
 def test_invalid_mass_requests_are_rejected(
@@ -271,3 +278,44 @@ def test_persistence_update_filters_by_vehicle_and_owner() -> None:
     assert mass.source.value in parameters.values()
 
     engine.begin.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "source", [VehicleMassSource.MANUFACTURER_CURB_WEIGHT, VehicleMassSource.EPA_TEST_WEIGHT]
+)
+def test_owner_service_rejects_automatic_provenance(source: VehicleMassSource) -> None:
+    user = UserId(value=uuid4())
+    vehicle = _vehicle()
+    repository = MemoryVehicleMassRepository(user, vehicle)
+    service = UserVehicleMassService(repository=repository)
+
+    with pytest.raises(ValueError, match="user-provided mass"):
+        service.update_mass(
+            user,
+            vehicle.id,
+            VehicleMass(kilograms=Decimal(1800), source=source, source_reference="Fixture"),
+        )
+    assert repository.vehicle == vehicle
+
+
+def test_owner_service_requires_provenance_reference() -> None:
+    user = UserId(value=uuid4())
+    vehicle = _vehicle()
+    repository = MemoryVehicleMassRepository(user, vehicle)
+    with pytest.raises(ValueError, match="source reference"):
+        UserVehicleMassService(repository=repository).update_mass(
+            user,
+            vehicle.id,
+            VehicleMass(kilograms=Decimal(1800), source=VehicleMassSource.USER_PROVIDED),
+        )
+    assert repository.vehicle == vehicle
+
+
+def test_openapi_exposes_only_manual_mass_update() -> None:
+    schema = create_app().openapi()
+    mass_paths = {path for path in schema["paths"] if "mass" in path or "weight" in path}
+    assert mass_paths == {"/api/v2/vehicles/{vehicle_id}/mass"}
+    assert set(schema["paths"][mass_paths.pop()]) == {"patch"}
+    request = schema["components"]["schemas"]["VehicleMassUpdateRequest"]
+    assert request["additionalProperties"] is False
+    assert set(request["properties"]) == {"weight", "unit", "source_reference"}

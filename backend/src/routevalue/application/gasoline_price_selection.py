@@ -1,5 +1,6 @@
 """Deterministic selection of a usable gasoline price quote."""
 
+from collections.abc import Callable
 from datetime import datetime
 
 from routevalue.application.gasoline_price_failures import (
@@ -18,6 +19,8 @@ from routevalue.domain.models import (
     GasolinePriceSource,
 )
 
+type GasolinePriceFreshnessPolicy = Callable[[GasolinePriceQuote, datetime], bool]
+
 
 def select_gasoline_price_quote(
     *,
@@ -26,6 +29,7 @@ def select_gasoline_price_quote(
     as_of: datetime,
     user_override: GasolinePriceQuote | None = None,
     market_quote: GasolinePriceQuote | None = None,
+    freshness_policy: GasolinePriceFreshnessPolicy | None = None,
 ) -> GasolinePriceQuote:
     """Select one validated price without external lookups.
 
@@ -84,10 +88,12 @@ def select_gasoline_price_quote(
     if metadata.geography != geography:
         raise GasolinePriceUnavailableError(GasolinePriceUnavailableReason.GEOGRAPHY_MISMATCH)
 
-    if not is_fuel_price_quote_fresh(
-        market_quote,
-        as_of=as_of,
-    ):
+    fresh = (
+        freshness_policy(market_quote, as_of)
+        if freshness_policy is not None
+        else is_fuel_price_quote_fresh(market_quote, as_of=as_of)
+    )
+    if not fresh:
         raise GasolinePriceUnavailableError(GasolinePriceUnavailableReason.PRICE_STALE)
 
     return market_quote

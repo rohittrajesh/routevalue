@@ -4,8 +4,10 @@ from routevalue.api.mappers import to_trip_evaluation_response
 from routevalue.api.terrain_status import V2TerrainStatusResponse
 from routevalue.api.v2_evaluation_schemas import (
     V2ElectricConsumptionResponse,
+    V2ElectricityPriceResponse,
     V2EnergyEstimateResponse,
     V2GasolineConsumptionResponse,
+    V2GasolinePriceResponse,
     V2RouteEvaluationResponse,
     V2TripEvaluationResponse,
 )
@@ -13,7 +15,9 @@ from routevalue.application.models import TripEvaluationResult
 from routevalue.domain.models import (
     ElectricConsumption,
     EnergyEstimate,
+    EnergyPriceQuote,
     GasolineConsumption,
+    GasolinePriceQuote,
 )
 
 
@@ -57,6 +61,7 @@ def to_v2_trip_evaluation_response(
     result: TripEvaluationResult,
     *,
     terrain_status: V2TerrainStatusResponse | None = None,
+    energy_price_quote: EnergyPriceQuote | None = None,
 ) -> V2TripEvaluationResponse:
     """Map V2 evaluation without changing physical-energy semantics."""
 
@@ -81,4 +86,28 @@ def to_v2_trip_evaluation_response(
         route_evaluations=evaluations,
         decision=common_response.decision,
         terrain_status=terrain_status,
+        energy_price=(
+            V2GasolinePriceResponse(
+                price_per_gallon=energy_price_quote.price_per_gallon,
+                fuel_grade=energy_price_quote.fuel_grade,
+                source=energy_price_quote.source,
+                observed_at=energy_price_quote.observed_at,
+                provider=(
+                    energy_price_quote.market_metadata.provider
+                    if energy_price_quote.market_metadata
+                    else None
+                ),
+                geography=(
+                    energy_price_quote.market_metadata.geography.display_name
+                    if energy_price_quote.market_metadata
+                    else None
+                ),
+            )
+            if isinstance(energy_price_quote, GasolinePriceQuote)
+            else V2ElectricityPriceResponse(
+                price_per_kilowatt_hour=energy_price_quote.price_per_kilowatt_hour
+            )
+            if energy_price_quote is not None
+            else None
+        ),
     )

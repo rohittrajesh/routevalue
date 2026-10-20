@@ -16,6 +16,7 @@ from routevalue.domain.models import GasolineGrade, GasolinePriceQuote
 from routevalue.infrastructure.pricing.eia_reference_resolution import (
     resolve_eia_pricing_geography,
 )
+from routevalue.infrastructure.pricing.eia_release_policy import is_eia_weekly_quote_fresh
 
 
 def resolve_persisted_eia_gasoline_price(
@@ -49,4 +50,5 @@ def resolve_persisted_eia_gasoline_price(
         fuel_grade=fuel_grade,
         plan=geography.fallback_plan,
         as_of=as_of,
+        freshness_policy=is_eia_weekly_quote_fresh,
     )

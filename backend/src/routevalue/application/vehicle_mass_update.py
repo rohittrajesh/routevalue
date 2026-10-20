@@ -5,7 +5,7 @@ from typing import Protocol
 
 from routevalue.application.saved_vehicles import SavedVehicle
 from routevalue.domain.identity import SavedVehicleId, UserId
-from routevalue.domain.vehicle_mass import VehicleMass
+from routevalue.domain.vehicle_mass import VehicleMass, VehicleMassSource
 
 
 class VehicleMassWriteRepository(Protocol):
@@ -34,6 +34,11 @@ class UserVehicleMassService:
         mass: VehicleMass | None,
     ) -> SavedVehicle | None:
         """Update mass using the authenticated ownership boundary."""
+
+        if mass is not None and (
+            mass.source is not VehicleMassSource.USER_PROVIDED or mass.source_reference is None
+        ):
+            raise ValueError("V2 mass updates require user-provided mass and a source reference")
 
         return self.repository.update_vehicle_mass(
             user_id,

@@ -15,8 +15,8 @@ from routevalue.domain.units import MoneyPerGallon, MoneyPerKilowattHour
 class TerrainV2EvaluationService:
     """Expose the established V2 evaluation contract using terrain internally.
 
-    Preserve the existing HTTP response model. Terrain diagnostics are
-    intentionally not exposed through this compatibility adapter yet.
+    The HTTP endpoint uses evaluate_trip_with_diagnostics to expose the
+    actual acquisition and energy decisions in the V2 response.
 
     Terrain acquisition remains disabled unless an explicitly configured
     application service supplies a guarded acquisition dependency.

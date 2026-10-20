@@ -1,4 +1,3 @@
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { updateSavedVehicleMass } from "./v2Resources";
@@ -35,18 +34,15 @@ describe("authenticated vehicle mass client", () => {
       source_reference: "Owner's manual",
     });
 
-    expect(requestMock).toHaveBeenCalledWith(
-      `/vehicles/${VEHICLE_ID}/mass`,
-      {
-        token: "valid-jwt",
-        method: "PATCH",
-        body: {
-          weight: "3900.125",
-          unit: "lb",
-          source_reference: "Owner's manual",
-        },
+    expect(requestMock).toHaveBeenCalledWith(`/vehicles/${VEHICLE_ID}/mass`, {
+      token: "valid-jwt",
+      method: "PATCH",
+      body: {
+        weight: "3900.125",
+        unit: "lb",
+        source_reference: "Owner's manual",
       },
-    );
+    });
   });
 
   it("allows clearing mass", async () => {
@@ -54,14 +50,11 @@ describe("authenticated vehicle mass client", () => {
 
     await updateSavedVehicleMass(VEHICLE_ID, { weight: null });
 
-    expect(requestMock).toHaveBeenCalledWith(
-      `/vehicles/${VEHICLE_ID}/mass`,
-      {
-        token: "valid-jwt",
-        method: "PATCH",
-        body: { weight: null },
-      },
-    );
+    expect(requestMock).toHaveBeenCalledWith(`/vehicles/${VEHICLE_ID}/mass`, {
+      token: "valid-jwt",
+      method: "PATCH",
+      body: { weight: null },
+    });
   });
 
   it("rejects an invalid vehicle identifier", async () => {

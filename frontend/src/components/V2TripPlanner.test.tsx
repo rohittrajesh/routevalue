@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -103,6 +103,45 @@ async function selectLocations(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("V2TripPlanner", () => {
+  it("discards an in-flight response when saved personalization changes", async () => {
+    let complete!: (value: unknown) => void;
+    evaluateMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <V2TripPlanner vehicles={[gasolineVehicle]} preferences={preferences} />,
+    );
+    await selectLocations(user);
+    await user.click(screen.getByRole("button", { name: "Compare routes" }));
+    rerender(
+      <V2TripPlanner
+        vehicles={[gasolineVehicle]}
+        preferences={{ ...preferences, value_of_time_per_hour: "35" }}
+      />,
+    );
+    await act(async () =>
+      complete({
+        route_evaluations: [],
+        decision: {
+          recommended_route: null,
+          reason: null,
+          numerical_tie: false,
+          missing_data_present: false,
+          candidate_count: 0,
+          eligible_count: 0,
+        },
+      }),
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Your route comparison" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Compare routes" }),
+    ).toBeEnabled();
+  });
   it("requires saved personalization and both locations", async () => {
     const user = userEvent.setup();
     render(

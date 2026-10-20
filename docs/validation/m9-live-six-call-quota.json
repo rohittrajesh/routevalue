@@ -1,0 +1,109 @@
+{
+  "kind": "live_provider_validation_with_local_durable_quota",
+  "diagnostic_inputs": {
+    "mass_kg": "1800",
+    "mpg": "30",
+    "kwh_per_mile": "0.30",
+    "gas_price": "4.50",
+    "electricity_price": "0.25",
+    "value_of_time": "24"
+  },
+  "cases": [
+    {
+      "name": "San Diego\u2013Julian",
+      "routes": 3,
+      "geometry_points": [
+        6478,
+        5815,
+        6588
+      ],
+      "distances_meters": [
+        97417,
+        92481,
+        103837
+      ],
+      "acquisition_reasons": [
+        null,
+        null,
+        null
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        "costs": [
+          "12.45635354594609357100364770",
+          "12.07290844356204626250766901",
+          "13.02440805126639507068896450"
+        ],
+        "baseline_costs": [
+          "9.079817615127654497733237890",
+          "8.619754384395132426628489620",
+          "9.678198073252207110474827012"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        "costs": [
+          "7.408314295809753240123263038",
+          "7.104795930654607785850536290",
+          "7.608340970321488261559215588"
+        ],
+        "baseline_costs": [
+          "4.539908807563827248866618945",
+          "4.309877192197566213314244810",
+          "4.839099036626103555237413505"
+        ]
+      },
+      "result": "evaluated"
+    }
+  ],
+  "quota": {
+    "mode": "postgres",
+    "requests_per_trip": 6,
+    "daily_ceiling": 900,
+    "minimum_interval_seconds": 1.1,
+    "database_writes": "local disposable quota timestamps only",
+    "committed_attempts": 6
+  },
+  "neon_jwks": {
+    "http_status": 200,
+    "public_keys": 1
+  },
+  "development_database": {
+    "revision": "e8a1d4c209bf",
+    "pricing_snapshots": 2,
+    "read_only": true
+  },
+  "live_eia_quote": {
+    "source": "regional_market",
+    "price": "6.104",
+    "observed_at": "2026-10-12T00:00:00+00:00",
+    "provider": "EIA"
+  },
+  "limitations": "Google returned three candidates in this run, each using two elevation calls. This validates six committed attempts and terrain application, not reproduction of the prior six-candidate response or universal coverage."
+}

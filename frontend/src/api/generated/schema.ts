@@ -364,6 +364,12 @@ export interface components {
       cost: string;
     };
     /**
+     * GasolineGrade
+     * @description Gasoline grade required by a gasoline vehicle.
+     * @enum {string}
+     */
+    GasolineGrade: "regular" | "midgrade" | "premium";
+    /**
      * GasolineGradeInput
      * @description Gasoline grades accepted by the public V1 API.
      * @enum {string}
@@ -380,6 +386,12 @@ export interface components {
       /** Fuel Price Per Gallon */
       fuel_price_per_gallon: number | string;
     };
+    /**
+     * GasolinePriceSource
+     * @description Source category for a gasoline price.
+     * @enum {string}
+     */
+    GasolinePriceSource: "user_override" | "local_market" | "regional_market";
     /**
      * GasolineSavedVehicleSpecificationResponse
      * @description Persisted gasoline energy specification.
@@ -525,6 +537,7 @@ export interface components {
        * Format: date-time
        */
       specification_retrieved_at: string;
+      /** @description Optional vehicle mass. New V2 vehicles have no mass until the owner enters curb weight through the mass endpoint. Historical provenance is preserved. */
       vehicle_mass?: components["schemas"]["VehicleMassResponse"] | null;
       /** Year */
       year: number;
@@ -612,6 +625,25 @@ export interface components {
       price_per_kilowatt_hour: number | string;
     };
     /**
+     * V2ElectricityPriceResponse
+     * @description The explicit electricity rate used for this trip.
+     */
+    V2ElectricityPriceResponse: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      energy_type: "electricity";
+      /** Price Per Kilowatt Hour */
+      price_per_kilowatt_hour: string;
+      /**
+       * Source
+       * @default user_input
+       * @constant
+       */
+      source: "user_input";
+    };
+    /**
      * V2EnergyEstimateResponse
      * @description Route energy cost and optional typed physical consumption.
      */
@@ -646,6 +678,27 @@ export interface components {
     V2GasolineInputs: {
       /** Fuel Price Per Gallon */
       fuel_price_per_gallon: number | string;
+    };
+    /**
+     * V2GasolinePriceResponse
+     * @description The actual trip-wide quote; missing provenance is never inferred.
+     */
+    V2GasolinePriceResponse: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      energy_type: "gasoline";
+      fuel_grade: components["schemas"]["GasolineGrade"];
+      /** Geography */
+      geography: string | null;
+      /** Observed At */
+      observed_at: string | null;
+      /** Price Per Gallon */
+      price_per_gallon: string;
+      /** Provider */
+      provider: string | null;
+      source: components["schemas"]["GasolinePriceSource"];
     };
     /**
      * V2RouteEvaluationResponse
@@ -715,6 +768,13 @@ export interface components {
      */
     V2TripEvaluationResponse: {
       decision: components["schemas"]["DecisionResponse"];
+      /** Energy Price */
+      energy_price?:
+        | (
+            | components["schemas"]["V2GasolinePriceResponse"]
+            | components["schemas"]["V2ElectricityPriceResponse"]
+          )
+        | null;
       /** Route Evaluations */
       route_evaluations: components["schemas"]["V2RouteEvaluationResponse"][];
       terrain_status?: components["schemas"]["V2TerrainStatusResponse"] | null;
@@ -779,14 +839,21 @@ export interface components {
     };
     /**
      * VehicleMassSource
-     * @description Provenance of a vehicle mass observation.
+     * @description Stored provenance, including historical records.
+     *
+     *     V2 owner updates always use USER_PROVIDED. The other values remain
+     *     readable for existing snapshots; they do not enable automatic lookup.
      * @enum {string}
      */
     VehicleMassSource:
       "manufacturer_curb_weight" | "epa_test_weight" | "user_provided";
     /**
      * VehicleMassUpdateRequest
-     * @description Set or clear a user-reported curb weight.
+     * @description Set or clear optional, user-entered curb weight.
+     *
+     *     No automatic weight lookup is performed. Non-null weight requires a
+     *     unit and source reference and is recorded with user_provided provenance.
+     *     Send weight=null alone to clear it; baseline evaluation remains available.
      */
     VehicleMassUpdateRequest: {
       /** Source Reference */

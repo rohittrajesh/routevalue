@@ -1,4 +1,3 @@
-
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -56,6 +55,13 @@ describe("VehicleMassEditor", () => {
     expect(
       screen.getByRole("button", { name: "Add vehicle weight" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Curb weight is optional and entered by you/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /lookup|automatic|resolve/i }),
+    ).not.toBeInTheDocument();
+    expect(updateMassMock).not.toHaveBeenCalled();
   });
 
   it("saves weight and source without floating-point conversion", async () => {
@@ -149,9 +155,7 @@ describe("VehicleMassEditor", () => {
 
     expect(updateMassMock).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole("button", { name: "Confirm clear" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Confirm clear" }));
 
     await waitFor(() => {
       expect(updateMassMock).toHaveBeenCalledWith(vehicle.id, {
@@ -160,5 +164,49 @@ describe("VehicleMassEditor", () => {
     });
 
     await waitFor(() => expect(onUpdated).toHaveBeenCalled());
+  });
+
+  it("updates an existing weight in kilograms with user provenance", async () => {
+    const user = userEvent.setup();
+    render(
+      <VehicleMassEditor
+        vehicle={{
+          ...vehicle,
+          vehicle_mass: {
+            kilograms: "1800",
+            source: "user_provided",
+            source_reference: "Original note",
+          },
+        }}
+        disabled={false}
+        onUpdated={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByText(/User-provided curb weight · Original note/),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Update vehicle weight" }),
+    );
+    await user.type(screen.getByLabelText("Curb weight"), "1950.125");
+    await user.selectOptions(screen.getByLabelText("Unit"), "kg");
+    await user.type(
+      screen.getByLabelText("Weight source"),
+      "Updated owner entry",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Save vehicle weight" }),
+    );
+    await waitFor(() =>
+      expect(updateMassMock).toHaveBeenCalledWith(vehicle.id, {
+        weight: "1950.125",
+        unit: "kg",
+        source_reference: "Updated owner entry",
+      }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Vehicle mass saved.",
+    );
   });
 });

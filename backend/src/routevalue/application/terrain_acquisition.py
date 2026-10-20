@@ -1,8 +1,9 @@
 """Acquire provider-neutral terrain profiles without affecting trip decisions."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import replace
 
-from routevalue.application.models import ProvidedRoute
+from routevalue.application.models import ProvidedRoute, RouteGeometry
 from routevalue.application.terrain import (
     ElevationSample,
     GeometryFidelity,
@@ -10,7 +11,7 @@ from routevalue.application.terrain import (
     TerrainProfile,
     TerrainUnavailableReason,
 )
-from routevalue.application.terrain_batching import plan_elevation_batches
+from routevalue.application.terrain_batching import MAX_ELEVATION_BATCH_SIZE, plan_elevation_batches
 from routevalue.application.terrain_ports import (
     ElevationProvider,
     ElevationProviderError,
@@ -20,6 +21,7 @@ from routevalue.application.terrain_ports import (
     ElevationProviderUnavailableError,
 )
 from routevalue.application.terrain_sampling import (
+    MAX_TERRAIN_SAMPLES_PER_ROUTE,
     TerrainSampleLocation,
     sample_route_geometry,
 )
@@ -71,6 +73,8 @@ class TerrainAcquisitionService:
         elevation_provider: ElevationProvider,
         enabled: bool = False,
         geometry_fidelity: GeometryFidelity = GeometryFidelity.UNKNOWN,
+        elevation_provider_factory: Callable[[], ElevationProvider] | None = None,
+        trip_request_budget: int | None = None,
     ) -> None:
         if not isinstance(enabled, bool):
             raise TypeError("enabled must be a boolean")
@@ -79,6 +83,14 @@ class TerrainAcquisitionService:
         self._elevation_provider = elevation_provider
         self._enabled = enabled
         self._geometry_fidelity = geometry_fidelity
+        self._elevation_provider_factory = elevation_provider_factory
+        if trip_request_budget is not None and (
+            isinstance(trip_request_budget, bool)
+            or not isinstance(trip_request_budget, int)
+            or trip_request_budget < 1
+        ):
+            raise ValueError("trip request budget must be a positive integer")
+        self._trip_request_budget = trip_request_budget
 
     def acquire_routes(
         self,
@@ -103,11 +115,38 @@ class TerrainAcquisitionService:
 
         results: list[TerrainAcquisitionResult] = []
         quota_exhausted = False
+        unique_shapes = {
+            (item.route.distance_meters, item.geometry)
+            for item in provided_routes
+            if item.geometry is not None and item.route.distance_meters > 0
+        }
+        max_samples = MAX_TERRAIN_SAMPLES_PER_ROUTE
+        if self._trip_request_budget is not None and unique_shapes:
+            # The existing sampler increases spacing under a hard sample cap.
+            # Give every distinct geometry the same bounded request allowance;
+            # never spend the entire trip budget on the first long candidate.
+            batches_per_shape = max(1, self._trip_request_budget // len(unique_shapes))
+            max_samples = min(max_samples, batches_per_shape * MAX_ELEVATION_BATCH_SIZE)
+        acquired_shapes: dict[tuple[int, RouteGeometry | None], TerrainAcquisitionResult] = {}
+        # A service may be reused by diagnostics or a future composition layer.
+        # Reset only the trip allowance; the shared daily gate remains intact.
+        provider = (
+            self._elevation_provider_factory()
+            if self._elevation_provider_factory is not None
+            else self._elevation_provider
+        )
 
         for index, provided in enumerate(provided_routes):
+            shape = (provided.route.distance_meters, provided.geometry)
+            if self._trip_request_budget is not None and shape in acquired_shapes:
+                # Same geometry/distance, different traffic time or toll facts:
+                # reuse only terrain and preserve every original candidate index.
+                results.append(replace(acquired_shapes[shape], route_index=index))
+                continue
             sampling = sample_route_geometry(
                 provided.geometry,
                 route_distance_meters=provided.route.distance_meters,
+                max_samples=max_samples,
             )
             if sampling.unavailable_reason is not None:
                 results.append(
@@ -133,7 +172,7 @@ class TerrainAcquisitionService:
 
             for batch_index, batch in enumerate(plan.batches):
                 try:
-                    observations = tuple(self._elevation_provider.get_elevations(batch))
+                    observations = tuple(provider.get_elevations(batch))
                     _validate_observations(observations, batch)
                 except ElevationProviderQuotaError:
                     failure = TerrainUnavailableReason.REQUEST_BUDGET_EXCEEDED
@@ -172,5 +211,7 @@ class TerrainAcquisitionService:
                         unavailable_reason=failure or TerrainUnavailableReason.NO_ELEVATION_DATA,
                     )
                 )
+            if self._trip_request_budget is not None:
+                acquired_shapes[shape] = results[-1]
 
         return tuple(results)

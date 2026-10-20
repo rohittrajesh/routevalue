@@ -1,4 +1,3 @@
-
 import { useState, type FormEvent } from "react";
 
 import {
@@ -46,9 +45,7 @@ function sourceDescription(vehicle: SavedVehicle): string | null {
         ? "EPA test-weight data"
         : "User-provided curb weight";
 
-  return mass.source_reference
-    ? `${kind} · ${mass.source_reference}`
-    : kind;
+  return mass.source_reference ? `${kind} · ${mass.source_reference}` : kind;
 }
 
 export default function VehicleMassEditor({
@@ -141,6 +138,10 @@ export default function VehicleMassEditor({
   return (
     <div className="m9-mass-editor">
       <p className="m9-mass-value">{massDescription(vehicle)}</p>
+      <p className="m9-mass-help">
+        Curb weight is optional and entered by you. Without it, RouteValue uses
+        baseline energy estimates. Weight is never looked up automatically.
+      </p>
 
       {sourceDescription(vehicle) && (
         <p className="m9-mass-source">{sourceDescription(vehicle)}</p>
@@ -218,9 +219,7 @@ export default function VehicleMassEditor({
               <span>Unit</span>
               <select
                 value={unit}
-                onChange={(event) =>
-                  setUnit(event.target.value as "lb" | "kg")
-                }
+                onChange={(event) => setUnit(event.target.value as "lb" | "kg")}
                 disabled={busy}
               >
                 <option value="lb">Pounds (lb)</option>
@@ -242,18 +241,14 @@ export default function VehicleMassEditor({
           </label>
 
           <p className="m9-mass-help">
-            Use the published curb weight for your exact configuration.
-            The entry is recorded as user-provided, not independently
-            manufacturer-verified. Supplying mass does not guarantee
-            that terrain adjustment is available for every route.
+            Use the published curb weight for your exact configuration. The
+            entry is recorded as user-provided, not independently
+            manufacturer-verified. Supplying mass does not guarantee that
+            terrain adjustment is available for every route.
           </p>
 
           <div className="m9-mass-actions">
-            <button
-              type="submit"
-              className="v2-primary-button"
-              disabled={busy}
-            >
+            <button type="submit" className="v2-primary-button" disabled={busy}>
               {saving ? "Saving..." : "Save vehicle weight"}
             </button>
 
@@ -272,8 +267,16 @@ export default function VehicleMassEditor({
         </form>
       )}
 
-      {notice && <p role="status" className="m9-mass-notice">{notice}</p>}
-      {error && <p role="alert" className="m9-mass-error">{error}</p>}
+      {notice && (
+        <p role="status" className="m9-mass-notice">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="m9-mass-error">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

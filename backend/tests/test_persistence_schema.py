@@ -18,6 +18,7 @@ from routevalue.infrastructure.persistence.schema import (
     auth_identities,
     eia_pricing_observations,
     eia_pricing_snapshots,
+    elevation_call_reservations,
     metadata,
     saved_vehicles,
     user_preferences,
@@ -33,6 +34,7 @@ def test_only_routevalue_owned_tables_are_registered() -> None:
         "public.saved_vehicles",
         "public.eia_pricing_snapshots",
         "public.eia_pricing_observations",
+        "public.elevation_call_reservations",
     }
 
 
@@ -270,6 +272,7 @@ def test_generated_ddl_stays_in_public_schema() -> None:
             user_preferences,
             eia_pricing_snapshots,
             eia_pricing_observations,
+            elevation_call_reservations,
         ):
             sql = str(CreateTable(table).compile(dialect=engine.dialect))
 
@@ -286,7 +289,10 @@ def test_alembic_recognizes_exactly_one_current_head() -> None:
     config = Config(str(backend_root / "alembic.ini"))
     scripts = ScriptDirectory.from_config(config)
 
-    assert scripts.get_heads() == ["e8a1d4c209bf"]
+    assert scripts.get_heads() == ["f2b7c39a106d"]
+    quota_migration = scripts.get_revision("f2b7c39a106d")
+    assert quota_migration is not None
+    assert quota_migration.down_revision == "e8a1d4c209bf"
 
     initial = scripts.get_revision("7b3c2a91d0ef")
     mass_migration = scripts.get_revision("c8e4b72a91d3")

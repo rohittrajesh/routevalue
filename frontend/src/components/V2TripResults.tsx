@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 
 import type {
@@ -53,7 +52,7 @@ function terrainFallbackDescription(reason: string): string {
     case "invalid_route_distance":
       return "At least one route had an unusable distance for terrain calculations.";
     case "missing_vehicle_mass":
-      return "The selected vehicle does not have verified mass data required for terrain energy calculations.";
+      return "The selected vehicle has no curb weight entered. You can add it in vehicle settings to enable terrain energy calculations when suitable elevation data is available. Baseline estimates remain available without it.";
     case "safety_fallback":
       return "RouteValue selected the baseline energy model to preserve a consistent comparison.";
     default:
@@ -113,14 +112,14 @@ export default function V2TripResults({
     recommendedIndex >= 0 ? result.route_evaluations[recommendedIndex] : null;
 
   const terrain = result.terrain_status;
+  const price = result.energy_price;
 
   const terrainRoutesMatch =
     terrain !== null &&
     terrain !== undefined &&
     terrain.route_acquisition_statuses.length ===
       result.route_evaluations.length &&
-    terrain.route_coverage_fractions.length ===
-      result.route_evaluations.length;
+    terrain.route_coverage_fractions.length === result.route_evaluations.length;
 
   return (
     <section
@@ -135,6 +134,42 @@ export default function V2TripResults({
         Evaluated with {evaluatedVehicleName}. {result.decision.eligible_count}{" "}
         of {result.decision.candidate_count} routes eligible.
       </p>
+
+      {price && (
+        <section aria-label="Energy price used" className="m9-trip-notice">
+          {price.energy_type === "gasoline" ? (
+            <>
+              <strong>
+                Gasoline: {formatMoney(price.price_per_gallon)}/gallon ·{" "}
+                {price.fuel_grade}
+              </strong>
+              <p>
+                {price.source === "user_override"
+                  ? "Manual gasoline price supplied for this trip."
+                  : `${price.provider ?? "Market provider"}${price.geography ? ` · ${price.geography}` : ""}. Regional or market average; individual station prices may differ.`}
+              </p>
+              {price.observed_at && (
+                <p>
+                  Price observed:{" "}
+                  {new Date(price.observed_at).toLocaleDateString("en-US", {
+                    timeZone: "UTC",
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <strong>
+                Electricity: {formatMoney(price.price_per_kilowatt_hour)}/kWh
+              </strong>
+              <p>Your electricity rate supplied for this trip.</p>
+            </>
+          )}
+        </section>
+      )}
 
       {recommendedEvaluation !== null ? (
         <div className="m9-trip-recommendation">

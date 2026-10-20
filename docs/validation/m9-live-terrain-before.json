@@ -1,0 +1,484 @@
+{
+  "kind": "read_only_development_validation",
+  "diagnostic_inputs": {
+    "mass_kg": "1800",
+    "mpg": "30",
+    "kwh_per_mile": "0.30",
+    "gas_price": "4.50",
+    "electricity_price": "0.25",
+    "value_of_time": "24"
+  },
+  "cases": [
+    {
+      "name": "San Diego\u2013Julian",
+      "routes": 3,
+      "geometry_points": [
+        6478,
+        5815,
+        6588
+      ],
+      "distances_meters": [
+        97417,
+        92481,
+        103837
+      ],
+      "acquisition_reasons": [
+        null,
+        null,
+        "request_budget_exceeded"
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "elevation_unavailable"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "partial",
+            "unavailable"
+          ],
+          "route_coverage_fractions": [
+            null,
+            null,
+            null
+          ]
+        },
+        "costs": [
+          "9.079817615127654497733237890",
+          "8.619754384395132426628489620",
+          "9.678198073252207110474827012"
+        ],
+        "baseline_costs": [
+          "9.079817615127654497733237890",
+          "8.619754384395132426628489620",
+          "9.678198073252207110474827012"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "elevation_unavailable"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "partial",
+            "unavailable"
+          ],
+          "route_coverage_fractions": [
+            null,
+            null,
+            null
+          ]
+        },
+        "costs": [
+          "4.539908807563827248866618945",
+          "4.309877192197566213314244810",
+          "4.839099036626103555237413505"
+        ],
+        "baseline_costs": [
+          "4.539908807563827248866618945",
+          "4.309877192197566213314244810",
+          "4.839099036626103555237413505"
+        ]
+      },
+      "result": "evaluated"
+    },
+    {
+      "name": "Denver\u2013Evergreen",
+      "routes": 3,
+      "geometry_points": [
+        2554,
+        3465,
+        3321
+      ],
+      "distances_meters": [
+        45930,
+        44357,
+        55752
+      ],
+      "acquisition_reasons": [
+        null,
+        null,
+        null
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "insufficient_coverage"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "partial"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1",
+            "0.4419572392021810876739847898"
+          ]
+        },
+        "costs": [
+          "4.280936828919112383679312813",
+          "4.134324296110713433548079218",
+          "5.196403006442376521116678596"
+        ],
+        "baseline_costs": [
+          "4.280936828919112383679312813",
+          "4.134324296110713433548079218",
+          "5.196403006442376521116678596"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "insufficient_coverage"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "partial"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "1",
+            "0.4419572392021810876739847898"
+          ]
+        },
+        "costs": [
+          "2.140468414459556191839656407",
+          "2.067162148055356716774039609",
+          "2.598201503221188260558339300"
+        ],
+        "baseline_costs": [
+          "2.140468414459556191839656407",
+          "2.067162148055356716774039609",
+          "2.598201503221188260558339300"
+        ]
+      },
+      "result": "evaluated"
+    },
+    {
+      "name": "Asheville\u2013Waynesville",
+      "routes": 3,
+      "geometry_points": [
+        3376,
+        2532,
+        2726
+      ],
+      "distances_meters": [
+        49841,
+        48944,
+        48161
+      ],
+      "acquisition_reasons": [
+        null,
+        null,
+        "request_budget_exceeded"
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "elevation_unavailable"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "unavailable"
+          ],
+          "route_coverage_fractions": [
+            null,
+            null,
+            null
+          ]
+        },
+        "costs": [
+          "4.645464238845144356955380577",
+          "4.561858744929611071343354808",
+          "4.488878698401336196611787163"
+        ],
+        "baseline_costs": [
+          "4.645464238845144356955380577",
+          "4.561858744929611071343354808",
+          "4.488878698401336196611787163"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "elevation_unavailable"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "unavailable"
+          ],
+          "route_coverage_fractions": [
+            null,
+            null,
+            null
+          ]
+        },
+        "costs": [
+          "2.322732119422572178477690288",
+          "2.280929372464805535671677404",
+          "2.244439349200668098305893581"
+        ],
+        "baseline_costs": [
+          "2.322732119422572178477690288",
+          "2.280929372464805535671677404",
+          "2.244439349200668098305893581"
+        ]
+      },
+      "result": "evaluated"
+    },
+    {
+      "name": "Chicago\u2013Evanston",
+      "routes": 6,
+      "geometry_points": [
+        1468,
+        1417,
+        1901,
+        1468,
+        1417,
+        1901
+      ],
+      "distances_meters": [
+        22148,
+        21386,
+        30727,
+        22148,
+        21386,
+        30727
+      ],
+      "acquisition_reasons": [
+        null,
+        null,
+        null,
+        null,
+        "request_budget_exceeded",
+        "request_budget_exceeded"
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "elevation_unavailable"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete",
+            "complete",
+            "unavailable",
+            "unavailable"
+          ],
+          "route_coverage_fractions": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "costs": [
+          "2.064319374850870913863039848",
+          "1.993296647578143641135767120",
+          "2.863930893581484132665235027",
+          "2.064319374850870913863039848",
+          "1.993296647578143641135767120",
+          "2.863930893581484132665235027"
+        ],
+        "baseline_costs": [
+          "2.064319374850870913863039848",
+          "1.993296647578143641135767120",
+          "2.863930893581484132665235027",
+          "2.064319374850870913863039848",
+          "1.993296647578143641135767120",
+          "2.863930893581484132665235027"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": false,
+          "fallback_reasons": [
+            "elevation_unavailable"
+          ],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete",
+            "complete",
+            "unavailable",
+            "unavailable"
+          ],
+          "route_coverage_fractions": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        "costs": [
+          "1.032159687425435456931519924",
+          "0.9966483237890718205678835602",
+          "1.431965446790742066332617514",
+          "1.032159687425435456931519924",
+          "0.9966483237890718205678835602",
+          "1.431965446790742066332617514"
+        ],
+        "baseline_costs": [
+          "1.032159687425435456931519924",
+          "0.9966483237890718205678835602",
+          "1.431965446790742066332617514",
+          "1.032159687425435456931519924",
+          "0.9966483237890718205678835602",
+          "1.431965446790742066332617514"
+        ]
+      },
+      "result": "evaluated"
+    },
+    {
+      "name": "Anchorage\u2013Eagle River",
+      "routes": 1,
+      "geometry_points": [
+        1025
+      ],
+      "distances_meters": [
+        24128
+      ],
+      "acquisition_reasons": [
+        null
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1"
+          ]
+        },
+        "costs": [
+          "2.374906040235639688449953918"
+        ],
+        "baseline_costs": [
+          "2.248866618945359102839417800"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1"
+          ]
+        },
+        "costs": [
+          "1.265026082591556506198625291"
+        ],
+        "baseline_costs": [
+          "1.124433309472679551419708900"
+        ]
+      },
+      "result": "evaluated"
+    },
+    {
+      "name": "Honolulu\u2013Kailua",
+      "routes": 3,
+      "geometry_points": [
+        1081,
+        2340,
+        1447
+      ],
+      "distances_meters": [
+        20340,
+        35442,
+        25481
+      ],
+      "acquisition_reasons": [
+        null,
+        null,
+        null
+      ],
+      "gasoline": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "0.9718131030980192991366175724",
+            "1"
+          ]
+        },
+        "costs": [
+          "2.330399162606254682966620501",
+          "4.090982619519466354942369027",
+          "2.879292739722649253406451828"
+        ],
+        "baseline_costs": [
+          "1.895803507516105941302791696",
+          "3.303395669291338582677165354",
+          "2.374973902409926031973276067"
+        ]
+      },
+      "electricity": {
+        "terrain_status": {
+          "terrain_applied": true,
+          "fallback_reasons": [],
+          "route_acquisition_statuses": [
+            "complete",
+            "complete",
+            "complete"
+          ],
+          "route_coverage_fractions": [
+            "1",
+            "0.9718131030980192991366175724",
+            "1"
+          ]
+        },
+        "costs": [
+          "1.415983422412074064537349963",
+          "2.402050837255666005702709770",
+          "1.707924655868959038886993777"
+        ],
+        "baseline_costs": [
+          "0.9479017537580529706513958482",
+          "1.651697834645669291338582677",
+          "1.187486951204963015986638034"
+        ]
+      },
+      "result": "evaluated"
+    }
+  ],
+  "neon_jwks": {
+    "http_status": 200,
+    "public_keys": 1
+  },
+  "development_database": {
+    "revision": "e8a1d4c209bf",
+    "pricing_snapshots": 2,
+    "read_only": true
+  },
+  "development_database_or_quote": {
+    "error_type": "GasolinePriceUnavailableError"
+  }
+}

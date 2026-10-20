@@ -144,7 +144,7 @@ jobs:
                       ).scalar_one()
 
                   assert name == expected_name
-                  assert revision == "e8a1d4c209bf"
+                  assert revision == "f2b7c39a106d"
 
                   print(f"{label}: database and revision verified")
               finally:
@@ -287,6 +287,18 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Set up Python for V2 browser API
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv for V2 browser API
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Install locked V2 browser API dependencies
+        run: uv sync --locked
+        working-directory: backend
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium

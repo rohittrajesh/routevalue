@@ -204,6 +204,12 @@
         "title": "EnergyEstimateResponse",
         "type": "object"
       },
+      "GasolineGrade": {
+        "description": "Gasoline grade required by a gasoline vehicle.",
+        "enum": ["regular", "midgrade", "premium"],
+        "title": "GasolineGrade",
+        "type": "string"
+      },
       "GasolineGradeInput": {
         "description": "Gasoline grades accepted by the public V1 API.",
         "enum": ["regular", "midgrade", "premium"],
@@ -248,6 +254,12 @@
         ],
         "title": "GasolineInputs",
         "type": "object"
+      },
+      "GasolinePriceSource": {
+        "description": "Source category for a gasoline price.",
+        "enum": ["user_override", "local_market", "regional_market"],
+        "title": "GasolinePriceSource",
+        "type": "string"
       },
       "GasolineSavedVehicleSpecificationResponse": {
         "description": "Persisted gasoline energy specification.",
@@ -581,7 +593,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Optional vehicle mass. New V2 vehicles have no mass until the owner enters curb weight through the mass endpoint. Historical provenance is preserved."
           },
           "year": {
             "title": "Year",
@@ -796,6 +809,31 @@
         "title": "V2ElectricityInputs",
         "type": "object"
       },
+      "V2ElectricityPriceResponse": {
+        "description": "The explicit electricity rate used for this trip.",
+        "properties": {
+          "energy_type": {
+            "const": "electricity",
+            "default": "electricity",
+            "title": "Energy Type",
+            "type": "string"
+          },
+          "price_per_kilowatt_hour": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Price Per Kilowatt Hour",
+            "type": "string"
+          },
+          "source": {
+            "const": "user_input",
+            "default": "user_input",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": ["price_per_kilowatt_hour"],
+        "title": "V2ElectricityPriceResponse",
+        "type": "object"
+      },
       "V2EnergyEstimateResponse": {
         "description": "Route energy cost and optional typed physical consumption.",
         "properties": {
@@ -871,6 +909,72 @@
         },
         "required": ["fuel_price_per_gallon"],
         "title": "V2GasolineInputs",
+        "type": "object"
+      },
+      "V2GasolinePriceResponse": {
+        "description": "The actual trip-wide quote; missing provenance is never inferred.",
+        "properties": {
+          "energy_type": {
+            "const": "gasoline",
+            "default": "gasoline",
+            "title": "Energy Type",
+            "type": "string"
+          },
+          "fuel_grade": {
+            "$ref": "#/components/schemas/GasolineGrade"
+          },
+          "geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "price_per_gallon": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Price Per Gallon",
+            "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "source": {
+            "$ref": "#/components/schemas/GasolinePriceSource"
+          }
+        },
+        "required": [
+          "price_per_gallon",
+          "fuel_grade",
+          "source",
+          "observed_at",
+          "provider",
+          "geography"
+        ],
+        "title": "V2GasolinePriceResponse",
         "type": "object"
       },
       "V2RouteEvaluationResponse": {
@@ -1035,6 +1139,31 @@
           "decision": {
             "$ref": "#/components/schemas/DecisionResponse"
           },
+          "energy_price": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "electricity": "#/components/schemas/V2ElectricityPriceResponse",
+                    "gasoline": "#/components/schemas/V2GasolinePriceResponse"
+                  },
+                  "propertyName": "energy_type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/V2GasolinePriceResponse"
+                  },
+                  {
+                    "$ref": "#/components/schemas/V2ElectricityPriceResponse"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy Price"
+          },
           "route_evaluations": {
             "items": {
               "$ref": "#/components/schemas/V2RouteEvaluationResponse"
@@ -1190,7 +1319,7 @@
         "type": "object"
       },
       "VehicleMassSource": {
-        "description": "Provenance of a vehicle mass observation.",
+        "description": "Stored provenance, including historical records.\n\nV2 owner updates always use USER_PROVIDED. The other values remain\nreadable for existing snapshots; they do not enable automatic lookup.",
         "enum": [
           "manufacturer_curb_weight",
           "epa_test_weight",
@@ -1201,7 +1330,7 @@
       },
       "VehicleMassUpdateRequest": {
         "additionalProperties": false,
-        "description": "Set or clear a user-reported curb weight.",
+        "description": "Set or clear optional, user-entered curb weight.\n\nNo automatic weight lookup is performed. Non-null weight requires a\nunit and source reference and is recorded with user_provided provenance.\nSend weight=null alone to clear it; baseline evaluation remains available.",
         "properties": {
           "source_reference": {
             "anyOf": [

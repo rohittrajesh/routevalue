@@ -36,6 +36,7 @@ from routevalue.application.terrain_trip_evaluation import (
 from routevalue.domain.identity import SavedVehicleId, UserId
 from routevalue.domain.models import (
     ElectricVehicleSpecification,
+    EnergyPriceQuote,
     GasolineGrade,
     GasolinePriceQuote,
     GasolineVehicleProfile,
@@ -60,6 +61,7 @@ class AuthenticatedTerrainTripOutcome:
     evaluation: TerrainTripEvaluationOutcome
     acquisitions: tuple[TerrainAcquisitionResult, ...]
     geometry_decision: TerrainGeometryDecision
+    energy_price_quote: EnergyPriceQuote | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,4 +231,5 @@ class AuthenticatedTerrainTripService:
             evaluation=evaluation,
             acquisitions=acquisitions,
             geometry_decision=geometry_decision,
+            energy_price_quote=gasoline_quote if gasoline_quote is not None else electric_quote,
         )

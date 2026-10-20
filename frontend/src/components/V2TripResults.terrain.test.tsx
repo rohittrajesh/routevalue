@@ -100,6 +100,31 @@ function renderResult(result: V2TripEvaluationResponse) {
 }
 
 describe("V2 terrain status presentation", () => {
+  it("shows actual EIA price provenance without claiming a local station price", () => {
+    renderResult({
+      ...baseResult,
+      energy_price: {
+        energy_type: "gasoline",
+        price_per_gallon: "4.125",
+        fuel_grade: "regular",
+        source: "regional_market",
+        provider: "EIA",
+        geography: "California",
+        observed_at: "2026-10-19T00:00:00Z",
+      },
+    });
+    const pricing = screen.getByRole("region", { name: "Energy price used" });
+    expect(pricing).toHaveTextContent("EIA · California");
+    expect(pricing).toHaveTextContent("individual station prices may differ");
+    expect(pricing).toHaveTextContent("Oct 19, 2026");
+  });
+
+  it("does not invent price provenance when it is absent", () => {
+    renderResult(baseResult);
+    expect(
+      screen.queryByRole("region", { name: "Energy price used" }),
+    ).not.toBeInTheDocument();
+  });
   it("does not infer terrain usage when diagnostics are absent", () => {
     renderResult(baseResult);
 
@@ -161,9 +186,7 @@ describe("V2 terrain status presentation", () => {
       screen.getByText(/Elevation sampling is currently disabled/),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText(/does not have verified mass data/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/has no curb weight entered/)).toBeInTheDocument();
   });
 
   it("reports genuine terrain application and route coverage", () => {

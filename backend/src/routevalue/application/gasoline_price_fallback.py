@@ -12,6 +12,7 @@ from routevalue.application.gasoline_price_ports import (
     GasolinePriceProvider,
 )
 from routevalue.application.gasoline_price_selection import (
+    GasolinePriceFreshnessPolicy,
     select_gasoline_price_quote,
 )
 from routevalue.domain.gasoline_price_metadata import (
@@ -86,6 +87,7 @@ def resolve_geographic_gasoline_price(
     plan: GasolinePriceFallbackPlan,
     as_of: datetime,
     user_override: GasolinePriceQuote | None = None,
+    freshness_policy: GasolinePriceFreshnessPolicy | None = None,
 ) -> GasolinePriceQuote:
     """Resolve a price using bounded, explicit geographic fallback.
 
@@ -148,6 +150,7 @@ def resolve_geographic_gasoline_price(
                 geography=geography,
                 as_of=as_of,
                 market_quote=quote,
+                freshness_policy=freshness_policy,
             )
         except GasolinePriceUnavailableError as exc:
             if exc.reason is GasolinePriceUnavailableReason.PRICE_STALE:

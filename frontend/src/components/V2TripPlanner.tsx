@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { ApiRequestError } from "../api/tripEvaluations";
 import {
@@ -83,11 +83,22 @@ export default function V2TripPlanner({
   const [gasolinePrice, setGasolinePrice] = useState("");
   const [electricityPrice, setElectricityPrice] = useState("");
   const [result, setResult] = useState<V2TripEvaluationResponse | null>(null);
+  const [resultProfile, setResultProfile] = useState("");
+  const [errorProfile, setErrorProfile] = useState("");
   const [evaluatedVehicleName, setEvaluatedVehicleName] = useState("");
   const [error, setError] = useState<unknown>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inFlight = useRef(false);
   const requestVersion = useRef(0);
+  const personalization = JSON.stringify([vehicles, preferences]);
+
+  useEffect(() => {
+    // Discard in-flight responses when saved data changes or the planner unmounts.
+    requestVersion.current += 1;
+    return () => {
+      requestVersion.current += 1;
+    };
+  }, [personalization]);
 
   const fallbackId =
     vehicles.find((vehicle) => vehicle.id === preferences.default_vehicle_id)
@@ -165,11 +176,13 @@ export default function V2TripPlanner({
 
       if (version === requestVersion.current) {
         setEvaluatedVehicleName(vehicleName(selectedVehicle));
+        setResultProfile(personalization);
         setResult(response);
       }
     } catch (caught: unknown) {
       if (version === requestVersion.current) {
         setError(caught);
+        setErrorProfile(personalization);
       }
     } finally {
       inFlight.current = false;
@@ -178,6 +191,7 @@ export default function V2TripPlanner({
   }
 
   const showManualFallback =
+    errorProfile === personalization &&
     error instanceof ApiRequestError &&
     selectedVehicle?.specification.powertrain === "gasoline" &&
     gasolinePricingMode === "automatic" &&
@@ -349,7 +363,7 @@ export default function V2TripPlanner({
         </div>
       </form>
 
-      {error !== null && (
+      {error !== null && errorProfile === personalization && (
         <div className="m9-trip-error" role="alert">
           <p>{tripErrorMessage(error)}</p>
 
@@ -368,14 +382,17 @@ export default function V2TripPlanner({
         </div>
       )}
 
-      {result !== null && origin !== null && destination !== null && (
-        <V2TripResults
-          result={result}
-          origin={origin}
-          destination={destination}
-          evaluatedVehicleName={evaluatedVehicleName}
-        />
-      )}
+      {result !== null &&
+        resultProfile === personalization &&
+        origin !== null &&
+        destination !== null && (
+          <V2TripResults
+            result={result}
+            origin={origin}
+            destination={destination}
+            evaluatedVehicleName={evaluatedVehicleName}
+          />
+        )}
     </section>
   );
 }

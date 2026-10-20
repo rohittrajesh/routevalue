@@ -111,7 +111,7 @@ def engine() -> Iterator[Engine]:
                 connection.exec_driver_sql(
                     "SELECT version_num FROM public.alembic_version"
                 ).scalar_one()
-                == "e8a1d4c209bf"
+                == "f2b7c39a106d"
             )
 
         clean()

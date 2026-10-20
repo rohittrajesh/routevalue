@@ -1,5 +1,6 @@
 """V2-only HTTP response models for energy-aware trip evaluations."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -13,6 +14,33 @@ from routevalue.api.schemas import (
     RouteResponse,
 )
 from routevalue.api.terrain_status import V2TerrainStatusResponse
+from routevalue.domain.models import GasolineGrade, GasolinePriceSource
+
+
+class V2GasolinePriceResponse(BaseModel):
+    """The actual trip-wide quote; missing provenance is never inferred."""
+
+    energy_type: Literal["gasoline"] = "gasoline"
+    price_per_gallon: Decimal
+    fuel_grade: GasolineGrade
+    source: GasolinePriceSource
+    observed_at: datetime | None
+    provider: str | None
+    geography: str | None
+
+
+class V2ElectricityPriceResponse(BaseModel):
+    """The explicit electricity rate used for this trip."""
+
+    energy_type: Literal["electricity"] = "electricity"
+    price_per_kilowatt_hour: Decimal
+    source: Literal["user_input"] = "user_input"
+
+
+V2EnergyPriceResponse = Annotated[
+    V2GasolinePriceResponse | V2ElectricityPriceResponse,
+    Field(discriminator="energy_type"),
+]
 
 
 class V2GasolineConsumptionResponse(BaseModel):
@@ -63,6 +91,10 @@ class V2TripEvaluationResponse(BaseModel):
     route_evaluations: list[V2RouteEvaluationResponse]
     decision: DecisionResponse
     terrain_status: V2TerrainStatusResponse | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
+    energy_price: V2EnergyPriceResponse | None = Field(
         default=None,
         exclude_if=lambda value: value is None,
     )

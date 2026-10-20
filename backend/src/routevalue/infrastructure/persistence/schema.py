@@ -282,6 +282,16 @@ eia_pricing_observations = Table(
 )
 
 
+# No user identifiers, coordinates or elevation payloads are retained here.
+elevation_call_reservations = Table(
+    "elevation_call_reservations",
+    metadata,
+    Column("id", Uuid(as_uuid=True), primary_key=True),
+    Column("reserved_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_elevation_calls_reserved_at", elevation_call_reservations.c.reserved_at)
+
+
 type AlembicObjectType = Literal[
     "schema",
     "table",

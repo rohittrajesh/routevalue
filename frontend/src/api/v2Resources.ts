@@ -1,4 +1,3 @@
-
 import type { components } from "./generated/schema";
 import type {
   V2TripEvaluationRequest,

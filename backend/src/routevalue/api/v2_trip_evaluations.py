@@ -75,6 +75,7 @@ from routevalue.application.profile_trip_evaluation import (
     ProfileDrivenTripEvaluationService,
 )
 from routevalue.domain.identity import SavedVehicleId
+from routevalue.domain.models import EnergyPriceQuote
 from routevalue.infrastructure.energy.electric import ElectricEnergyCostEstimator
 from routevalue.infrastructure.energy.gasoline import GasolineEnergyCostEstimator
 from routevalue.infrastructure.persistence.eia_pricing_snapshots import (
@@ -138,12 +139,14 @@ def get_profile_driven_trip_evaluation_service(
     """Compose V2 evaluation with consistent routing and terrain geometry.
 
     Default mode retains existing overview routing without live elevation
-    requests. The explicit local-development mode couples HIGH_QUALITY
-    route geometry with guarded elevation acquisition.
+    requests. Explicit live mode couples HIGH_QUALITY route geometry with
+    guarded elevation acquisition and the selected quota accounting mode.
 
     Automatic gasoline pricing reads persisted EIA observations only.
     """
-    terrain_service = build_optional_terrain_acquisition_service(client=client)
+    terrain_service = build_optional_terrain_acquisition_service(
+        client=client, engine_factory=get_application_database_engine
+    )
 
     if terrain_service is None:
         route_provider: RouteProvider = GoogleRoutesRouteProvider(
@@ -318,6 +321,7 @@ def evaluate_profile_driven_trip(
         )
 
     terrain_status: V2TerrainStatusResponse | None = None
+    energy_price_quote: EnergyPriceQuote | None = None
 
     try:
         search_request = _to_route_search_request(request)
@@ -332,6 +336,7 @@ def evaluate_profile_driven_trip(
             )
 
             result = outcome.evaluation.trip
+            energy_price_quote = outcome.energy_price_quote
 
             terrain_status = build_v2_terrain_status(
                 acquisitions=outcome.acquisitions,
@@ -473,4 +478,5 @@ def evaluate_profile_driven_trip(
     return to_v2_trip_evaluation_response(
         result,
         terrain_status=terrain_status,
+        energy_price_quote=energy_price_quote,
     )

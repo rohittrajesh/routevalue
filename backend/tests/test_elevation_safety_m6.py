@@ -262,8 +262,8 @@ def test_nonadvancing_sleeper_fails_closed() -> None:
 
 
 def test_invalid_policy_cannot_raise_above_public_limits() -> None:
-    with pytest.raises(ValueError, match="between 1 and 5"):
-        PublicElevationPolicy(max_requests_per_trip=6)
+    with pytest.raises(ValueError, match="between 1 and 6"):
+        PublicElevationPolicy(max_requests_per_trip=7)
     with pytest.raises(ValueError, match="between 1 and 900"):
         PublicElevationPolicy(max_requests_per_24_hours=901)
     with pytest.raises(ValueError, match="at least 1.1"):

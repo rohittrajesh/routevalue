@@ -1,7 +1,7 @@
 """Application service for user-owned saved vehicle snapshots."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from routevalue.application.models import (
@@ -95,7 +95,9 @@ class UserSavedVehiclesService:
 
         snapshot = SavedVehicleSnapshot(
             configuration=canonical_configuration,
-            specification=specification,
+            # V2 mass is optional and entered separately by the owner. Catalog
+            # efficiency remains authoritative, but must never supply mass.
+            specification=replace(specification, vehicle_mass=None),
             specification_retrieved_at=self.clock(),
         )
 

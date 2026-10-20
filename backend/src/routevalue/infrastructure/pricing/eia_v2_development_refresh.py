@@ -36,7 +36,7 @@ _DEVELOPMENT_DATABASE_HOST = "ep-lucky-meadow-ark81i54.c-4.us-west-2.aws.neon.te
 _DEVELOPMENT_AUTH_HOST = "ep-lucky-meadow-ark81i54.neonauth.c-4.us-west-2.aws.neon.tech"
 _DEVELOPMENT_DATABASE = "neondb"
 _DEVELOPMENT_USER = "neondb_owner"
-_REQUIRED_REVISION = "e8a1d4c209bf"
+_SUPPORTED_REVISIONS = frozenset({"e8a1d4c209bf", "f2b7c39a106d"})
 
 _REGIONS: dict[str, tuple[EiaGasolineRegion, ...]] = {
     "california": (EIA_CALIFORNIA_REGION,),
@@ -101,7 +101,7 @@ def _verify_database(engine: Engine) -> None:
     if (
         database != _DEVELOPMENT_DATABASE
         or user != _DEVELOPMENT_USER
-        or revision != _REQUIRED_REVISION
+        or revision not in _SUPPORTED_REVISIONS
         or any(table is None for table in tables)
     ):
         raise ValueError("V2 development database identity or schema check failed")

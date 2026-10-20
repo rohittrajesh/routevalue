@@ -10,7 +10,11 @@ POUNDS_PER_KILOGRAM = Decimal("2.2046226218487757")
 
 
 class VehicleMassSource(StrEnum):
-    """Provenance of a vehicle mass observation."""
+    """Stored provenance, including historical records.
+
+    V2 owner updates always use USER_PROVIDED. The other values remain
+    readable for existing snapshots; they do not enable automatic lookup.
+    """
 
     MANUFACTURER_CURB_WEIGHT = "manufacturer_curb_weight"
     EPA_TEST_WEIGHT = "epa_test_weight"

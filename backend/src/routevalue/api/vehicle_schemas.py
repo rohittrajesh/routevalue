@@ -81,6 +81,10 @@ class SavedVehicleResponse(BaseModel):
     vehicle_mass: VehicleMassResponse | None = Field(
         default=None,
         exclude_if=lambda value: value is None,
+        description=(
+            "Optional vehicle mass. New V2 vehicles have no mass until the owner "
+            "enters curb weight through the mass endpoint. Historical provenance is preserved."
+        ),
     )
 
 

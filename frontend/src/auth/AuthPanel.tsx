@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { getNeonAuthClient } from "./neonClient";
+import { authErrorMessage } from "./authErrors";
 
 type AuthMode = "sign-in" | "sign-up";
 
@@ -24,6 +25,10 @@ export default function AuthPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const localhostUrl =
+    import.meta.env.DEV && window.location.hostname === "127.0.0.1"
+      ? `${window.location.protocol}//localhost:${window.location.port}/v2`
+      : null;
 
   function changeMode() {
     if (isSubmitting) {
@@ -65,17 +70,19 @@ export default function AuthPanel() {
             });
 
       if (!isSuccessfulAuthResult(result)) {
-        throw new Error("Authentication was not accepted");
+        throw typeof result === "object" && result !== null && "error" in result
+          ? result.error
+          : new Error("Authentication was not accepted");
       }
 
       setPassword("");
-      setNotice("Request completed. Waiting for session confirmation...");
-    } catch {
-      setError(
+      setNotice(
         mode === "sign-in"
-          ? "Sign-in failed. Check your credentials and try again."
-          : "Account creation failed. Check your information and try again.",
+          ? "Request completed. Waiting for session confirmation..."
+          : "Account request completed. Check your inbox if email verification is required, then sign in.",
       );
+    } catch (failure: unknown) {
+      setError(authErrorMessage(failure, mode === "sign-up"));
     } finally {
       setIsSubmitting(false);
     }
@@ -141,6 +148,12 @@ export default function AuthPanel() {
         {error && (
           <p className="v2-feedback v2-error" role="alert">
             {error}
+            {localhostUrl && error.includes("app address") && (
+              <>
+                {" "}
+                <a href={localhostUrl}>Open RouteValue on localhost</a>
+              </>
+            )}
           </p>
         )}
 

@@ -1,6 +1,7 @@
 """Tests for provider-neutral user-owned saved vehicles."""
 
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import cast
@@ -34,6 +35,7 @@ from routevalue.domain.models import (
     GasolineGrade,
     GasolineVehicleSpecification,
 )
+from routevalue.domain.vehicle_mass import VehicleMass, VehicleMassSource
 
 _RETRIEVED_AT = datetime(
     2026,
@@ -551,3 +553,35 @@ def test_service_deletes_vehicle_with_owner_scope() -> None:
             vehicle_id,
         )
     ]
+
+
+@pytest.mark.parametrize("electric", [False, True])
+@pytest.mark.parametrize("source", list(VehicleMassSource))
+def test_catalog_save_never_imports_mass_but_preserves_efficiency(
+    electric: bool,
+    source: VehicleMassSource,
+) -> None:
+    specification = (
+        ElectricVehicleSpecification(combined_kwh_per_mile=Decimal("0.285"))
+        if electric
+        else _gasoline_specification()
+    )
+    supplied = replace(
+        specification,
+        vehicle_mass=VehicleMass(
+            kilograms=Decimal(1800), source=source, source_reference="Catalog fixture"
+        ),
+    )
+    provider = FakeVehicleSpecificationProvider(
+        configurations=(_configuration(),),
+        specification_result=VehicleSpecificationLookupResult(
+            specification=supplied, unavailable_reason=None
+        ),
+    )
+    repository = FakeSavedVehicleRepository()
+    result = _service(repository, provider).save_catalog_vehicle(_user_id(), _configuration())
+
+    assert result.saved_vehicle is not None
+    assert result.saved_vehicle.specification == specification
+    assert repository.create_requests[0][1].specification.vehicle_mass is None
+    assert supplied.vehicle_mass is not None
