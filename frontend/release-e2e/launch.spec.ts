@@ -16,6 +16,87 @@ test.beforeEach(async ({ page }) => {
   await page.route("https://maps.googleapis.com/**", (route) => route.abort());
 });
 
+test("the real SDK loads profiles and survives reload without static Response.json", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Response, "json", {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+  });
+  const token = `fixture.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 900 })).toString("base64url")}.signature`;
+  await page.route("**/get-session", (route) =>
+    route.fulfill({
+      headers: {
+        "content-type": "application/json",
+        "set-auth-jwt": token,
+        "access-control-expose-headers": "set-auth-jwt",
+      },
+      json: {
+        session: {
+          id: "fixture-session",
+          token: "opaque-session",
+          userId: "fixture-user",
+          expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        },
+        user: {
+          id: "fixture-user",
+          email: "fixture@example.test",
+          name: "Fixture",
+          emailVerified: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    }),
+  );
+  const resources: string[] = [];
+  await page.route("https://api.example.invalid/api/v2/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    expect(route.request().headers().authorization).toBe(`Bearer ${token}`);
+    resources.push(path);
+    const payload = path.endsWith("/me")
+      ? {
+          user_id: "fixture-user",
+          preferences_configured: true,
+          default_vehicle_id: null,
+        }
+      : path.endsWith("/preferences")
+        ? {
+            value_of_time_per_hour: "24.00",
+            default_vehicle_id: null,
+            electricity_price_per_kwh: null,
+            preferred_fuel_market: null,
+          }
+        : path.endsWith("/vehicles")
+          ? { vehicles: [] }
+          : { years: [2023] };
+    await route.fulfill({ json: payload });
+  });
+  await page.goto("/");
+  await expect(
+    page.getByText("Profile connected.", { exact: true }),
+  ).toBeAttached();
+  await expect(
+    page.getByText("We could not reach your account.", { exact: false }),
+  ).toHaveCount(0);
+  expect(resources).toEqual(
+    expect.arrayContaining([
+      "/api/v2/me",
+      "/api/v2/preferences",
+      "/api/v2/vehicles",
+    ]),
+  );
+  resources.length = 0;
+  await page.reload();
+  await expect(
+    page.getByText("Profile connected.", { exact: true }),
+  ).toBeAttached();
+  expect(resources).toContain("/api/v2/me");
+});
+
 test("the production V2 bundle loads at root, survives reload and retains /v2", async ({
   page,
 }, testInfo) => {

@@ -4,6 +4,7 @@ import {
   BetterAuthReactAdapter,
   type BetterAuthReactAdapterInstance,
 } from "@neondatabase/auth/react/adapters";
+import { ensureResponseJson } from "./responseJsonCompatibility";
 
 type NeonReactAuth = NeonAuth<BetterAuthReactAdapterInstance>;
 
@@ -40,6 +41,7 @@ export function getNeonAuthUrl(): string {
 
 export function getNeonAuthClient(): NeonReactAuth {
   if (authClient === null) {
+    ensureResponseJson();
     authClient = createInternalNeonAuth<BetterAuthReactAdapterInstance>(
       getNeonAuthUrl(),
       {
