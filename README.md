@@ -7,7 +7,16 @@ RouteValue is a deployed web application that compares driving routes around
 between a faster trip and a cheaper trip explicit, with a personalized cost
 breakdown for each eligible route.
 
-[**Try RouteValue**](https://routevalue.pages.dev/) ·
+The goal is to make everyday driving trade-offs easier to understand: whether
+avoiding a toll is worth a longer drive, or whether a faster route justifies
+extra energy costs. Users set their own value of time, allowing the recommendation
+to reflect their priorities for each trip.
+
+Each comparison separates out-of-pocket spending from the value assigned to
+travel time. The result shows both the estimated money spent on the road and the
+personalized total used to rank routes, making the reasoning behind a
+recommendation visible.
+
 [Architecture decisions](docs/v2-architecture-decisions.md) ·
 [Release validation](docs/m11-release-acceptance.md)
 
@@ -42,6 +51,13 @@ Money uses decimal arithmetic. Routes without required scoring data are marked
 ineligible; missing values are not silently treated as free. Numerical ties use
 explicit, deterministic rules.
 
+A saved vehicle provides the efficiency information used in energy estimates,
+while persistent preferences carry the user's electricity rate, gasoline
+purchasing area and value of time into future comparisons. Users can override
+energy prices for a single trip without replacing their saved settings. Route
+results show the pricing source and whether terrain adjustments were applied,
+so the assumptions behind the comparison remain visible alongside the costs.
+
 ## How it is built
 
 A React/TypeScript interface communicates with a Python/FastAPI backend through a
@@ -73,10 +89,6 @@ flowchart LR
 - **Quality:** pytest, strict mypy and Ruff; Vitest, React Testing Library and
   Playwright; generated API types, production-bundle and container smoke checks.
 
-V2 is deployed at `/` and remains available at `/v2`. The legacy V1 planner is
-preserved at [`/v1`](https://routevalue.pages.dev/v1). Source development uses `v2`;
-reviewed releases are promoted to `main` for deployment.
-
 ## Validation and supported scope
 
 The Safari compatibility release (`bc97b72`, October 21, 2026) passed all four CI
@@ -98,68 +110,6 @@ remain operating follow-ups. See the [release acceptance record](docs/m11-releas
 and [deployment runbook](deployment/README.md) for evidence, limitations and rollback
 instructions. Milestone documents describe the state at their recorded dates;
 older references to V2 as local-only are historical.
-
-## Run locally
-
-Use Python 3.13, uv, Node.js 24 and npm. Live integrations require your own
-appropriately restricted Google credentials and a separate Neon development
-configuration. The examples contain names and defaults, not usable credentials:
-
-- [Backend environment example](backend/.env.example)
-- [Frontend environment example](frontend/.env.example)
-- [Development configuration and terrain guide](docs/m9-live-terrain-guide.md)
-
-From `backend`, install dependencies and start the API with your private
-development environment file:
-
-```sh
-uv sync --locked
-uv run --env-file .env.v2.local uvicorn routevalue.main:app --reload
-```
-
-From `frontend`, provide a private `.env.local` using the example, then run:
-
-```sh
-npm ci
-npm run dev
-```
-
-Vite proxies the local API to `http://127.0.0.1:8000`. Open `/v2` to use the
-personalized workflow. Never reuse production credentials for local tests or
-commit populated environment files.
-
-## Verification
-
-Backend quality checks, from `backend`:
-
-```sh
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy .
-uv run pytest -q
-```
-
-The complete backend integration suite requires the designated disposable
-PostgreSQL databases and EIA fixtures configured in
-[CI](.github/workflows/ci.yml). Do not point it at a development account database
-or production.
-
-Frontend checks, from `frontend`:
-
-```sh
-npm run api:check
-npm run lint
-npm run format:check
-npm test -- --run
-npm run build
-npx playwright install chromium
-npm run test:e2e
-npm run test:release
-```
-
-Ordinary browser tests use synthetic integration responses and do not require
-live provider keys. Separately opted-in live diagnostics are documented in the
-[terrain guide](docs/m9-live-terrain-guide.md).
 
 ## Repository layout
 
