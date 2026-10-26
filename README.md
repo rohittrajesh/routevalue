@@ -1,734 +1,180 @@
 # RouteValue
 
-**RouteValue helps drivers choose the route that costs them less — not just the route that arrives fastest.**
+**Know the cost. Choose what matters.**
 
-It compares driving routes using a personalized generalized cost that combines:
+RouteValue is a deployed web application that compares driving routes around
+**your vehicle, your energy costs and your value of time**. It makes the trade-off
+between a faster trip and a cheaper trip explicit, with a personalized cost
+breakdown for each eligible route.
 
-- fuel cost
-- toll cost
-- the monetary value of travel time
+[**Try RouteValue**](https://routevalue.pages.dev/) ·
+[Architecture decisions](docs/v2-architecture-decisions.md) ·
+[Release validation](docs/m11-release-acceptance.md)
 
-Instead of assuming the fastest route is always best, RouteValue asks a more useful question:
+![RouteValue trip planner with synthetic demonstration data](docs/design/ui-refresh/desktop-trip.png)
 
-> Is the time saved by a faster route actually worth the extra money?
+## What you can do
 
-## Live Demo
+- **Compare the cost of alternative routes.** See estimated gasoline or electricity
+  costs, tolls, travel duration and the monetary value of your driving time, with
+  route selection on an interactive map.
+- **Personalize the recommendation.** Decide what an hour of your time is worth;
+  a slower route can win when its savings justify the extra time.
+- **Save gasoline and electric vehicles.** Select a vehicle configuration from the
+  efficiency catalog, keep multiple vehicles and choose a default.
+- **Reuse preferences across sessions.** Save your value of time, electricity rate
+  and preferred gasoline purchasing area through authenticated accounts.
+- **Choose automatic or manual energy pricing.** Gasoline pricing uses published
+  EIA regional observations where supported, with a manual override. EV trips use
+  a saved electricity rate or an explicit trip override.
+- **Understand terrain estimates and their limits.** Optional, user-entered vehicle
+  mass enables terrain-aware energy modeling when usable elevation and route
+  geometry are available. Missing prerequisites or unavailable coverage produce
+  clearly identified baseline estimates.
 
-**Production application:**  
-https://routevalue.pages.dev
-
-**Production API:**  
-https://routevalue-api.onrender.com
-
-**Health check:**  
-https://routevalue-api.onrender.com/health
-
-RouteValue V2 is deployed at the homepage, with the legacy V1 planner available at
-[/v1](https://routevalue.pages.dev/v1). Hosting uses Cloudflare Pages and a
-containerized FastAPI backend on Render, with isolated Neon production accounts
-and data. See [M11 release acceptance](docs/m11-release-acceptance.md) for executed
-checks and the remaining owner/operating acceptance gates.
-
----
-
-## What RouteValue Does
-
-For a trip, the user provides:
-
-- origin
-- destination
-- value of travel time in dollars per hour
-- vehicle fuel efficiency in MPG
-- gasoline grade
-- gasoline price per gallon
-
-RouteValue retrieves multiple candidate routes and evaluates each one using the user's own driving economics.
-
-For each eligible route:
+The recommendation minimizes:
 
 ```text
-fuel cost
-    = estimated gallons used × gas price
-
-direct monetary cost
-    = fuel cost + toll cost
-
-time cost
-    = travel duration in hours × value of time per hour
-
-generalized cost
-    = direct monetary cost + time cost
+personalized route cost = energy cost + toll cost + travel time × value of time
 ```
 
-The route with the lowest personalized generalized cost is recommended.
+Money uses decimal arithmetic. Routes without required scoring data are marked
+ineligible; missing values are not silently treated as free. Numerical ties use
+explicit, deterministic rules.
 
-This means RouteValue can intentionally recommend:
+## How it is built
 
-- a slower route when its monetary savings are worth the extra time
-- a faster route when its time savings justify the extra cost
-- a route that is both faster and cheaper
-
----
-
-## V1 Features
-
-RouteValue V1 includes:
-
-- Google Places autocomplete for origin and destination
-- Google Routes integration for real driving-route candidates
-- alternative-route comparison
-- toll-aware route evaluation
-- personalized value-of-time calculations
-- gasoline fuel-cost estimation using vehicle MPG and user-supplied gas price
-- regular, midgrade, and premium gasoline inputs
-- per-route cost breakdowns
-- deterministic recommendation logic
-- explicit handling of missing route data
-- interactive Google route map
-- individual route inspection on the map
-- responsive production web interface
-- stable public FastAPI boundary
-- generated OpenAPI-to-TypeScript API contract
-- deterministic unit, integration, browser, and container verification
-
----
-
-## How the Decision Engine Works
-
-RouteValue keeps routing-provider data separate from its core decision logic.
-
-Google provides candidate route information such as:
-
-- distance
-- duration
-- toll information
-- route geometry
-
-RouteValue then normalizes that information into provider-independent domain models before scoring it.
-
-### Route eligibility
-
-A route must have the data required to calculate its generalized cost.
-
-Routes with unavailable required data are not silently assigned guessed values. They are marked ineligible and surfaced explicitly in the result.
-
-### Numerical ties
-
-V1 uses a **$0.10 generalized-cost tie tolerance**.
-
-When multiple routes fall within that tolerance, RouteValue resolves the result deterministically using:
-
-1. shorter travel time
-2. lower direct monetary cost
-3. shorter distance
-4. stable provider order
-
-This keeps route recommendations reproducible.
-
----
-
-## Architecture
-
-RouteValue is structured so that the decision engine is independent of HTTP, Google APIs, and the frontend.
+A React/TypeScript interface communicates with a Python/FastAPI backend through a
+generated OpenAPI contract. The decision engine is independent of HTTP and routing
+providers, with explicit application ports and replaceable infrastructure adapters.
 
 ```mermaid
 flowchart LR
-    U[User] --> F[React + TypeScript Frontend]
-
-    F --> P[Google Places API]
-    F --> B[FastAPI Backend]
-
-    B --> A[Application Orchestrator]
-    A --> R[Route Provider Port]
-    A --> E[Energy Cost Estimator Port]
-
-    R --> G[Google Routes Adapter]
-    G --> GR[Google Routes API]
-
-    E --> GE[Gasoline Energy Estimator]
-
-    A --> D[Domain Decision Engine]
-
-    D --> A
-    A --> B
-    B --> F
-
-    F --> M[Google Maps JavaScript API]
+    UI[React + TypeScript] --> API[FastAPI application]
+    UI --> MAP[Google Maps and Places]
+    API --> DOMAIN[Route normalization and cost decision engine]
+    API --> ROUTES[Google Routes]
+    API --> ENERGY[Gasoline and EV energy models]
+    ENERGY --> TERRAIN[Guarded OpenTopoData acquisition]
+    API --> PRICES[EIA pricing snapshots]
+    API --> DB[Neon PostgreSQL: profiles, vehicles and preferences]
+    UI --> AUTH[Neon Auth]
+    AUTH --> API
 ```
 
-### Backend boundaries
+- **Routing and maps:** Google Routes supplies candidates, geometry and available
+  toll information; Google Maps and Places support visualization and location entry.
+- **Energy:** separate gasoline and EV models, vehicle-efficiency lookup, optional
+  manual mass and guarded OpenTopoData elevation acquisition with shared quotas.
+- **Persistence and authentication:** Neon PostgreSQL, additive Alembic migrations,
+  email/password authentication and JWT-protected, user-owned API resources.
+- **Hosting:** Cloudflare Pages frontend, containerized Render backend and isolated
+  development/production database and authentication environments.
+- **Quality:** pytest, strict mypy and Ruff; Vitest, React Testing Library and
+  Playwright; generated API types, production-bundle and container smoke checks.
 
-The backend is divided into:
+V2 is deployed at `/` and remains available at `/v2`. The legacy V1 planner is
+preserved at [`/v1`](https://routevalue.pages.dev/v1). Source development uses `v2`;
+reviewed releases are promoted to `main` for deployment.
 
-```text
-routevalue/
-├── api/              HTTP schemas, mapping, dependencies, error handling
-├── application/      orchestration, ports, application models
-├── domain/           decision logic, eligibility, units, core models
-└── infrastructure/   Google Routes and gasoline-energy adapters
-```
+## Validation and supported scope
 
-The core domain does not depend on FastAPI or Google-specific response models.
+The Safari compatibility release (`bc97b72`, October 21, 2026) passed all four CI
+jobs on both `v2` and `main`. Its local frontend checks included 271 tests and ten
+production-bundle browser checks, including a real-SDK regression for browsers
+without static `Response.json`. These are recorded release results, not a claim
+that every future provider request or browser version will succeed.
 
-External services enter through explicit application ports, which keeps future routing and energy implementations replaceable.
+Live release checks covered saved settings, gasoline/EV trips, automatic and
+manual pricing, optional manual vehicle mass, and representative US terrain
+routes. Terrain acquisition remains dependent on coverage, geometry and quotas.
+EIA observations are regional averages, not station-specific or real-time prices.
+Google OAuth, Google Elevation and station-level Google gasoline pricing are not
+implemented; the [architecture decision record](docs/v2-architecture-decisions.md)
+explains these choices.
 
----
+Production SMTP hardening and longer-running recovery/alert-delivery observations
+remain operating follow-ups. See the [release acceptance record](docs/m11-release-acceptance.md)
+and [deployment runbook](deployment/README.md) for evidence, limitations and rollback
+instructions. Milestone documents describe the state at their recorded dates;
+older references to V2 as local-only are historical.
 
-## Request Flow
+## Run locally
 
-A production trip comparison follows this path:
+Use Python 3.13, uv, Node.js 24 and npm. Live integrations require your own
+appropriately restricted Google credentials and a separate Neon development
+configuration. The examples contain names and defaults, not usable credentials:
 
-```text
-Cloudflare Pages
-        ↓
-React / TypeScript frontend
-        ↓
-Google Places resolves locations
-        ↓
-Render FastAPI backend
-        ↓
-Google Routes adapter
-        ↓
-Google Routes API
-        ↓
-normalized route candidates
-        ↓
-gasoline energy estimator
-        ↓
-RouteValue decision engine
-        ↓
-personalized recommendation
-        ↓
-React results + Google route map
-```
+- [Backend environment example](backend/.env.example)
+- [Frontend environment example](frontend/.env.example)
+- [Development configuration and terrain guide](docs/m9-live-terrain-guide.md)
 
-The backend requests both normal route alternatives and an avoid-tolls route set, then merges unique candidates before evaluation.
+From `backend`, install dependencies and start the API with your private
+development environment file:
 
----
-
-## Tech Stack
-
-### Frontend
-
-- React 19
-- TypeScript
-- Vite
-- Google Maps JavaScript API
-- Places API (New)
-- Vitest
-- React Testing Library
-- Playwright
-- ESLint
-- Prettier
-
-### Backend
-
-- Python 3.13
-- FastAPI
-- Pydantic
-- httpx
-- Uvicorn
-- `Decimal`-based monetary calculations
-- pytest
-- Ruff
-- strict mypy
-- uv
-
-### Infrastructure
-
-- Google Routes API
-- Google Maps Platform
-- Docker
-- Render
-- Cloudflare Pages
-- GitHub Actions
-
----
-
-## Repository Structure
-
-```text
-routevalue/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-│
-├── backend/
-│   ├── src/
-│   │   └── routevalue/
-│   ├── tests/
-│   ├── Dockerfile
-│   ├── pyproject.toml
-│   └── uv.lock
-│
-├── frontend/
-│   ├── e2e/
-│   ├── openapi/
-│   ├── src/
-│   ├── package.json
-│   └── package-lock.json
-│
-└── README.md
-```
-
----
-
-## Local Development
-
-### Prerequisites
-
-Install:
-
-- Python 3.13
-- uv
-- Node.js 24
-- npm
-
-Docker Desktop is also required for local container verification.
-
-Clone the repository and enter the project directory before continuing.
-
-### 1. Start the backend
-
-```bash
-cd backend
+```sh
 uv sync --locked
+uv run --env-file .env.v2.local uvicorn routevalue.main:app --reload
 ```
 
-RouteValue requires a Google Routes API key for live trip evaluations.
+From `frontend`, provide a private `.env.local` using the example, then run:
 
-To enter the key without displaying it in the terminal:
-
-```bash
-read -s "GOOGLE_ROUTES_API_KEY?Google Routes API key: "
-export GOOGLE_ROUTES_API_KEY
-echo
-```
-
-Start FastAPI:
-
-```bash
-uv run uvicorn routevalue.main:app --reload
-```
-
-The backend runs at:
-
-```text
-http://127.0.0.1:8000
-```
-
-Verify it:
-
-```bash
-curl -fsS http://127.0.0.1:8000/health
-```
-
-Expected response:
-
-```json
-{"status":"ok"}
-```
-
-The health endpoint does not require Google credentials.
-
-### 2. Start the frontend
-
-Open another terminal:
-
-```bash
-cd frontend
+```sh
 npm ci
-```
-
-Enter the browser Google Maps Platform key:
-
-```bash
-read -s "VITE_GOOGLE_MAPS_API_KEY?Google Maps API key: "
-export VITE_GOOGLE_MAPS_API_KEY
-echo
-```
-
-Start Vite:
-
-```bash
 npm run dev
 ```
 
-During local development, frontend `/api` requests are proxied to:
-
-```text
-http://127.0.0.1:8000
-```
-
-so no local CORS configuration is required.
-
----
-
-## Environment Configuration
-
-### Backend
-
-#### `GOOGLE_ROUTES_API_KEY`
-
-Server-side credential used to call Google Routes.
-
-This must never be committed or exposed to the frontend.
-
-#### `ROUTEVALUE_CORS_ORIGINS`
-
-Optional comma-separated list of frontend origins allowed to call the backend from a browser.
-
-Production currently allows the deployed Cloudflare Pages application.
-
-When unset, CORS middleware is not enabled. This is the normal local-development configuration because Vite proxies backend requests.
-
-### Frontend
-
-#### `VITE_GOOGLE_MAPS_API_KEY`
-
-Browser-visible Google Maps Platform key used for:
-
-- Places API (New)
-- Maps JavaScript API
-
-Because Vite embeds this value into the browser bundle, security relies on Google API and website restrictions rather than secrecy.
-
-#### `VITE_API_BASE_URL`
-
-Production FastAPI origin.
-
-When unset, RouteValue defaults to:
-
-```text
-/api
-```
-
-which preserves the local Vite proxy workflow.
-
----
+Vite proxies the local API to `http://127.0.0.1:8000`. Open `/v2` to use the
+personalized workflow. Never reuse production credentials for local tests or
+commit populated environment files.
 
 ## Verification
 
-### Backend
+Backend quality checks, from `backend`:
 
-```bash
-cd backend
-
-uv run pytest -q
+```sh
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy .
+uv run pytest -q
 ```
 
-### Frontend
+The complete backend integration suite requires the designated disposable
+PostgreSQL databases and EIA fixtures configured in
+[CI](.github/workflows/ci.yml). Do not point it at a development account database
+or production.
 
-```bash
-cd frontend
+Frontend checks, from `frontend`:
 
+```sh
 npm run api:check
-npm test
 npm run lint
 npm run format:check
+npm test -- --run
 npm run build
-```
-
-### Browser E2E
-
-```bash
-cd frontend
-
 npx playwright install chromium
 npm run test:e2e
+npm run test:release
 ```
 
-The browser E2E suite uses deterministic Google Maps / Places fakes and intercepted API responses, so ordinary CI does not require live Google credentials.
+Ordinary browser tests use synthetic integration responses and do not require
+live provider keys. Separately opted-in live diagnostics are documented in the
+[terrain guide](docs/m9-live-terrain-guide.md).
 
----
-
-## API Contract
-
-The FastAPI OpenAPI schema is the source of truth for the frontend API contract.
-
-The frontend regenerates its TypeScript schema from FastAPI and verifies that committed generated files have not drifted:
-
-```bash
-cd frontend
-npm run api:check
-```
-
-This keeps changes to the HTTP boundary explicit across the Python and TypeScript codebases.
-
----
-
-## Docker
-
-Build the backend image from the repository root:
-
-```bash
-docker build -t routevalue-backend:local ./backend
-```
-
-Start the container:
-
-```bash
-docker run -d \
-  --name routevalue-backend-local \
-  -p 8001:8000 \
-  routevalue-backend:local
-```
-
-Verify the health endpoint:
-
-```bash
-curl -fsS http://127.0.0.1:8001/health
-```
-
-Expected:
-
-```json
-{"status":"ok"}
-```
-
-Clean up:
-
-```bash
-docker rm -f routevalue-backend-local
-```
-
-For live route evaluation, provide the Google Routes key at runtime:
-
-```bash
-docker run -d \
-  --name routevalue-backend-local \
-  -p 8001:8000 \
-  -e GOOGLE_ROUTES_API_KEY \
-  routevalue-backend:local
-```
-
-Credentials are never baked into the container image.
-
----
-
-## Continuous Integration
-
-GitHub Actions runs on:
-
-- pushes to `main`
-- pull requests targeting `main`
-
-The release pipeline verifies four independent areas.
-
-### Backend quality
-
-- pytest
-- Ruff lint
-- Ruff formatting
-- strict mypy
-
-### Frontend quality
-
-- generated API contract consistency
-- Vitest
-- ESLint
-- Prettier
-- production Vite build
-
-### Browser E2E
-
-- Playwright Chromium tests
-
-### Backend container
-
-- Docker image build
-- container startup
-- `/health` smoke test
-- deterministic cleanup
-
-No Google API credentials are required by ordinary CI.
-
----
-
-## Production Deployment
-
-### Frontend
-
-The frontend is deployed on **Cloudflare Pages**.
+## Repository layout
 
 ```text
-Production:
-https://routevalue.pages.dev
+backend/src/routevalue/
+  api/              HTTP schemas, authentication and resource boundaries
+  application/      use cases, orchestration and ports
+  domain/           units, energy and deterministic cost decisions
+  infrastructure/   provider adapters, persistence and operations
+frontend/
+  src/              application UI and typed API clients
+  e2e/              application browser tests
+  release-e2e/      production-bundle and real-SDK browser tests
+  openapi/          generated backend contract
+.github/workflows/  CI and guarded production EIA maintenance
+deployment/         production target identifiers and release runbook
+docs/               architecture, milestone evidence and design references
 ```
-
-Cloudflare builds the frontend from `main` using:
-
-```text
-Root directory: frontend
-Build command: npm run build
-Output directory: dist
-```
-
-### Backend
-
-The backend is deployed on **Render** from the existing Dockerfile.
-
-```text
-Production:
-https://routevalue-api.onrender.com
-```
-
-Render automatically deploys backend changes from `main`.
-
-The production health endpoint is:
-
-```text
-/health
-```
-
-Production CORS explicitly allows the deployed RouteValue frontend.
-
----
-
-## V1 Limitations
-
-RouteValue V1 deliberately keeps several capabilities outside the initial release scope.
-
-### Gasoline only
-
-V1 models gasoline vehicles using:
-
-- user-provided MPG
-- gasoline grade
-- user-provided price per gallon
-
-Electric vehicles are not yet supported.
-
-### User-provided gasoline prices
-
-V1 does not automatically retrieve geographic fuel prices.
-
-The user supplies the gasoline price used for the comparison.
-
-### Distance-based fuel estimation
-
-Fuel consumption is currently estimated from route distance and vehicle MPG.
-
-V1 does not yet model changes in efficiency caused by:
-
-- terrain
-- elevation
-- traffic conditions
-- road type
-- vehicle speed profile
-
-### Provider-dependent toll information
-
-RouteValue uses toll information returned by Google Routes.
-
-A route that cannot provide the required scoring data is explicitly marked ineligible rather than silently estimated.
-
-### No persistent user accounts
-
-V1 does not currently save:
-
-- vehicles
-- value-of-time preferences
-- trip history
-- other user profiles
-
-Inputs are supplied per evaluation.
-
----
-
-## V2 development workflow
-
-V2 development remains on branch `v2`; the production V1 deployment stays on `main`.
-The `/v2` workflow includes real Neon email/password authentication, saved gasoline
-and EV vehicles, default vehicle/value-of-time settings, optional manual curb
-weight, saved electricity rates, preferred fuel markets, automatic EIA regional
-gasoline pricing, manual trip overrides and guarded terrain/baseline explanations.
-
-The [architecture decision record](docs/v2-architecture-decisions.md) reconciles
-the original provider plans with implemented behavior. Google Elevation, Places
-station fuel-price acquisition and Google OAuth are explicitly not delivered by
-the current workflow. See [M9 closure validation](docs/m9-closure-validation.md)
-and [deployment operations](docs/m9-deployment-operations.md) for tests and remaining
-M10/M11 release work. M9 completion does not mean V2 is deployed to production.
-
-## Roadmap
-
-Potential post-V1 work includes:
-
-### V1.1+
-
-- automatic geographic gasoline-price lookup
-- reusable vehicle and user preferences
-- richer route-comparison explanations
-- additional deployment and observability improvements
-
-### Future versions
-
-- electric-vehicle support
-- route-aware energy consumption
-- terrain and elevation modeling
-- traffic-sensitive fuel-efficiency estimation
-- broader vehicle energy models
-- richer personalization policies
-
-The existing application ports and provider-independent domain models are designed so these capabilities can be added without replacing the core decision architecture.
-
----
-
-## Design Principles
-
-RouteValue V1 was built around several engineering constraints:
-
-- domain logic remains independent of web frameworks
-- external providers are accessed through explicit ports and adapters
-- money uses exact decimal arithmetic
-- canonical domain units are explicit
-- missing data is represented rather than guessed
-- route decisions are deterministic
-- HTTP schemas remain separate from domain models
-- frontend types are generated from the backend contract
-- provider credentials stay outside source control
-- production behavior is verified by automated gates
-
----
-
-## Status
-
-**RouteValue V1.0 — production deployed**
-
-The application is publicly accessible and the complete production path has been verified:
-
-```text
-Cloudflare Pages
-→ Render FastAPI
-→ Google Routes
-→ RouteValue decision engine
-→ personalized recommendation
-→ Google route map
-```
-
-M10 integration hardening is tracked in the
-[batch 1 acceptance matrix](docs/m10-batch-1-acceptance.md), including concurrency
-fixes, executed evidence and remaining release checks.
-
-[Batch 2 session acceptance](docs/m10-batch-2-sessions.md) records real Neon
-development sign-in/out evidence, expiry/account-switch hardening, and remaining
-hosted-origin and account-recovery release checks.
-
-[Batch 3 shared terrain validation](docs/m10-batch-3-shared-terrain.md) records
-development quota activation, bounded live US route evidence, restart/failure
-checks and the read-only quota health command.
-
-[Batch 4 EIA operations](docs/m10-batch-4-eia-operations.md) documents the guarded
-local hourly maintenance job, real pricing recovery and remaining hosted scheduling
-and alert-delivery checks.
-
-[Final M10 acceptance](docs/m10-final-acceptance.md) consolidates the completed
-integration batches, account-recovery implementation and final regression gates.
-The owner reports real password reset working. Ordinary sign-in keeps password
-recovery available; verification is limited to signup or Neon's unverified-email
-requirement. The record distinguishes an observed verification success from a
-later repeat failure and retains hosted/provider-policy acceptance checks. Hosted provisioning and production release remain M11 work.
